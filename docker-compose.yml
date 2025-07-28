@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: kleerlogistics_postgres
+    environment:
+      POSTGRES_DB: kleerlogistics
+      POSTGRES_USER: romualdo
+      POSTGRES_PASSWORD: supersecure
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    container_name: kleerlogistics_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+  # Application Django (optionnel pour le développement)
+  web:
+    build: .
+    container_name: kleerlogistics_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./kleerlogistics:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DB_HOST=postgres
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  kleerlogistics_network:
+    driver: bridge 
