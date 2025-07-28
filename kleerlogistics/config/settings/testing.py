@@ -12,12 +12,8 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'testserver']
 # Database for Testing
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('TEST_DB_NAME', 'kleerlogistics_test'),
-        'USER': os.environ.get('TEST_DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('TEST_DB_PASSWORD', 'postgres'),
-        'HOST': os.environ.get('TEST_DB_HOST', 'localhost'),
-        'PORT': os.environ.get('TEST_DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'test_db.sqlite3',
     }
 }
 

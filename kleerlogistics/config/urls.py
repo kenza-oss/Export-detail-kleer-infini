@@ -56,6 +56,7 @@ urlpatterns = [
         path('documents/', include('documents.urls')),
         path('notifications/', include('notifications.urls')),
         path('analytics/', include('analytics.urls')),
+        path('ratings/', include('ratings.urls')),
     ])),
 ]
 
