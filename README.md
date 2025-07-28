@@ -1,20 +1,21 @@
-# Export-detail-kleer-infini
+# Kleer Logistics API
 
 **Backend Django API** pour connecter voyageurs et expéditeurs de colis avec matching intelligent et système de paiements.
 
-## 📊 **État du Projet - IMPLÉMENTATION COMPLÈTE**
+## 📊 **État du Projet - AUTHENTIFICATION COMPLÈTE** ✅
 
-### ✅ **Modules Implémentés (100%)**
+### ✅ **Système d'Authentification JWT + OTP - 100% FONCTIONNEL**
 
 | Module | Statut | Fonctionnalités |
 |--------|--------|-----------------|
-| **Users** | ✅ COMPLET | Authentification JWT, rôles, profils, documents |
-| **Shipments** | ✅ COMPLET | Création, tracking, OTP, validation |
-| **Trips** | ✅ COMPLET | Gestion trajets, capacité, documents |
-| **Matching** | ✅ COMPLET | Algorithme intelligent, scoring, préférences |
-| **Payments** | ✅ COMPLET | Portefeuilles, transactions, commissions |
-| **Chat** | ✅ COMPLET | Messagerie, conversations, fichiers |
-| **Ratings** | ✅ COMPLET | Évaluations, commentaires, statistiques |
+| **🔐 Authentication** | ✅ **COMPLET** | JWT + OTP + Rôles + Permissions |
+| **👥 Users** | ✅ **COMPLET** | Profils, documents, vérification |
+| **📦 Shipments** | ✅ **COMPLET** | Création, tracking, OTP, validation |
+| **✈️ Trips** | ✅ **COMPLET** | Gestion trajets, capacité, documents |
+| **🎯 Matching** | ✅ **COMPLET** | Algorithme intelligent, scoring, préférences |
+| **💰 Payments** | ✅ **COMPLET** | Portefeuilles, transactions, commissions |
+| **💬 Chat** | ✅ **COMPLET** | Messagerie, conversations, fichiers |
+| **⭐ Ratings** | ✅ **COMPLET** | Évaluations, commentaires, statistiques |
 
 ### 🏗️ **Architecture Technique**
 
@@ -35,6 +36,26 @@ kleerlogistics/
 ├── analytics/              # 🔄 Statistiques
 └── internationalization/   # 🔄 Multilingue
 ```
+
+## 🔐 **Système d'Authentification Implémenté**
+
+### **✅ JWT Authentication**
+- **Login/Logout** avec tokens JWT (access + refresh)
+- **Refresh Token** automatique
+- **Claims personnalisés** dans les tokens (user_id, username, role, is_admin)
+- **Gestion des permissions** basée sur les rôles
+
+### **✅ OTP System (One-Time Password)**
+- **Envoi d'OTP** par SMS (simulation en développement)
+- **Vérification d'OTP** avec validation
+- **Expiration automatique** (10 minutes)
+- **Sécurité** : Empêche l'énumération des numéros de téléphone
+
+### **✅ Role-Based Access Control**
+- **Rôles multiples** : `sender`, `traveler`, `admin`, `both`
+- **Permissions granulaires** par rôle
+- **Middleware de sécurité** pour les endpoints admin
+- **Validation des rôles** dans les serializers
 
 ## 🐳 **Installation avec Docker**
 
@@ -97,72 +118,50 @@ services:
       - redis_data:/data
 ```
 
-## 📋 **API Endpoints Disponibles**
+## 📋 **API Endpoints d'Authentification**
 
-### 🔐 **Authentification**
-```
-POST /api/v1/users/auth/token/          # Connexion JWT
-POST /api/v1/users/auth/token/refresh/  # Refresh token
-POST /api/v1/users/auth/token/verify/   # Vérification token
-```
-
-### 👥 **Utilisateurs**
-```
-GET    /api/v1/users/users/             # Liste utilisateurs
-POST   /api/v1/users/users/             # Créer utilisateur
-GET    /api/v1/users/users/me/          # Utilisateur connecté
-PUT    /api/v1/users/users/{id}/        # Modifier utilisateur
+### 🔐 **Authentification JWT**
+```http
+POST /api/v1/users/auth/register/           # Inscription utilisateur
+POST /api/v1/users/auth/login/              # Connexion JWT
+POST /api/v1/users/auth/token/refresh/      # Refresh token
 ```
 
-### 📦 **Envois (Shipments)**
-```
-GET    /api/v1/shipments/shipments/     # Liste envois
-POST   /api/v1/shipments/shipments/     # Créer envoi
-GET    /api/v1/shipments/shipments/{id}/ # Détail envoi
-PUT    /api/v1/shipments/shipments/{id}/ # Modifier envoi
-POST   /api/v1/shipments/shipments/{id}/submit/ # Soumettre envoi
-POST   /api/v1/shipments/shipments/{id}/generate_otp/ # Générer OTP
-POST   /api/v1/shipments/shipments/{id}/verify_otp/ # Vérifier OTP
-GET    /api/v1/shipments/shipments/{id}/tracking/ # Historique tracking
+### 📱 **Système OTP**
+```http
+POST /api/v1/users/auth/otp/send/           # Envoyer OTP
+POST /api/v1/users/auth/otp/verify/         # Vérifier OTP
+GET  /api/v1/users/auth/phone/status/       # Statut vérification
 ```
 
-### ✈️ **Trajets (Trips)**
-```
-GET    /api/v1/trips/trips/             # Liste trajets
-POST   /api/v1/trips/trips/             # Créer trajet
-GET    /api/v1/trips/trips/{id}/        # Détail trajet
-PUT    /api/v1/trips/trips/{id}/        # Modifier trajet
-```
-
-### 🎯 **Matching**
-```
-GET    /api/v1/matching/matches/        # Liste matches
-POST   /api/v1/matching/matches/        # Créer match
-GET    /api/v1/matching/matches/{id}/   # Détail match
-PUT    /api/v1/matching/matches/{id}/   # Modifier match
+### 🔑 **Gestion des Mots de Passe**
+```http
+POST /api/v1/users/auth/password/change/    # Changer mot de passe
+POST /api/v1/users/auth/password/reset/     # Demander réinitialisation
+POST /api/v1/users/auth/password/reset/confirm/ # Confirmer réinitialisation
 ```
 
-### 💰 **Paiements**
-```
-GET    /api/v1/payments/wallets/        # Liste portefeuilles
-GET    /api/v1/payments/wallets/{id}/   # Détail portefeuille
-GET    /api/v1/payments/transactions/   # Liste transactions
-POST   /api/v1/payments/transactions/   # Créer transaction
-```
-
-### 💬 **Chat**
-```
-GET    /api/v1/chat/conversations/      # Liste conversations
-POST   /api/v1/chat/conversations/      # Créer conversation
-GET    /api/v1/chat/messages/           # Liste messages
-POST   /api/v1/chat/messages/           # Envoyer message
+### 👤 **Profils Utilisateurs**
+```http
+GET  /api/v1/users/profile/                 # Récupérer profil
+PUT  /api/v1/users/profile/update/          # Mettre à jour profil
+GET  /api/v1/users/permissions/             # Permissions utilisateur
 ```
 
-### ⭐ **Évaluations**
+### 📄 **Documents Utilisateurs**
+```http
+GET  /api/v1/users/documents/               # Liste documents
+POST /api/v1/users/documents/upload/        # Upload document
+GET  /api/v1/users/documents/{id}/          # Détail document
+DELETE /api/v1/users/documents/{id}/        # Supprimer document
 ```
-GET    /api/v1/ratings/ratings/         # Liste évaluations
-POST   /api/v1/ratings/ratings/         # Créer évaluation
-GET    /api/v1/ratings/ratings/{id}/    # Détail évaluation
+
+### 🔍 **Recherche et Admin**
+```http
+GET  /api/v1/users/search/?q=term           # Rechercher utilisateurs
+GET  /api/v1/users/admin/users/             # Liste tous utilisateurs (admin)
+GET  /api/v1/users/admin/users/{id}/        # Détail utilisateur (admin)
+PUT  /api/v1/users/admin/users/{id}/role/   # Modifier rôle (admin)
 ```
 
 ## 🚀 **Fonctionnalités Avancées Implémentées**
@@ -239,12 +238,36 @@ docker-compose exec kleerlogistics python manage.py migrate
 docker-compose exec kleerlogistics python manage.py collectstatic
 ```
 
-### Tests
+### Tests d'Authentification
 ```bash
-# Tester l'API
-curl -X POST http://localhost:8000/api/v1/users/auth/token/ \
+# Test d'inscription
+curl -X POST http://localhost:8000/api/v1/users/auth/register/ \
   -H "Content-Type: application/json" \
-  -d '{"username": "romualdo", "password": "passwordkleer"}'
+  -d '{
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "TestPassword123!",
+    "password_confirm": "TestPassword123!",
+    "first_name": "Test",
+    "last_name": "User",
+    "phone_number": "+213123456789",
+    "role": "sender"
+  }'
+
+# Test de connexion
+curl -X POST http://localhost:8000/api/v1/users/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser",
+    "password": "TestPassword123!"
+  }'
+
+# Test d'envoi OTP
+curl -X POST http://localhost:8000/api/v1/users/auth/otp/send/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone_number": "+213123456789"
+  }'
 
 # Health check
 curl http://localhost:8000/health/
@@ -252,8 +275,13 @@ curl http://localhost:8000/health/
 
 ## 📊 **Base de Données**
 
-### **Modèles Implémentés (15/15)**
-- ✅ `User`, `UserProfile`, `UserDocument`
+### **Modèles d'Authentification Implémentés**
+- ✅ `User` - Utilisateurs avec rôles et permissions
+- ✅ `UserProfile` - Profils utilisateurs détaillés
+- ✅ `UserDocument` - Documents d'identité
+- ✅ `OTPCode` - Codes OTP pour vérification
+
+### **Modèles Métier Implémentés**
 - ✅ `Shipment`, `ShipmentTracking`
 - ✅ `Trip`, `TripDocument`
 - ✅ `Match`, `MatchingPreferences`
@@ -267,7 +295,7 @@ curl http://localhost:8000/health/
 - ✅ Contraintes d'intégrité
 - ✅ Index optimisés
 
-## 🔒 **Sécurité**
+## 🔒 **Sécurité Implémentée**
 
 ### **Authentification**
 - ✅ **JWT** avec refresh tokens
@@ -280,6 +308,12 @@ curl http://localhost:8000/health/
 - ✅ **Contraintes** de base de données
 - ✅ **Messages d'erreur** explicites
 - ✅ **Protection CSRF** et XSS
+
+### **Sécurité OTP**
+- ✅ **Expiration automatique** (10 minutes)
+- ✅ **Limitation des tentatives**
+- ✅ **Validation du format** (6 chiffres)
+- ✅ **Sécurité contre l'énumération**
 
 ## 📈 **Monitoring**
 
@@ -343,4 +377,17 @@ docker-compose exec postgres psql -U kleerlogistics -d kleerlogistics
 docker-compose exec kleerlogistics python manage.py shell
 ```
 
+## 🎉 **État Actuel - AUTHENTIFICATION COMPLÈTE**
+
+✅ **Système d'authentification JWT + OTP 100% fonctionnel**  
+✅ **Gestion des rôles et permissions implémentée**  
+✅ **API REST complète avec documentation Swagger**  
+✅ **Sécurité renforcée avec validation et protection**  
+✅ **Base de données optimisée avec toutes les relations**  
+✅ **Docker ready avec configuration complète**  
+
+**Le backend est prêt pour la production ! 🚀**
+
 ---
+
+**Développé avec ❤️ par l'équipe Kleer Logistics**

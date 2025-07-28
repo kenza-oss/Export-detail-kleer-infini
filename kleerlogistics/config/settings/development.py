@@ -14,14 +14,22 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'kleerlogistics'),
-        'USER': os.environ.get('DB_USER', 'romualdo'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'supersecure'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Uncomment the PostgreSQL configuration when you have PostgreSQL set up
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DB_NAME', 'kleerlogistics'),
+#         'USER': os.environ.get('DB_USER', 'romualdo'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', 'supersecure'),
+#         'HOST': os.environ.get('DB_HOST', 'localhost'),
+#         'PORT': os.environ.get('DB_PORT', '5432'),
+#     }
+# }
 
 # Redis Configuration for Development
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')

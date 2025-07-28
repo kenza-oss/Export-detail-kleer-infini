@@ -1,263 +1,267 @@
 """
-Configuration avancée pour Swagger/OpenAPI avec exemples détaillés
+Configuration Swagger pour KleerLogistics
 """
 
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from rest_framework import status
-from .swagger_examples import *
 
-# Paramètres de requête communs
-PAGINATION_PARAMS = [
-    openapi.Parameter(
-        'page',
-        openapi.IN_QUERY,
-        description="Numéro de page",
-        type=openapi.TYPE_INTEGER,
-        default=1
-    ),
-    openapi.Parameter(
-        'per_page',
-        openapi.IN_QUERY,
-        description="Nombre d'éléments par page",
-        type=openapi.TYPE_INTEGER,
-        default=10
-    )
-]
-
-SEARCH_PARAMS = [
-    openapi.Parameter(
-        'query',
-        openapi.IN_QUERY,
-        description="Terme de recherche",
-        type=openapi.TYPE_STRING
-    ),
-    openapi.Parameter(
-        'status',
-        openapi.IN_QUERY,
-        description="Filtrer par statut",
-        type=openapi.TYPE_STRING,
-        enum=['pending', 'active', 'completed', 'cancelled']
-    ),
-    openapi.Parameter(
-        'date_from',
-        openapi.IN_QUERY,
-        description="Date de début (YYYY-MM-DD)",
-        type=openapi.TYPE_STRING,
-        format=openapi.FORMAT_DATE
-    ),
-    openapi.Parameter(
-        'date_to',
-        openapi.IN_QUERY,
-        description="Date de fin (YYYY-MM-DD)",
-        type=openapi.TYPE_STRING,
-        format=openapi.FORMAT_DATE
-    )
-]
-
-# Schémas de réponses communs
-SUCCESS_RESPONSE = openapi.Response(
-    description="Opération réussie",
-    examples={
-        "application/json": {
-            "success": True,
-            "message": "Opération effectuée avec succès"
-        }
-    }
-)
-
-ERROR_RESPONSE = openapi.Response(
-    description="Erreur de validation",
-    examples={
-        "application/json": ERROR_EXAMPLES["validation_error"]
-    }
-)
-
-NOT_FOUND_RESPONSE = openapi.Response(
-    description="Ressource non trouvée",
-    examples={
-        "application/json": ERROR_EXAMPLES["not_found_error"]
-    }
-)
-
-AUTH_ERROR_RESPONSE = openapi.Response(
-    description="Erreur d'authentification",
-    examples={
-        "application/json": ERROR_EXAMPLES["authentication_error"]
-    }
-)
-
-# Décorateurs Swagger pour les vues utilisateurs
 def user_registration_schema():
+    """Schéma pour l'inscription utilisateur."""
     return swagger_auto_schema(
-        operation_description="Inscription d'un nouvel utilisateur",
+        operation_description="Inscription d'un nouvel utilisateur avec gestion des rôles",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL),
-                'username': openapi.Schema(type=openapi.TYPE_STRING),
-                'first_name': openapi.Schema(type=openapi.TYPE_STRING),
-                'last_name': openapi.Schema(type=openapi.TYPE_STRING),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD),
-                'password_confirm': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD)
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'utilisateur unique"),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description="Adresse email"),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description="Mot de passe (min 8 caractères)"),
+                'password_confirm': openapi.Schema(type=openapi.TYPE_STRING, description="Confirmation du mot de passe"),
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description="Prénom"),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description="Nom de famille"),
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone (+213...)"),
+                'role': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['sender', 'traveler', 'admin', 'both'],
+                    description="Rôle utilisateur"
+                )
             },
-            required=['email', 'username', 'password', 'password_confirm']
+            required=['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
         ),
         responses={
             status.HTTP_201_CREATED: openapi.Response(
                 description="Utilisateur créé avec succès",
-                examples={"application/json": USER_REGISTRATION_EXAMPLE["response_success"]}
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Utilisateur créé avec succès",
+                    "user_id": 1,
+                    "email": "john.doe@example.com",
+                    "role": "sender"
+                }}
             ),
             status.HTTP_400_BAD_REQUEST: openapi.Response(
-                description="Données invalides",
-                examples={"application/json": USER_REGISTRATION_EXAMPLE["response_error"]}
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "errors": {
+                        "email": ["Cette adresse email est déjà utilisée."],
+                        "password": ["Ce mot de passe est trop court."],
+                        "phone_number": ["Ce numéro de téléphone est déjà utilisé."]
+                    }
+                }}
             )
-        },
+        }
+    )
 
+def user_login_schema():
+    """Schéma pour la connexion utilisateur."""
+    return swagger_auto_schema(
+        operation_description="Connexion utilisateur avec authentification JWT",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'utilisateur"),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description="Mot de passe")
+            },
+            required=['username', 'password']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Connexion réussie",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Connexion réussie",
+                    "tokens": {
+                        "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+                        "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+                    },
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "email": "john.doe@example.com",
+                        "role": "sender",
+                        "permissions": {
+                            "is_admin": False,
+                            "is_sender": True,
+                            "is_traveler": False,
+                            "can_access_admin_panel": False
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Identifiants invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Identifiants invalides"
+                }}
+            )
+        }
     )
 
 def user_profile_get_schema():
+    """Schéma pour récupérer le profil utilisateur."""
     return swagger_auto_schema(
         operation_description="Récupérer le profil de l'utilisateur connecté",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Profil récupéré avec succès",
-                examples={"application/json": USER_PROFILE_EXAMPLE["response_get"]}
+                description="Profil utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "profile": {
+                        "id": 1,
+                        "user": 1,
+                        "phone_number": "+213123456789",
+                        "birth_date": "1990-01-01",
+                        "address": "123 Rue de la Paix",
+                        "city": "Alger",
+                        "country": "Algeria",
+                        "rating": 4.5,
+                        "total_trips": 25,
+                        "total_shipments": 15,
+                        "is_verified": True
+                    }
+                }}
             ),
-            status.HTTP_404_NOT_FOUND: NOT_FOUND_RESPONSE
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Profil non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Profil non trouvé"
+                }}
+            )
         }
     )
 
 def user_profile_update_schema():
+    """Schéma pour mettre à jour le profil utilisateur."""
     return swagger_auto_schema(
-        operation_description="Mettre à jour le profil utilisateur",
+        operation_description="Mettre à jour le profil de l'utilisateur connecté",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'first_name': openapi.Schema(type=openapi.TYPE_STRING),
-                'last_name': openapi.Schema(type=openapi.TYPE_STRING),
-                'phone_number': openapi.Schema(type=openapi.TYPE_STRING),
-                'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-                'country': openapi.Schema(type=openapi.TYPE_STRING),
-                'city': openapi.Schema(type=openapi.TYPE_STRING),
-                'address': openapi.Schema(type=openapi.TYPE_STRING),
-                'bio': openapi.Schema(type=openapi.TYPE_STRING)
+                'address': openapi.Schema(type=openapi.TYPE_STRING, description="Adresse"),
+                'city': openapi.Schema(type=openapi.TYPE_STRING, description="Ville"),
+                'country': openapi.Schema(type=openapi.TYPE_STRING, description="Pays"),
+                'birth_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE, description="Date de naissance (YYYY-MM-DD)"),
+                'avatar': openapi.Schema(type=openapi.TYPE_FILE, description="Photo de profil"),
+                'bio': openapi.Schema(type=openapi.TYPE_STRING, description="Biographie")
             }
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Profil mis à jour avec succès",
+                description="Profil mis à jour",
                 examples={"application/json": {
                     "success": True,
                     "message": "Profil mis à jour avec succès",
-                    "profile": USER_PROFILE_EXAMPLE["response_get"]["profile"]
+                    "profile": {
+                        "id": 1,
+                        "address": "123 Rue de la Paix",
+                        "city": "Alger",
+                        "country": "Algeria",
+                        "birth_date": "1990-01-01"
+                    }
                 }}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE,
-            status.HTTP_404_NOT_FOUND: NOT_FOUND_RESPONSE
-        },
-
-    )
-
-def send_otp_schema():
-    return swagger_auto_schema(
-        operation_description="Envoyer un code OTP par SMS",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone")
-            },
-            required=['phone_number']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Code OTP envoyé avec succès",
-                examples={"application/json": PHONE_VERIFICATION_EXAMPLE["response_send_otp"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: openapi.Response(
-                description="Numéro de téléphone manquant",
-                examples={"application/json": {
-                    "success": False,
-                    "message": "Numéro de téléphone requis"
-                }}
-            )
-        },
-
-    )
-
-def verify_otp_schema():
-    return swagger_auto_schema(
-        operation_description="Vérifier le code OTP reçu",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'phone': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone"),
-                'otp': openapi.Schema(type=openapi.TYPE_STRING, description="Code OTP à 6 chiffres")
-            },
-            required=['phone', 'otp']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Numéro de téléphone vérifié avec succès",
-                examples={"application/json": PHONE_VERIFICATION_EXAMPLE["response_verify_otp"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: openapi.Response(
-                description="OTP incorrect",
-                examples={"application/json": {
-                    "success": False,
-                    "message": "OTP incorrect"
-                }}
-            )
-        },
-
-    )
-
-def change_password_schema():
-    return swagger_auto_schema(
-        operation_description="Changer le mot de passe de l'utilisateur",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'old_password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD),
-                'new_password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD),
-                'new_password_confirm': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD)
-            },
-            required=['old_password', 'new_password', 'new_password_confirm']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Mot de passe modifié avec succès",
-                examples={"application/json": PASSWORD_CHANGE_EXAMPLE["response_success"]}
             ),
             status.HTTP_400_BAD_REQUEST: openapi.Response(
                 description="Erreur de validation",
-                examples={"application/json": PASSWORD_CHANGE_EXAMPLE["response_error"]}
+                examples={"application/json": {
+                    "success": False,
+                    "errors": {
+                        "birth_date": ["Format de date invalide. Utilisez YYYY-MM-DD."]
+                    }
+                }}
             )
-        },
-
+        }
     )
 
-def reset_password_schema():
+def phone_verification_schema():
+    """Schéma pour vérifier le statut du téléphone."""
     return swagger_auto_schema(
-        operation_description="Demander la réinitialisation du mot de passe",
+        operation_description="Récupérer le statut de vérification du téléphone",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statut de vérification",
+                examples={"application/json": {
+                    "success": True,
+                    "phone_verified": True,
+                    "phone_number": "+213123456789"
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Authentification requise",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise pour vérifier le statut du téléphone"
+                }}
+            )
+        }
+    )
+
+def reset_password_confirm_schema():
+    """Schéma pour confirmer la réinitialisation de mot de passe."""
+    return swagger_auto_schema(
+        operation_description="Confirmer la réinitialisation de mot de passe avec token",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL)
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description="Adresse email"),
+                'token': openapi.Schema(type=openapi.TYPE_STRING, description="Token de réinitialisation"),
+                'new_password': openapi.Schema(type=openapi.TYPE_STRING, description="Nouveau mot de passe (min 8 caractères)"),
+                'new_password_confirm': openapi.Schema(type=openapi.TYPE_STRING, description="Confirmation du nouveau mot de passe")
             },
-            required=['email']
+            required=['email', 'token', 'new_password', 'new_password_confirm']
         ),
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Email de réinitialisation envoyé",
-                examples={"application/json": PASSWORD_RESET_EXAMPLE["response_reset"]}
+                description="Mot de passe réinitialisé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mot de passe réinitialisé avec succès"
+                }}
             ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "errors": {
+                        "token": ["Token de réinitialisation invalide"],
+                        "new_password_confirm": ["Les mots de passe ne correspondent pas."]
+                    }
+                }}
+            )
+        }
     )
 
 def user_document_upload_schema():
+    """Schéma pour l'upload de documents."""
     return swagger_auto_schema(
         operation_description="Uploader un document utilisateur",
         request_body=openapi.Schema(
@@ -265,156 +269,369 @@ def user_document_upload_schema():
             properties={
                 'document_type': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['identity_card', 'proof_of_address', 'passport', 'driving_license']
+                    enum=['passport', 'national_id', 'flight_ticket', 'address_proof'],
+                    description="Type de document"
                 ),
-                'file': openapi.Schema(type=openapi.TYPE_FILE)
+                'document_file': openapi.Schema(type=openapi.TYPE_FILE, description="Fichier document")
             },
-            required=['document_type', 'file']
+            required=['document_type', 'document_file']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
-                description="Document uploadé avec succès",
-                examples={"application/json": USER_DOCUMENT_EXAMPLE["response_upload"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
+                description="Document uploadé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Document uploadé avec succès",
+                    "document": {
+                        "id": 1,
+                        "document_type": "passport",
+                        "status": "pending",
+                        "uploaded_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            )
+        }
     )
 
 def user_document_list_schema():
+    """Schéma pour la liste des documents."""
     return swagger_auto_schema(
-        operation_description="Lister les documents de l'utilisateur",
-        manual_parameters=PAGINATION_PARAMS,
+        operation_description="Récupérer la liste des documents de l'utilisateur",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Liste des documents",
-                examples={"application/json": USER_DOCUMENT_EXAMPLE["response_list"]}
+                examples={"application/json": {
+                    "success": True,
+                    "documents": [
+                        {
+                            "id": 1,
+                            "document_type": "passport",
+                            "status": "approved",
+                            "uploaded_at": "2024-01-15T10:30:00Z"
+                        }
+                    ],
+                    "count": 1
+                }}
             )
         }
     )
 
 def user_search_schema():
+    """Schéma pour la recherche d'utilisateurs."""
     return swagger_auto_schema(
         operation_description="Rechercher des utilisateurs",
         manual_parameters=[
             openapi.Parameter(
-                'query',
+                'q',
                 openapi.IN_QUERY,
                 description="Terme de recherche",
-                type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'user_type',
-                openapi.IN_QUERY,
-                description="Type d'utilisateur",
                 type=openapi.TYPE_STRING,
-                enum=['sender', 'driver', 'both']
+                required=True
             ),
             openapi.Parameter(
-                'country',
-                openapi.IN_QUERY,
-                description="Pays",
-                type=openapi.TYPE_STRING
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
-        ] + PAGINATION_PARAMS,
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Résultats de la recherche",
-                examples={"application/json": USER_SEARCH_EXAMPLE["response"]}
+                description="Résultats de recherche",
+                examples={"application/json": {
+                    "success": True,
+                    "users": [
+                        {
+                            "id": 1,
+                            "username": "john_doe",
+                            "first_name": "John",
+                            "last_name": "Doe",
+                            "role": "sender",
+                            "rating": 4.5,
+                            "is_document_verified": True
+                        }
+                    ],
+                    "count": 1
+                }}
             )
         }
     )
 
-# Décorateurs Swagger pour les expéditions
+def admin_user_list_schema():
+    """Schéma pour la liste des utilisateurs (admin)."""
+    return swagger_auto_schema(
+        operation_description="Récupérer la liste de tous les utilisateurs (Admin uniquement)",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer) - Admin requis",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Liste des utilisateurs",
+                examples={"application/json": {
+                    "success": True,
+                    "users": [
+                        {
+                            "id": 1,
+                            "username": "john_doe",
+                            "email": "john.doe@example.com",
+                            "role": "sender",
+                            "is_phone_verified": True,
+                            "is_document_verified": True,
+                            "is_active": True
+                        }
+                    ],
+                    "count": 1
+                }}
+            ),
+            status.HTTP_403_FORBIDDEN: openapi.Response(
+                description="Accès refusé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Accès refusé. Permissions insuffisantes."
+                }}
+            )
+        }
+    )
+
+def role_update_schema():
+    """Schéma pour la mise à jour de rôle (admin)."""
+    return swagger_auto_schema(
+        operation_description="Mettre à jour le rôle d'un utilisateur (Admin uniquement)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'role': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['sender', 'traveler', 'admin', 'both'],
+                    description="Nouveau rôle"
+                )
+            },
+            required=['role']
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer) - Admin requis",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Rôle mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Rôle mis à jour vers traveler",
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "role": "traveler"
+                    }
+                }}
+            ),
+            status.HTTP_403_FORBIDDEN: openapi.Response(
+                description="Accès refusé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Accès refusé. Permissions insuffisantes."
+                }}
+            )
+        }
+    )
+
+# Schémas pour les shipments
 def shipment_create_schema():
+    """Schéma pour la création d'expédition."""
     return swagger_auto_schema(
         operation_description="Créer une nouvelle expédition",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'title': openapi.Schema(type=openapi.TYPE_STRING),
-                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                'origin_address': openapi.Schema(type=openapi.TYPE_STRING),
-                'destination_address': openapi.Schema(type=openapi.TYPE_STRING),
-                'weight': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'dimensions': openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'length': openapi.Schema(type=openapi.TYPE_NUMBER),
-                        'width': openapi.Schema(type=openapi.TYPE_NUMBER),
-                        'height': openapi.Schema(type=openapi.TYPE_NUMBER)
-                    }
-                ),
-                'fragile': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'urgent': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'estimated_value': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="Titre de l'expédition"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Description"),
+                'origin_address': openapi.Schema(type=openapi.TYPE_STRING, description="Adresse d'origine"),
+                'destination_address': openapi.Schema(type=openapi.TYPE_STRING, description="Adresse de destination"),
+                'weight': openapi.Schema(type=openapi.TYPE_NUMBER, description="Poids en kg"),
+                'fragile': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Colis fragile"),
+                'urgent': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Livraison urgente"),
+                'estimated_value': openapi.Schema(type=openapi.TYPE_NUMBER, description="Valeur estimée"),
                 'category': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['documents', 'electronics', 'clothing', 'furniture', 'other']
-                ),
-                'pickup_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-                'delivery_deadline': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE)
+                    enum=['documents', 'electronics', 'clothing', 'furniture', 'other'],
+                    description="Catégorie"
+                )
             },
             required=['title', 'origin_address', 'destination_address', 'weight']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
-                description="Expédition créée avec succès",
-                examples={"application/json": SHIPMENT_CREATE_EXAMPLE["response_success"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
-    )
-
-def shipment_list_schema():
-    return swagger_auto_schema(
-        operation_description="Lister les expéditions",
-        manual_parameters=SEARCH_PARAMS + PAGINATION_PARAMS,
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Liste des expéditions",
-                examples={"application/json": SHIPMENT_LIST_EXAMPLE["response"]}
+                description="Expédition créée",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Expédition créée avec succès",
+                    "shipment": {
+                        "id": 1,
+                        "title": "Livraison de documents urgents",
+                        "status": "pending",
+                        "created_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
             )
         }
     )
 
-# Décorateurs Swagger pour les voyages
+def shipment_list_schema():
+    """Schéma pour la liste des expéditions."""
+    return swagger_auto_schema(
+        operation_description="Récupérer la liste des expéditions",
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Liste des expéditions",
+                examples={"application/json": {
+                    "success": True,
+                    "shipments": [
+                        {
+                            "id": 1,
+                            "title": "Livraison de documents urgents",
+                            "status": "pending",
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ],
+                    "count": 1
+                }}
+            )
+        }
+    )
+
+def shipment_update_schema():
+    """Schéma pour la mise à jour d'expédition."""
+    return swagger_auto_schema(
+        operation_description="Mettre à jour une expédition",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="Titre"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Description"),
+                'urgent': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Urgent")
+            }
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Expédition mise à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Expédition mise à jour avec succès"
+                }}
+            )
+        }
+    )
+
+# Schémas pour les trips
 def trip_create_schema():
+    """Schéma pour la création de voyage."""
     return swagger_auto_schema(
         operation_description="Créer un nouveau voyage",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'title': openapi.Schema(type=openapi.TYPE_STRING),
-                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                'origin_address': openapi.Schema(type=openapi.TYPE_STRING),
-                'destination_address': openapi.Schema(type=openapi.TYPE_STRING),
-                'departure_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME),
-                'arrival_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME),
-                'available_space': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'max_weight': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'price_per_kg': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="Titre du voyage"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Description"),
+                'origin_address': openapi.Schema(type=openapi.TYPE_STRING, description="Adresse d'origine"),
+                'destination_address': openapi.Schema(type=openapi.TYPE_STRING, description="Adresse de destination"),
+                'departure_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description="Date de départ"),
+                'arrival_date': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description="Date d'arrivée"),
+                'available_space': openapi.Schema(type=openapi.TYPE_NUMBER, description="Espace disponible"),
+                'max_weight': openapi.Schema(type=openapi.TYPE_NUMBER, description="Poids maximum"),
+                'price_per_kg': openapi.Schema(type=openapi.TYPE_NUMBER, description="Prix par kg"),
                 'vehicle_type': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['car', 'van', 'truck', 'motorcycle']
-                ),
-                'route_details': openapi.Schema(type=openapi.TYPE_STRING),
-                'flexible_dates': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+                    enum=['car', 'van', 'truck', 'motorcycle'],
+                    description="Type de véhicule"
+                )
             },
             required=['title', 'origin_address', 'destination_address', 'departure_date', 'arrival_date']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
-                description="Voyage créé avec succès",
-                examples={"application/json": TRIP_CREATE_EXAMPLE["response_success"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
+                description="Voyage créé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Voyage créé avec succès",
+                    "trip": {
+                        "id": 1,
+                        "title": "Voyage Paris-Lyon",
+                        "status": "active",
+                        "created_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            )
+        }
     )
 
 def trip_search_schema():
+    """Schéma pour la recherche de voyages."""
     return swagger_auto_schema(
         operation_description="Rechercher des voyages",
         manual_parameters=[
@@ -431,396 +648,478 @@ def trip_search_schema():
                 type=openapi.TYPE_STRING
             ),
             openapi.Parameter(
-                'date_from',
-                openapi.IN_QUERY,
-                description="Date de départ minimale",
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
                 type=openapi.TYPE_STRING,
-                format=openapi.FORMAT_DATE
-            ),
-            openapi.Parameter(
-                'date_to',
-                openapi.IN_QUERY,
-                description="Date de départ maximale",
-                type=openapi.TYPE_STRING,
-                format=openapi.FORMAT_DATE
-            ),
-            openapi.Parameter(
-                'max_price',
-                openapi.IN_QUERY,
-                description="Prix maximum par kg",
-                type=openapi.TYPE_NUMBER
-            ),
-            openapi.Parameter(
-                'vehicle_type',
-                openapi.IN_QUERY,
-                description="Type de véhicule",
-                type=openapi.TYPE_STRING,
-                enum=['car', 'van', 'truck', 'motorcycle']
+                required=True
             )
-        ] + PAGINATION_PARAMS,
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Résultats de la recherche",
-                examples={"application/json": TRIP_SEARCH_EXAMPLE["response"]}
+                description="Résultats de recherche",
+                examples={"application/json": {
+                    "success": True,
+                    "trips": [
+                        {
+                            "id": 1,
+                            "title": "Voyage Paris-Lyon",
+                            "status": "active",
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ],
+                    "count": 1
+                }}
             )
         }
     )
 
-# Décorateurs Swagger pour les paiements
+# Schémas pour le matching
+def matching_accept_schema():
+    """Schéma pour accepter un match."""
+    return swagger_auto_schema(
+        operation_description="Accepter un match",
+        manual_parameters=[
+            openapi.Parameter(
+                'match_id',
+                openapi.IN_PATH,
+                description="ID du match",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'accepted_price': openapi.Schema(type=openapi.TYPE_NUMBER, description="Prix accepté"),
+                'message': openapi.Schema(type=openapi.TYPE_STRING, description="Message optionnel")
+            }
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Match accepté",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Match accepté avec succès",
+                    "match": {
+                        "id": 1,
+                        "status": "accepted",
+                        "accepted_price": 150.00,
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            ),
+            status.HTTP_403_FORBIDDEN: openapi.Response(
+                description="Non autorisé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Non autorisé"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Match non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Match non trouvé"
+                }}
+            )
+        }
+    )
+
+def matching_reject_schema():
+    """Schéma pour rejeter un match."""
+    return swagger_auto_schema(
+        operation_description="Rejeter un match",
+        manual_parameters=[
+            openapi.Parameter(
+                'match_id',
+                openapi.IN_PATH,
+                description="ID du match",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'reason': openapi.Schema(type=openapi.TYPE_STRING, description="Raison du rejet"),
+                'message': openapi.Schema(type=openapi.TYPE_STRING, description="Message optionnel")
+            }
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Match rejeté",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Match rejeté avec succès",
+                    "match": {
+                        "id": 1,
+                        "status": "rejected",
+                        "rejection_reason": "Prix trop élevé",
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            ),
+            status.HTTP_403_FORBIDDEN: openapi.Response(
+                description="Non autorisé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Non autorisé"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Match non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Match non trouvé"
+                }}
+            )
+        }
+    ) 
+
 def payment_create_schema():
+    """Schéma pour la création de paiement."""
     return swagger_auto_schema(
         operation_description="Créer un nouveau paiement",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'currency': openapi.Schema(type=openapi.TYPE_STRING, default="EUR"),
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER, description="Montant du paiement"),
+                'currency': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['EUR', 'USD', 'DZD'],
+                    description="Devise du paiement"
+                ),
                 'payment_method': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['card', 'bank_transfer', 'paypal']
+                    enum=['card', 'bank_transfer', 'chargily', 'wallet'],
+                    description="Méthode de paiement"
                 ),
-                'description': openapi.Schema(type=openapi.TYPE_STRING),
-                'shipment_id': openapi.Schema(type=openapi.TYPE_INTEGER)
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Description du paiement"),
+                'shipment_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID de l'expédition (optionnel)")
             },
-            required=['amount', 'payment_method', 'description']
+            required=['amount', 'currency', 'payment_method']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
-                description="Paiement initié avec succès",
-                examples={"application/json": PAYMENT_CREATE_EXAMPLE["response_success"]}
+                description="Paiement créé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Paiement créé avec succès",
+                    "payment": {
+                        "id": 1,
+                        "amount": 125.50,
+                        "currency": "EUR",
+                        "payment_method": "card",
+                        "status": "pending",
+                        "reference": "PAY123456",
+                        "created_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
             ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Montant invalide"
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    ) 
 
+def document_upload_schema():
+    """Schéma pour l'upload de documents."""
+    return swagger_auto_schema(
+        operation_description="Uploader un document",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'document_type': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['invoice', 'receipt', 'contract', 'custom'],
+                    description="Type de document"
+                ),
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="Titre du document"),
+                'description': openapi.Schema(type=openapi.TYPE_STRING, description="Description du document"),
+                'file': openapi.Schema(type=openapi.TYPE_FILE, description="Fichier document")
+            },
+            required=['document_type', 'title']
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_201_CREATED: openapi.Response(
+                description="Document uploadé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Document uploadé avec succès",
+                    "document": {
+                        "id": 1,
+                        "document_type": "invoice",
+                        "title": "Facture INV12345678",
+                        "status": "uploaded",
+                        "uploaded_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Type de document invalide"
+                }}
+            )
+        }
     )
 
-# Décorateurs Swagger pour les notifications
+def document_list_schema():
+    """Schéma pour la liste des documents."""
+    return swagger_auto_schema(
+        operation_description="Récupérer la liste des documents",
+        manual_parameters=[
+            openapi.Parameter(
+                'document_type',
+                openapi.IN_QUERY,
+                description="Type de document",
+                type=openapi.TYPE_STRING
+            ),
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                description="Statut du document",
+                type=openapi.TYPE_STRING,
+                enum=['generated', 'uploaded', 'pending', 'completed']
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Liste des documents",
+                examples={"application/json": {
+                    "success": True,
+                    "documents": [
+                        {
+                            "id": 1,
+                            "document_type": "invoice",
+                            "title": "Facture INV12345678",
+                            "status": "generated",
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ],
+                    "count": 1
+                }}
+            )
+        }
+    )
+
+def document_verify_schema():
+    """Schéma pour la vérification de documents."""
+    return swagger_auto_schema(
+        operation_description="Vérifier un document",
+        manual_parameters=[
+            openapi.Parameter(
+                'document_id',
+                openapi.IN_PATH,
+                description="ID du document",
+                type=openapi.TYPE_INTEGER
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'verification_status': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['approved', 'rejected'],
+                    description="Statut de vérification"
+                ),
+                'verification_notes': openapi.Schema(type=openapi.TYPE_STRING, description="Notes de vérification")
+            },
+            required=['verification_status']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Document vérifié",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Document vérifié avec succès",
+                    "document": {
+                        "id": 1,
+                        "status": "verified",
+                        "verified_at": "2024-01-16T14:20:00Z",
+                        "verification_notes": "Document vérifié et approuvé"
+                    }
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Document non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Document non trouvé"
+                }}
+            )
+        }
+    ) 
+
 def notification_send_schema():
+    """Schéma pour l'envoi de notifications."""
     return swagger_auto_schema(
         operation_description="Envoyer une notification",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'recipient_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'title': openapi.Schema(type=openapi.TYPE_STRING),
-                'message': openapi.Schema(type=openapi.TYPE_STRING),
                 'notification_type': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['shipment_match', 'trip_update', 'payment_received', 'system_alert']
+                    enum=['email', 'sms', 'push'],
+                    description="Type de notification"
                 ),
-                'data': openapi.Schema(type=openapi.TYPE_OBJECT)
+                'recipient_id': openapi.Schema(type=openapi.TYPE_INTEGER, description="ID du destinataire"),
+                'title': openapi.Schema(type=openapi.TYPE_STRING, description="Titre de la notification"),
+                'message': openapi.Schema(type=openapi.TYPE_STRING, description="Message de la notification"),
+                'template_name': openapi.Schema(type=openapi.TYPE_STRING, description="Nom du modèle (optionnel)"),
+                'context': openapi.Schema(type=openapi.TYPE_OBJECT, description="Contexte pour le modèle")
             },
-            required=['recipient_id', 'title', 'message']
+            required=['notification_type', 'recipient_id', 'title', 'message']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Notification envoyée avec succès",
-                examples={"application/json": NOTIFICATION_EXAMPLE["response_send"]}
+                description="Notification envoyée",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Notification envoyée avec succès",
+                    "notification": {
+                        "id": 1,
+                        "notification_type": "email",
+                        "title": "Nouvelle correspondance trouvée",
+                        "message": "Une correspondance a été trouvée pour votre expédition",
+                        "status": "sent",
+                        "created_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
             ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Type de notification invalide"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Destinataire non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Destinataire non trouvé"
+                }}
+            )
+        }
     )
 
 def notification_list_schema():
+    """Schéma pour la liste des notifications."""
     return swagger_auto_schema(
-        operation_description="Lister les notifications de l'utilisateur",
-        manual_parameters=PAGINATION_PARAMS + [
+        operation_description="Récupérer la liste des notifications",
+        manual_parameters=[
             openapi.Parameter(
-                'unread_only',
+                'notification_type',
                 openapi.IN_QUERY,
-                description="Afficher seulement les notifications non lues",
-                type=openapi.TYPE_BOOLEAN
+                description="Type de notification",
+                type=openapi.TYPE_STRING,
+                enum=['email', 'sms', 'push', 'all']
+            ),
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                description="Statut de la notification",
+                type=openapi.TYPE_STRING,
+                enum=['sent', 'pending', 'failed', 'read', 'unread']
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Liste des notifications",
-                examples={"application/json": NOTIFICATION_EXAMPLE["response_list"]}
-            )
-        }
-    )
-
-# Décorateurs Swagger pour les évaluations
-def rating_create_schema():
-    return swagger_auto_schema(
-        operation_description="Créer une évaluation",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'rating': openapi.Schema(type=openapi.TYPE_INTEGER, minimum=1, maximum=5),
-                'comment': openapi.Schema(type=openapi.TYPE_STRING),
-                'shipment_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'rated_user_id': openapi.Schema(type=openapi.TYPE_INTEGER)
-            },
-            required=['rating', 'rated_user_id']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Évaluation créée avec succès",
-                examples={"application/json": RATING_CREATE_EXAMPLE["response_success"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        },
-
-    )
-
-# Décorateurs Swagger pour les correspondances (matching)
-def matching_create_schema():
-    return swagger_auto_schema(
-        operation_description="Créer une correspondance entre expédition et voyage",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'shipment_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'trip_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'proposed_price': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'message': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['shipment_id', 'trip_id']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Correspondance créée avec succès",
-                examples={"application/json": MATCHING_EXAMPLE["response_create"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def matching_list_schema():
-    return swagger_auto_schema(
-        operation_description="Lister les correspondances",
-        manual_parameters=PAGINATION_PARAMS + [
-            openapi.Parameter(
-                'status',
-                openapi.IN_QUERY,
-                description="Statut de la correspondance",
-                type=openapi.TYPE_STRING,
-                enum=['pending', 'accepted', 'rejected', 'cancelled']
-            ),
-            openapi.Parameter(
-                'shipment_id',
-                openapi.IN_QUERY,
-                description="ID de l'expédition",
-                type=openapi.TYPE_INTEGER
-            ),
-            openapi.Parameter(
-                'trip_id',
-                openapi.IN_QUERY,
-                description="ID du voyage",
-                type=openapi.TYPE_INTEGER
-            )
-        ],
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Liste des correspondances",
-                examples={"application/json": MATCHING_EXAMPLE["response_list"]}
-            )
-        }
-    )
-
-# Décorateurs Swagger pour les conversations (chat)
-def conversation_create_schema():
-    return swagger_auto_schema(
-        operation_description="Créer une nouvelle conversation",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'shipment_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'participant_ids': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_INTEGER)
-                )
-            },
-            required=['shipment_id', 'participant_ids']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Conversation créée avec succès",
-                examples={"application/json": CHAT_EXAMPLE["response_create_conversation"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def message_send_schema():
-    return swagger_auto_schema(
-        operation_description="Envoyer un message dans une conversation",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'content': openapi.Schema(type=openapi.TYPE_STRING),
-                'message_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['text', 'image', 'file'],
-                    default='text'
-                )
-            },
-            required=['content']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Message envoyé avec succès",
-                examples={"application/json": CHAT_EXAMPLE["response_send_message"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def message_list_schema():
-    return swagger_auto_schema(
-        operation_description="Lister les messages d'une conversation",
-        manual_parameters=PAGINATION_PARAMS,
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Liste des messages",
-                examples={"application/json": CHAT_EXAMPLE["response_list_messages"]}
-            )
-        }
-    )
-
-# Décorateurs Swagger pour l'internationalisation
-def translation_schema():
-    return swagger_auto_schema(
-        operation_description="Traduire un texte",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'text': openapi.Schema(type=openapi.TYPE_STRING),
-                'source_language': openapi.Schema(type=openapi.TYPE_STRING),
-                'target_language': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['text', 'source_language', 'target_language']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Texte traduit",
-                examples={"application/json": INTERNATIONALIZATION_EXAMPLE["response_translate"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def languages_list_schema():
-    return swagger_auto_schema(
-        operation_description="Lister les langues disponibles",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Liste des langues",
-                examples={"application/json": INTERNATIONALIZATION_EXAMPLE["response_languages"]}
-            )
-        }
-    )
-
-# Décorateurs Swagger pour la vérification
-def verification_request_schema():
-    return swagger_auto_schema(
-        operation_description="Demander la vérification d'un utilisateur",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'verification_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['identity', 'address', 'vehicle', 'insurance']
-                ),
-                'documents': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_FILE)
-                ),
-                'additional_info': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['verification_type']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Demande de vérification créée",
                 examples={"application/json": {
                     "success": True,
-                    "message": "Demande de vérification soumise avec succès",
-                    "verification_id": 1,
-                    "status": "pending"
-                }}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def verification_status_schema():
-    return swagger_auto_schema(
-        operation_description="Récupérer le statut de vérification",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Statut de vérification",
-                examples={"application/json": {
-                    "success": True,
-                    "verification_status": "verified",
-                    "verifications": [
+                    "notifications": [
                         {
                             "id": 1,
-                            "type": "identity",
-                            "status": "verified",
-                            "verified_at": "2024-01-15T10:30:00Z"
+                            "notification_type": "email",
+                            "title": "Nouvelle correspondance trouvée",
+                            "message": "Une correspondance a été trouvée pour votre expédition",
+                            "status": "sent",
+                            "created_at": "2024-01-15T10:30:00Z"
                         }
-                    ]
+                    ],
+                    "count": 1
                 }}
             )
         }
-    )
+    ) 
 
-# Décorateurs Swagger pour l'admin panel
-def admin_user_management_schema():
-    return swagger_auto_schema(
-        operation_description="Gérer les utilisateurs (Admin)",
-        manual_parameters=[
-            openapi.Parameter(
-                'action',
-                openapi.IN_QUERY,
-                description="Action à effectuer",
-                type=openapi.TYPE_STRING,
-                enum=['suspend', 'activate', 'delete', 'verify']
-            ),
-            openapi.Parameter(
-                'user_id',
-                openapi.IN_QUERY,
-                description="ID de l'utilisateur",
-                type=openapi.TYPE_INTEGER
-            )
-        ],
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Action effectuée avec succès",
-                examples={"application/json": {
-                    "success": True,
-                    "message": "Utilisateur suspendu avec succès"
-                }}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def admin_system_stats_schema():
-    return swagger_auto_schema(
-        operation_description="Récupérer les statistiques système (Admin)",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Statistiques système",
-                examples={"application/json": {
-                    "success": True,
-                    "stats": {
-                        "total_users": 1250,
-                        "active_shipments": 45,
-                        "active_trips": 15,
-                        "total_revenue": 25000.00,
-                        "system_health": "good"
-                    }
-                }}
-            )
-        }
-    )
-
-# Décorateurs Swagger pour Analytics
 def analytics_dashboard_schema():
+    """Schéma pour les analytics du tableau de bord."""
     return swagger_auto_schema(
         operation_description="Récupérer les analytics du tableau de bord",
         manual_parameters=[
@@ -837,17 +1136,55 @@ def analytics_dashboard_schema():
                 description="Date de fin (YYYY-MM-DD)",
                 type=openapi.TYPE_STRING,
                 format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics du tableau de bord",
-                examples={"application/json": ANALYTICS_DASHBOARD_EXAMPLE["response"]}
+                examples={"application/json": {
+                    "success": True,
+                    "analytics": {
+                        "general": {
+                            "total_users": 1250,
+                            "total_shipments": 450,
+                            "total_trips": 180,
+                            "active_shipments": 45,
+                            "completed_shipments": 380,
+                            "active_trips": 25,
+                            "completed_trips": 150
+                        },
+                        "shipments": {
+                            "total_shipments": 45,
+                            "pending_shipments": 8,
+                            "in_transit_shipments": 12,
+                            "delivered_shipments": 20,
+                            "cancelled_shipments": 5,
+                            "total_revenue": 2500.00,
+                            "average_delivery_time": 3.2
+                        },
+                        "trips": {
+                            "total_trips": 15,
+                            "active_trips": 3,
+                            "completed_trips": 10,
+                            "cancelled_trips": 2,
+                            "total_earnings": 1800.00,
+                            "average_rating": 4.8
+                        }
+                    }
+                }}
             )
         }
     )
 
 def analytics_shipment_schema():
+    """Schéma pour les analytics des expéditions."""
     return swagger_auto_schema(
         operation_description="Récupérer les analytics des expéditions",
         manual_parameters=[
@@ -864,17 +1201,44 @@ def analytics_shipment_schema():
                 description="Date de fin (YYYY-MM-DD)",
                 type=openapi.TYPE_STRING,
                 format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics des expéditions",
-                examples={"application/json": ANALYTICS_SHIPMENT_EXAMPLE["response"]}
+                examples={"application/json": {
+                    "success": True,
+                    "shipment_analytics": {
+                        "status_distribution": [
+                            {"status": "pending", "count": 8, "percentage": 17.8},
+                            {"status": "in_transit", "count": 12, "percentage": 26.7},
+                            {"status": "delivered", "count": 20, "percentage": 44.4},
+                            {"status": "cancelled", "count": 5, "percentage": 11.1}
+                        ],
+                        "monthly_trends": [
+                            {"month": "2024-01", "count": 15, "revenue": 1200.00},
+                            {"month": "2024-02", "count": 18, "revenue": 1400.00}
+                        ],
+                        "top_destinations": [
+                            {"destination": "Lyon", "count": 8, "revenue": 640.00},
+                            {"destination": "Marseille", "count": 6, "revenue": 480.00},
+                            {"destination": "Toulouse", "count": 4, "revenue": 320.00}
+                        ]
+                    }
+                }}
             )
         }
     )
 
 def analytics_trip_schema():
+    """Schéma pour les analytics des voyages."""
     return swagger_auto_schema(
         operation_description="Récupérer les analytics des voyages",
         manual_parameters=[
@@ -891,17 +1255,43 @@ def analytics_trip_schema():
                 description="Date de fin (YYYY-MM-DD)",
                 type=openapi.TYPE_STRING,
                 format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics des voyages",
-                examples={"application/json": ANALYTICS_TRIP_EXAMPLE["response"]}
+                examples={"application/json": {
+                    "success": True,
+                    "trip_analytics": {
+                        "status_distribution": [
+                            {"status": "active", "count": 3, "percentage": 20.0},
+                            {"status": "completed", "count": 10, "percentage": 66.7},
+                            {"status": "cancelled", "count": 2, "percentage": 13.3}
+                        ],
+                        "monthly_trends": [
+                            {"month": "2024-01", "count": 8, "earnings": 1200.00},
+                            {"month": "2024-02", "count": 7, "earnings": 1000.00}
+                        ],
+                        "top_routes": [
+                            {"route": "Paris-Lyon", "count": 5, "earnings": 750.00},
+                            {"route": "Paris-Marseille", "count": 3, "earnings": 450.00},
+                            {"route": "Lyon-Toulouse", "count": 2, "earnings": 300.00}
+                        ]
+                    }
+                }}
             )
         }
     )
 
 def analytics_financial_schema():
+    """Schéma pour les analytics financiers."""
     return swagger_auto_schema(
         operation_description="Récupérer les analytics financiers",
         manual_parameters=[
@@ -918,523 +1308,257 @@ def analytics_financial_schema():
                 description="Date de fin (YYYY-MM-DD)",
                 type=openapi.TYPE_STRING,
                 format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics financiers",
-                examples={"application/json": ANALYTICS_FINANCIAL_EXAMPLE["response"]}
+                examples={"application/json": {
+                    "success": True,
+                    "financial_analytics": {
+                        "balance_summary": {
+                            "current_balance": 1250.50,
+                            "total_deposits": 3000.00,
+                            "total_withdrawals": 1500.00,
+                            "net_income": 1500.00
+                        },
+                        "transaction_summary": {
+                            "total_transactions": 25,
+                            "deposits": 8,
+                            "withdrawals": 5,
+                            "transfers": 12
+                        },
+                        "monthly_transactions": [
+                            {"month": "2024-01", "count": 15, "amount": 2000.00},
+                            {"month": "2024-02", "count": 10, "amount": 1500.00}
+                        ]
+                    }
+                }}
             )
         }
     )
 
 def analytics_event_schema():
+    """Schéma pour les événements analytics."""
     return swagger_auto_schema(
         operation_description="Enregistrer un événement analytics",
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'event_type': openapi.Schema(type=openapi.TYPE_STRING),
-                'event_data': openapi.Schema(type=openapi.TYPE_OBJECT),
-                'timestamp': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME)
+                'event_type': openapi.Schema(type=openapi.TYPE_STRING, description="Type d'événement"),
+                'event_data': openapi.Schema(type=openapi.TYPE_OBJECT, description="Données de l'événement"),
+                'timestamp': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATETIME, description="Horodatage")
             },
             required=['event_type', 'event_data']
         ),
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_201_CREATED: openapi.Response(
                 description="Événement enregistré",
-                examples={"application/json": ANALYTICS_EVENT_EXAMPLE["response"]}
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Événement analytics enregistré avec succès",
+                    "event": {
+                        "id": 1,
+                        "event_type": "shipment_created",
+                        "event_data": {
+                            "shipment_id": 1,
+                            "user_id": 1,
+                            "amount": 125.50
+                        },
+                        "timestamp": "2024-01-15T10:30:00Z"
+                    }
+                }}
             ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Documents
-def document_upload_schema():
-    return swagger_auto_schema(
-        operation_description="Uploader un document",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'document_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['identity_card', 'proof_of_address', 'passport', 'driving_license', 'vehicle_registration']
-                ),
-                'file': openapi.Schema(type=openapi.TYPE_FILE),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['document_type', 'file']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Document uploadé",
-                examples={"application/json": DOCUMENT_UPLOAD_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def document_list_schema():
-    return swagger_auto_schema(
-        operation_description="Lister les documents",
-        manual_parameters=PAGINATION_PARAMS + [
-            openapi.Parameter(
-                'document_type',
-                openapi.IN_QUERY,
-                description="Type de document",
-                type=openapi.TYPE_STRING
-            ),
-            openapi.Parameter(
-                'status',
-                openapi.IN_QUERY,
-                description="Statut du document",
-                type=openapi.TYPE_STRING,
-                enum=['pending_verification', 'verified', 'rejected']
-            )
-        ],
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Liste des documents",
-                examples={"application/json": DOCUMENT_LIST_EXAMPLE["response"]}
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Type d'événement requis"
+                }}
             )
         }
-    )
+    ) 
 
-def document_verify_schema():
+def user_document_detail_schema():
+    """Schéma pour les détails d'un document."""
     return swagger_auto_schema(
-        operation_description="Vérifier un document",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'status': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['verified', 'rejected']
-                ),
-                'verification_notes': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['status']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Document vérifié",
-                examples={"application/json": DOCUMENT_VERIFY_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Matching
-def matching_accept_schema():
-    return swagger_auto_schema(
-        operation_description="Accepter une correspondance",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'accepted_price': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'message': openapi.Schema(type=openapi.TYPE_STRING)
-            }
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Correspondance acceptée",
-                examples={"application/json": MATCHING_ACCEPT_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def matching_reject_schema():
-    return swagger_auto_schema(
-        operation_description="Rejeter une correspondance",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'reason': openapi.Schema(type=openapi.TYPE_STRING),
-                'message': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['reason']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Correspondance rejetée",
-                examples={"application/json": MATCHING_REJECT_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Notifications
-def notification_mark_read_schema():
-    return swagger_auto_schema(
-        operation_description="Marquer des notifications comme lues",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'notification_ids': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_INTEGER)
-                )
-            },
-            required=['notification_ids']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Notifications marquées comme lues",
-                examples={"application/json": NOTIFICATION_MARK_READ_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def notification_template_schema():
-    return swagger_auto_schema(
-        operation_description="Créer un modèle de notification",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'name': openapi.Schema(type=openapi.TYPE_STRING),
-                'subject': openapi.Schema(type=openapi.TYPE_STRING),
-                'body': openapi.Schema(type=openapi.TYPE_STRING),
-                'notification_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['email', 'sms', 'push']
-                )
-            },
-            required=['name', 'subject', 'body', 'notification_type']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Modèle créé",
-                examples={"application/json": NOTIFICATION_TEMPLATE_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Payments
-def payment_deposit_schema():
-    return swagger_auto_schema(
-        operation_description="Effectuer un dépôt",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'payment_method': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['card', 'bank_transfer', 'paypal']
-                ),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['amount']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Dépôt effectué",
-                examples={"application/json": PAYMENT_DEPOSIT_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def payment_withdraw_schema():
-    return swagger_auto_schema(
-        operation_description="Effectuer un retrait",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'bank_account': openapi.Schema(type=openapi.TYPE_STRING),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['amount', 'bank_account']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Retrait initié",
-                examples={"application/json": PAYMENT_WITHDRAW_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def payment_transfer_schema():
-    return swagger_auto_schema(
-        operation_description="Effectuer un transfert",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'recipient_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['recipient_id', 'amount']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Transfert effectué",
-                examples={"application/json": PAYMENT_TRANSFER_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def payment_refund_schema():
-    return swagger_auto_schema(
-        operation_description="Demander un remboursement",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'transaction_id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'reason': openapi.Schema(type=openapi.TYPE_STRING),
-                'amount': openapi.Schema(type=openapi.TYPE_NUMBER)
-            },
-            required=['transaction_id', 'reason']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Remboursement initié",
-                examples={"application/json": PAYMENT_REFUND_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Shipments
-def shipment_tracking_schema():
-    return swagger_auto_schema(
-        operation_description="Suivre une expédition",
+        operation_description="Récupérer les détails d'un document utilisateur",
         manual_parameters=[
             openapi.Parameter(
-                'tracking_number',
+                'id',
                 openapi.IN_PATH,
-                description="Numéro de suivi",
-                type=openapi.TYPE_STRING
+                description="ID du document",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer)",
+                type=openapi.TYPE_STRING,
+                required=True
             )
         ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Informations de suivi",
-                examples={"application/json": SHIPMENT_TRACKING_EXAMPLE["response"]}
+                description="Détails du document",
+                examples={"application/json": {
+                    "success": True,
+                    "document": {
+                        "id": 1,
+                        "document_type": "passport",
+                        "status": "approved",
+                        "uploaded_at": "2024-01-15T10:30:00Z",
+                        "verified_at": "2024-01-16T14:20:00Z",
+                        "rejection_reason": None
+                    }
+                }}
             ),
-            status.HTTP_404_NOT_FOUND: NOT_FOUND_RESPONSE
-        }
-    )
-
-def shipment_update_status_schema():
-    return swagger_auto_schema(
-        operation_description="Mettre à jour le statut d'une expédition",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'status': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled']
-                ),
-                'location': openapi.Schema(type=openapi.TYPE_STRING),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['status']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Statut mis à jour",
-                examples={"application/json": SHIPMENT_UPDATE_STATUS_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def shipment_delivery_otp_schema():
-    return swagger_auto_schema(
-        operation_description="Générer un OTP de livraison",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="OTP généré",
-                examples={"application/json": SHIPMENT_DELIVERY_OTP_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def shipment_verify_delivery_schema():
-    return swagger_auto_schema(
-        operation_description="Vérifier l'OTP de livraison",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'otp': openapi.Schema(type=openapi.TYPE_STRING),
-                'signature': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['otp']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Livraison confirmée",
-                examples={"application/json": SHIPMENT_VERIFY_DELIVERY_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Trips
-def trip_update_status_schema():
-    return swagger_auto_schema(
-        operation_description="Mettre à jour le statut d'un voyage",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'status': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['active', 'in_progress', 'completed', 'cancelled']
-                ),
-                'notes': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['status']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Statut mis à jour",
-                examples={"application/json": TRIP_UPDATE_STATUS_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def trip_update_capacity_schema():
-    return swagger_auto_schema(
-        operation_description="Mettre à jour la capacité d'un voyage",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'available_space': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'max_weight': openapi.Schema(type=openapi.TYPE_NUMBER)
-            }
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Capacité mise à jour",
-                examples={"application/json": TRIP_UPDATE_CAPACITY_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-def trip_document_schema():
-    return swagger_auto_schema(
-        operation_description="Uploader un document de voyage",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'document_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['vehicle_registration', 'insurance', 'license']
-                ),
-                'file': openapi.Schema(type=openapi.TYPE_FILE),
-                'description': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['document_type', 'file']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Document uploadé",
-                examples={"application/json": TRIP_DOCUMENT_EXAMPLE["response"]}
-            ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
-        }
-    )
-
-# Décorateurs Swagger pour Users
-def user_login_schema():
-    return swagger_auto_schema(
-        operation_description="Se connecter",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'username': openapi.Schema(type=openapi.TYPE_STRING),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_PASSWORD)
-            },
-            required=['username', 'password']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Connexion réussie",
-                examples={"application/json": USER_LOGIN_EXAMPLE["response"]}
-            ),
-            status.HTTP_401_UNAUTHORIZED: AUTH_ERROR_RESPONSE
-        }
-    )
-
-def user_refresh_token_schema():
-    return swagger_auto_schema(
-        operation_description="Rafraîchir le token",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'refresh': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['refresh']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Token rafraîchi",
-                examples={"application/json": USER_REFRESH_TOKEN_EXAMPLE["response"]}
-            ),
-            status.HTTP_401_UNAUTHORIZED: AUTH_ERROR_RESPONSE
-        }
-    )
-
-def user_logout_schema():
-    return swagger_auto_schema(
-        operation_description="Se déconnecter",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'refresh': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['refresh']
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Déconnexion réussie",
-                examples={"application/json": USER_LOGOUT_EXAMPLE["response"]}
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Document non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Document non trouvé"
+                }}
             )
         }
     )
 
-def user_verification_schema():
+def admin_user_detail_schema():
+    """Schéma pour les détails d'un utilisateur (admin)."""
     return swagger_auto_schema(
-        operation_description="Demander la vérification",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'verification_type': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['identity', 'address', 'vehicle', 'insurance']
-                ),
-                'documents': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_FILE)
-                ),
-                'additional_info': openapi.Schema(type=openapi.TYPE_STRING)
-            },
-            required=['verification_type']
-        ),
-        responses={
-            status.HTTP_201_CREATED: openapi.Response(
-                description="Demande soumise",
-                examples={"application/json": USER_VERIFICATION_EXAMPLE["response"]}
+        operation_description="Récupérer les détails d'un utilisateur (admin uniquement)",
+        manual_parameters=[
+            openapi.Parameter(
+                'id',
+                openapi.IN_PATH,
+                description="ID de l'utilisateur",
+                type=openapi.TYPE_INTEGER,
+                required=True
             ),
-            status.HTTP_400_BAD_REQUEST: ERROR_RESPONSE
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer) - Admin requis",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Détails de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "email": "john.doe@example.com",
+                        "role": "sender",
+                        "is_active": True,
+                        "is_phone_verified": True,
+                        "is_document_verified": False,
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "profile": {
+                            "address": "123 Rue de la Paix",
+                            "city": "Alger",
+                            "country": "Algeria"
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Utilisateur non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Utilisateur non trouvé"
+                }}
+            ),
+            status.HTTP_403_FORBIDDEN: openapi.Response(
+                description="Accès refusé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Vous n'avez pas les permissions pour accéder à cette ressource"
+                }}
+            )
         }
     )
 
-def user_verification_status_schema():
+def admin_user_update_schema():
+    """Schéma pour mettre à jour un utilisateur (admin)."""
     return swagger_auto_schema(
-        operation_description="Récupérer le statut de vérification",
+        operation_description="Mettre à jour un utilisateur (admin uniquement)",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING, description="Nom d'utilisateur"),
+                'email': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_EMAIL, description="Adresse email"),
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description="Prénom"),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description="Nom de famille"),
+                'role': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['sender', 'traveler', 'admin', 'both'],
+                    description="Rôle utilisateur"
+                ),
+                'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Compte actif"),
+                'is_phone_verified': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Téléphone vérifié"),
+                'is_document_verified': openapi.Schema(type=openapi.TYPE_BOOLEAN, description="Documents vérifiés")
+            }
+        ),
+        manual_parameters=[
+            openapi.Parameter(
+                'id',
+                openapi.IN_PATH,
+                description="ID de l'utilisateur",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+            openapi.Parameter(
+                'Authorization',
+                openapi.IN_HEADER,
+                description="Token JWT (Bearer) - Admin requis",
+                type=openapi.TYPE_STRING,
+                required=True
+            )
+        ],
         responses={
             status.HTTP_200_OK: openapi.Response(
-                description="Statut de vérification",
-                examples={"application/json": USER_VERIFICATION_STATUS_EXAMPLE["response"]}
+                description="Utilisateur mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Utilisateur mis à jour avec succès",
+                    "user": {
+                        "id": 1,
+                        "username": "john_doe",
+                        "email": "john.doe@example.com",
+                        "role": "sender",
+                        "is_active": True
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "errors": {
+                        "email": ["Cette adresse email est déjà utilisée."]
+                    }
+                }}
             )
         }
     ) 

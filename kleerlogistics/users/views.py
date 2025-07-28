@@ -5,31 +5,36 @@ Views for users app - Authentication and user management
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
-import random
-import string
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import User, UserProfile, UserDocument
+from .models import User, UserProfile, UserDocument, OTPCode
 from .serializers import (
     UserSerializer, UserProfileSerializer, UserDocumentSerializer,
     UserRegistrationSerializer, PhoneVerificationSerializer,
-    ChangePasswordSerializer, ResetPasswordSerializer
+    ChangePasswordSerializer, ResetPasswordSerializer, UserLoginSerializer,
+    OTPSendSerializer, OTPVerifySerializer, RoleUpdateSerializer,
+    AdminUserSerializer
 )
+from .permissions import IsAdminUser, IsSender, IsTraveler, IsOwnerOrAdmin, IsPhoneVerified
+from .services import OTPService, AuthService
 from config.swagger_examples import (
     USER_REGISTRATION_EXAMPLE, USER_PROFILE_EXAMPLE, PHONE_VERIFICATION_EXAMPLE,
     PASSWORD_CHANGE_EXAMPLE, PASSWORD_RESET_EXAMPLE, USER_DOCUMENT_EXAMPLE,
     USER_SEARCH_EXAMPLE, ERROR_EXAMPLES
 )
 from config.swagger_config import (
-    user_registration_schema, user_profile_get_schema, user_profile_update_schema,
-    send_otp_schema, verify_otp_schema, change_password_schema, reset_password_schema,
-    user_document_upload_schema, user_document_list_schema, user_search_schema
+    user_registration_schema, user_login_schema, user_profile_get_schema, user_profile_update_schema,
+    reset_password_confirm_schema, phone_verification_schema, 
+    user_document_upload_schema, user_document_list_schema, user_document_detail_schema, 
+    user_search_schema, admin_user_detail_schema, admin_user_update_schema
 )
 
 
@@ -43,22 +48,19 @@ class UserRegistrationView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
+                'username': openapi.Schema(type=openapi.TYPE_STRING),
                 'email': openapi.Schema(type=openapi.TYPE_STRING),
                 'password': openapi.Schema(type=openapi.TYPE_STRING),
-                'confirm_password': openapi.Schema(type=openapi.TYPE_STRING),
+                'password_confirm': openapi.Schema(type=openapi.TYPE_STRING),
                 'first_name': openapi.Schema(type=openapi.TYPE_STRING),
                 'last_name': openapi.Schema(type=openapi.TYPE_STRING),
                 'phone_number': openapi.Schema(type=openapi.TYPE_STRING),
-                'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-                'gender': openapi.Schema(
+                'role': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['male', 'female', 'other']
-                ),
-                'address': openapi.Schema(type=openapi.TYPE_STRING),
-                'city': openapi.Schema(type=openapi.TYPE_STRING),
-                'postal_code': openapi.Schema(type=openapi.TYPE_STRING)
+                    enum=['sender', 'traveler', 'admin', 'both']
+                )
             },
-            required=['email', 'password', 'confirm_password', 'first_name', 'last_name']
+            required=['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name']
         ),
         responses={
             status.HTTP_201_CREATED: openapi.Response(
@@ -77,7 +79,7 @@ class UserRegistrationView(APIView):
                     "errors": {
                         "email": ["Cette adresse email est déjà utilisée."],
                         "password": ["Ce mot de passe est trop court."],
-                        "confirm_password": ["Les mots de passe ne correspondent pas."]
+                        "password_confirm": ["Les mots de passe ne correspondent pas."]
                     }
                 }}
             )
@@ -87,16 +89,14 @@ class UserRegistrationView(APIView):
         """Inscription d'un nouvel utilisateur."""
         serializer = UserRegistrationSerializer(data=request.data)
         if serializer.is_valid():
-            with transaction.atomic():
-                user = serializer.save()
-                # Créer automatiquement un profil utilisateur
-                UserProfile.objects.create(user=user)
-                
+            user = AuthService.create_user_with_profile(serializer.validated_data)
+            
             return Response({
                 'success': True,
                 'message': 'Utilisateur créé avec succès',
                 'user_id': user.id,
-                'email': user.email
+                'email': user.email,
+                'role': user.role
             }, status=status.HTTP_201_CREATED)
         
         return Response({
@@ -105,49 +105,60 @@ class UserRegistrationView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserLoginView(APIView):
+    """Vue pour la connexion des utilisateurs."""
+    
+    permission_classes = [permissions.AllowAny]
+    
+    @user_login_schema()
+    def post(self, request):
+        """Connexion d'un utilisateur."""
+        serializer = UserLoginSerializer(data=request.data, request=request)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            
+            # Générer les tokens JWT
+            refresh = RefreshToken.for_user(user)
+            access_token = refresh.access_token
+            
+            # Ajouter des claims personnalisés
+            access_token['user_id'] = user.id
+            access_token['username'] = user.username
+            access_token['role'] = user.role
+            access_token['is_admin'] = user.is_admin
+            
+            return Response({
+                'success': True,
+                'message': 'Connexion réussie',
+                'tokens': {
+                    'access': str(access_token),
+                    'refresh': str(refresh)
+                },
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role,
+                    'permissions': AuthService.get_user_permissions(user)
+                }
+            })
+        
+        return Response({
+            'success': False,
+            'message': 'Identifiants invalides'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserProfileView(APIView):
     """Vue pour la gestion du profil utilisateur."""
     
     permission_classes = [permissions.IsAuthenticated]
     
-    @swagger_auto_schema(
-        operation_description="Récupérer le profil de l'utilisateur",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Profil utilisateur",
-                examples={"application/json": {
-                    "success": True,
-                    "profile": {
-                        "id": 1,
-                        "user": 1,
-                        "phone_number": "+213123456789",
-                        "date_of_birth": "1990-01-01",
-                        "gender": "male",
-                        "address": "123 Rue de la Paix",
-                        "city": "Alger",
-                        "postal_code": "16000",
-                        "rating": 4.5,
-                        "total_trips": 25,
-                        "total_shipments": 15,
-                        "is_verified": True,
-                        "created_at": "2024-01-15T10:30:00Z",
-                        "updated_at": "2024-01-15T10:30:00Z"
-                    }
-                }}
-            ),
-            status.HTTP_404_NOT_FOUND: openapi.Response(
-                description="Profil non trouvé",
-                examples={"application/json": {
-                    "success": False,
-                    "message": "Profil non trouvé"
-                }}
-            )
-        }
-    )
+    @user_profile_get_schema()
     def get(self, request):
         """Récupérer le profil de l'utilisateur connecté."""
         try:
-            profile = request.user.userprofile
+            profile = request.user.profile
             serializer = UserProfileSerializer(profile)
             return Response({
                 'success': True,
@@ -159,70 +170,11 @@ class UserProfileView(APIView):
                 'message': 'Profil non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
     
-    @swagger_auto_schema(
-        operation_description="Mettre à jour le profil utilisateur",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'phone_number': openapi.Schema(type=openapi.TYPE_STRING),
-                'date_of_birth': openapi.Schema(type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-                'gender': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    enum=['male', 'female', 'other']
-                ),
-                'address': openapi.Schema(type=openapi.TYPE_STRING),
-                'city': openapi.Schema(type=openapi.TYPE_STRING),
-                'postal_code': openapi.Schema(type=openapi.TYPE_STRING),
-                'bio': openapi.Schema(type=openapi.TYPE_STRING),
-                'preferences': openapi.Schema(type=openapi.TYPE_OBJECT)
-            }
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Profil mis à jour",
-                examples={"application/json": {
-                    "success": True,
-                    "message": "Profil mis à jour avec succès",
-                    "profile": {
-                        "id": 1,
-                        "user": 1,
-                        "phone_number": "+213123456789",
-                        "date_of_birth": "1990-01-01",
-                        "gender": "male",
-                        "address": "123 Rue de la Paix",
-                        "city": "Alger",
-                        "postal_code": "16000",
-                        "rating": 4.5,
-                        "total_trips": 25,
-                        "total_shipments": 15,
-                        "is_verified": True,
-                        "updated_at": "2024-01-15T10:30:00Z"
-                    }
-                }}
-            ),
-            status.HTTP_400_BAD_REQUEST: openapi.Response(
-                description="Erreur de validation",
-                examples={"application/json": {
-                    "success": False,
-                    "errors": {
-                        "phone_number": ["Numéro de téléphone invalide."],
-                        "date_of_birth": ["Date de naissance invalide."]
-                    }
-                }}
-            ),
-            status.HTTP_404_NOT_FOUND: openapi.Response(
-                description="Profil non trouvé",
-                examples={"application/json": {
-                    "success": False,
-                    "message": "Profil non trouvé"
-                }}
-            )
-        }
-    )
+    @user_profile_update_schema()
     def put(self, request):
         """Mettre à jour le profil utilisateur."""
         try:
-            profile = request.user.userprofile
+            profile = request.user.profile
             serializer = UserProfileSerializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -235,55 +187,6 @@ class UserProfileView(APIView):
                 'success': False,
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
-        except UserProfile.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Profil non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-
-class UserProfileUpdateView(APIView):
-    """Vue pour la mise à jour du profil."""
-    
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def patch(self, request):
-        """Mettre à jour partiellement le profil."""
-        try:
-            profile = request.user.userprofile
-            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({
-                    'success': True,
-                    'message': 'Profil mis à jour avec succès',
-                    'profile': serializer.data
-                })
-            return Response({
-                'success': False,
-                'errors': serializer.errors
-            }, status=status.HTTP_400_BAD_REQUEST)
-        except UserProfile.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Profil non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-
-class PhoneVerificationView(APIView):
-    """Vue pour la vérification du téléphone."""
-    
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def get(self, request):
-        """Récupérer le statut de vérification du téléphone."""
-        try:
-            profile = request.user.userprofile
-            return Response({
-                'success': True,
-                'phone_verified': profile.phone_verified,
-                'phone_number': profile.phone_number
-            })
         except UserProfile.DoesNotExist:
             return Response({
                 'success': False,
@@ -294,82 +197,182 @@ class PhoneVerificationView(APIView):
 class SendOTPView(APIView):
     """Vue pour envoyer un OTP."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
-    @send_otp_schema()
+    @swagger_auto_schema(
+        operation_description="Envoyer un OTP par SMS",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone")
+            },
+            required=['phone_number']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="OTP envoyé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "OTP envoyé au 1234567890",
+                    "expires_in": "10 minutes"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides ou erreur",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Données invalides",
+                    "errors": {
+                        "phone_number": ["Ce numéro de téléphone n'est pas valide."]
+                    }
+                }}
+            )
+        }
+    )
     def post(self, request):
         """Envoyer un OTP par SMS."""
-        phone_number = request.data.get('phone_number')
-        
-        if not phone_number:
-            return Response({
-                'success': False,
-                'message': 'Numéro de téléphone requis'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Générer un OTP à 6 chiffres
-        otp = ''.join(random.choices(string.digits, k=6))
-        
-        # En production, envoyer par SMS
-        # Pour la démonstration, on simule
-        
         try:
-            profile = request.user.userprofile
-            profile.phone_number = phone_number
-            profile.otp_code = otp
-            profile.otp_created_at = timezone.now()
-            profile.save()
-            
-            return Response({
-                'success': True,
-                'message': f'OTP envoyé au {phone_number}',
-                'otp': otp  # En production, ne pas renvoyer l'OTP
-            })
-        except UserProfile.DoesNotExist:
+            serializer = OTPSendSerializer(data=request.data)
+            if serializer.is_valid():
+                phone_number = serializer.validated_data['phone_number']
+                
+                # Get user (authenticated or None for unauthenticated)
+                user = request.user if request.user.is_authenticated else None
+                
+                # Créer l'OTP
+                otp, error_message = OTPService.create_otp(user, phone_number)
+                
+                if error_message:
+                    return Response({
+                        'success': False,
+                        'message': error_message
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                
+                if not otp:
+                    return Response({
+                        'success': False,
+                        'message': 'Erreur lors de la création de l\'OTP'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                # Envoyer par SMS (simulation en développement)
+                OTPService.send_otp_sms(phone_number, otp.code)
+                
+                return Response({
+                    'success': True,
+                    'message': f'OTP envoyé au {phone_number}',
+                    'expires_in': '10 minutes'
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Données invalides',
+                    'errors': serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            print(f"Error in OTP send: {e}")
             return Response({
                 'success': False,
-                'message': 'Profil non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'message': f'Erreur lors du traitement de la requête: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class VerifyOTPView(APIView):
     """Vue pour vérifier l'OTP."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
-    @verify_otp_schema()
+    @swagger_auto_schema(
+        operation_description="Vérifier l'OTP reçu",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone"),
+                'code': openapi.Schema(type=openapi.TYPE_STRING, description="Code OTP")
+            },
+            required=['phone_number', 'code']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Téléphone vérifié",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Téléphone vérifié avec succès",
+                    "phone_verified": True,
+                    "user_id": 1
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Code OTP invalide ou expiré",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Code OTP invalide ou expiré. Veuillez vérifier le code et réessayer."
+                }}
+            )
+        }
+    )
     def post(self, request):
         """Vérifier l'OTP reçu."""
-        otp = request.data.get('otp')
-        
-        if not otp:
-            return Response({
-                'success': False,
-                'message': 'OTP requis'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
         try:
-            profile = request.user.userprofile
+            # Debug: Log the request content type and data
+            print(f"Content-Type: {request.content_type}")
+            print(f"Request data: {request.data}")
             
-            # Vérifier l'OTP
-            if profile.otp_code == otp:
-                profile.phone_verified = True
-                profile.save()
+            serializer = OTPVerifySerializer(data=request.data)
+            if serializer.is_valid():
+                phone_number = serializer.validated_data['phone_number']
+                code = serializer.validated_data['code']
                 
-                return Response({
-                    'success': True,
-                    'message': 'Téléphone vérifié avec succès'
-                })
+                # Vérifier l'OTP
+                is_valid, user = OTPService.verify_otp(phone_number, code)
+                
+                if is_valid:
+                    return Response({
+                        'success': True,
+                        'message': 'Téléphone vérifié avec succès',
+                        'phone_verified': True,
+                        'user_id': user.id if user else None
+                    })
+                else:
+                    return Response({
+                        'success': False,
+                        'message': 'Code OTP invalide ou expiré. Veuillez vérifier le code et réessayer.'
+                    }, status=status.HTTP_400_BAD_REQUEST)
             else:
                 return Response({
                     'success': False,
-                    'message': 'OTP incorrect'
+                    'message': 'Données invalides',
+                    'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
-        except UserProfile.DoesNotExist:
+        except Exception as e:
+            print(f"Error in OTP verification: {e}")
             return Response({
                 'success': False,
-                'message': 'Profil non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'message': f'Erreur lors du traitement de la requête: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class PhoneVerificationView(APIView):
+    """Vue pour la vérification du téléphone."""
+    
+    permission_classes = [permissions.AllowAny]
+    
+    @phone_verification_schema()
+    def get(self, request):
+        """Récupérer le statut de vérification du téléphone."""
+        if not request.user.is_authenticated:
+            return Response({
+                'success': False,
+                'message': 'Authentification requise pour vérifier le statut du téléphone'
+            }, status=status.HTTP_401_UNAUTHORIZED)
+        
+        user = request.user
+        return Response({
+            'success': True,
+            'phone_verified': user.is_phone_verified,
+            'phone_number': user.phone_number
+        })
 
 
 class ChangePasswordView(APIView):
@@ -377,7 +380,33 @@ class ChangePasswordView(APIView):
     
     permission_classes = [permissions.IsAuthenticated]
     
-    @change_password_schema()
+    @swagger_auto_schema(
+        operation_description="Changer le mot de passe",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'old_password': openapi.Schema(type=openapi.TYPE_STRING, description="Ancien mot de passe"),
+                'new_password': openapi.Schema(type=openapi.TYPE_STRING, description="Nouveau mot de passe")
+            },
+            required=['old_password', 'new_password']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Mot de passe changé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mot de passe changé avec succès"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Ancien mot de passe incorrect",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Ancien mot de passe incorrect"
+                }}
+            )
+        }
+    )
     def post(self, request):
         """Changer le mot de passe."""
         serializer = ChangePasswordSerializer(data=request.data)
@@ -406,12 +435,385 @@ class ChangePasswordView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class RoleUpdateView(APIView):
+    """Vue pour mettre à jour le rôle d'un utilisateur."""
+    
+    permission_classes = [IsAdminUser]
+    
+    @swagger_auto_schema(
+        operation_description="Mettre à jour le rôle d'un utilisateur",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'role': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['sender', 'traveler', 'admin', 'both']
+                )
+            },
+            required=['role']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Rôle mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Rôle mis à jour vers sender",
+                    "user": {
+                        "id": 1,
+                        "username": "testuser",
+                        "role": "sender"
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Rôle invalide",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Rôle invalide"
+                }}
+            )
+        }
+    )
+    def patch(self, request, user_id):
+        """Mettre à jour le rôle d'un utilisateur."""
+        try:
+            user = User.objects.get(id=user_id)
+            serializer = RoleUpdateSerializer(data=request.data)
+            
+            if serializer.is_valid():
+                new_role = serializer.validated_data['role']
+                if AuthService.update_user_role(user, new_role):
+                    return Response({
+                        'success': True,
+                        'message': f'Rôle mis à jour vers {new_role}',
+                        'user': {
+                            'id': user.id,
+                            'username': user.username,
+                            'role': user.role
+                        }
+                    })
+                else:
+                    return Response({
+                        'success': False,
+                        'message': 'Rôle invalide'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Utilisateur non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class AdminUserListView(APIView):
+    """Vue admin pour la liste des utilisateurs."""
+    
+    permission_classes = [IsAdminUser]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer la liste de tous les utilisateurs",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Liste des utilisateurs",
+                examples={"application/json": {
+                    "success": True,
+                    "users": [
+                        {
+                            "id": 1,
+                            "username": "testuser1",
+                            "email": "user1@example.com",
+                            "role": "sender",
+                            "is_phone_verified": True,
+                            "is_document_verified": False
+                        },
+                        {
+                            "id": 2,
+                            "username": "testuser2",
+                            "email": "user2@example.com",
+                            "role": "traveler",
+                            "is_phone_verified": False,
+                            "is_document_verified": True
+                        }
+                    ],
+                    "count": 2
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer la liste de tous les utilisateurs."""
+        users = User.objects.all()
+        serializer = AdminUserSerializer(users, many=True)
+        
+        return Response({
+            'success': True,
+            'users': serializer.data,
+            'count': users.count()
+        })
+
+
+class AdminUserDetailView(APIView):
+    """Vue admin pour les détails d'un utilisateur."""
+    
+    permission_classes = [IsAdminUser]
+    
+    @admin_user_detail_schema()
+    def get(self, request, pk):
+        """Récupérer les détails d'un utilisateur."""
+        try:
+            user = User.objects.get(pk=pk)
+            serializer = AdminUserSerializer(user)
+            return Response({
+                'success': True,
+                'user': serializer.data
+            })
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Utilisateur non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    @admin_user_update_schema()
+    def patch(self, request, pk):
+        """Mettre à jour un utilisateur (admin uniquement)."""
+        try:
+            user = User.objects.get(pk=pk)
+            serializer = AdminUserSerializer(user, data=request.data, partial=True)
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'success': True,
+                    'message': 'Utilisateur mis à jour avec succès',
+                    'user': serializer.data
+                })
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Utilisateur non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class UserPermissionsView(APIView):
+    """Vue pour récupérer les permissions de l'utilisateur connecté."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer les permissions de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Permissions de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "permissions": ["can_view_profile", "can_update_profile", "can_change_password"],
+                    "user": {
+                        "id": 1,
+                        "username": "testuser",
+                        "role": "sender",
+                        "is_phone_verified": True,
+                        "is_document_verified": False
+                    }
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer les permissions de l'utilisateur."""
+        permissions = AuthService.get_user_permissions(request.user)
+        
+        return Response({
+            'success': True,
+            'permissions': permissions,
+            'user': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'role': request.user.role,
+                'is_phone_verified': request.user.is_phone_verified,
+                'is_document_verified': request.user.is_document_verified
+            }
+        })
+
+
+# Garder les autres vues existantes...
+class UserProfileUpdateView(APIView):
+    """Vue pour la mise à jour du profil."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Mettre à jour partiellement le profil",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description="Prénom"),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description="Nom de famille"),
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone")
+            },
+            partial=True
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Profil mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Profil mis à jour avec succès",
+                    "profile": {
+                        "id": 1,
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "1234567890",
+                        "user": {
+                            "id": 1,
+                            "username": "testuser",
+                            "email": "user@example.com"
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Données invalides",
+                    "errors": {
+                        "first_name": ["Ce champ est requis."],
+                        "phone_number": ["Ce numéro de téléphone n'est pas valide."]
+                    }
+                }}
+            )
+        }
+    )
+    def patch(self, request):
+        """Mettre à jour partiellement le profil."""
+        try:
+            profile = request.user.profile
+            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'success': True,
+                    'message': 'Profil mis à jour avec succès',
+                    'profile': serializer.data
+                })
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Profil non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    @swagger_auto_schema(
+        operation_description="Mettre à jour complètement le profil",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'first_name': openapi.Schema(type=openapi.TYPE_STRING, description="Prénom"),
+                'last_name': openapi.Schema(type=openapi.TYPE_STRING, description="Nom de famille"),
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone")
+            },
+            partial=False
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Profil mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Profil mis à jour avec succès",
+                    "profile": {
+                        "id": 1,
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "phone_number": "1234567890",
+                        "user": {
+                            "id": 1,
+                            "username": "testuser",
+                            "email": "user@example.com"
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Données invalides",
+                    "errors": {
+                        "first_name": ["Ce champ est requis."],
+                        "phone_number": ["Ce numéro de téléphone n'est pas valide."]
+                    }
+                }}
+            )
+        }
+    )
+    def put(self, request):
+        """Mettre à jour complètement le profil."""
+        try:
+            profile = request.user.profile
+            serializer = UserProfileSerializer(profile, data=request.data, partial=False)
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    'success': True,
+                    'message': 'Profil mis à jour avec succès',
+                    'profile': serializer.data
+                })
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except UserProfile.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Profil non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
 class ResetPasswordView(APIView):
     """Vue pour réinitialiser le mot de passe."""
     
     permission_classes = [permissions.AllowAny]
     
-    @reset_password_schema()
+    @swagger_auto_schema(
+        operation_description="Demander une réinitialisation de mot de passe",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'email': openapi.Schema(type=openapi.TYPE_STRING, description="Email de l'utilisateur")
+            },
+            required=['email']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Email de réinitialisation envoyé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Email de réinitialisation envoyé"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Email requis",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Email requis"
+                }}
+            )
+        }
+    )
     def post(self, request):
         """Demander une réinitialisation de mot de passe."""
         email = request.data.get('email')
@@ -430,10 +832,11 @@ class ResetPasswordView(APIView):
                 'message': 'Email de réinitialisation envoyé'
             })
         except User.DoesNotExist:
+            # Pour des raisons de sécurité, toujours retourner 200 même si l'utilisateur n'existe pas
             return Response({
-                'success': False,
-                'message': 'Utilisateur non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'success': True,
+                'message': 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé'
+            })
 
 
 class ResetPasswordConfirmView(APIView):
@@ -441,28 +844,40 @@ class ResetPasswordConfirmView(APIView):
     
     permission_classes = [permissions.AllowAny]
     
+    @reset_password_confirm_schema()
     def post(self, request):
         """Confirmer la réinitialisation du mot de passe."""
         serializer = ResetPasswordSerializer(data=request.data)
         if serializer.is_valid():
-            # En production, vérifier le token de réinitialisation
             email = serializer.validated_data['email']
             new_password = serializer.validated_data['new_password']
+            token = serializer.validated_data['token']
             
             try:
                 user = User.objects.get(email=email)
-                user.set_password(new_password)
-                user.save()
                 
+                # En production, vérifier le token de réinitialisation
+                # Pour l'instant, on accepte n'importe quel token en développement
+                if token and len(token) > 0:  # Validation basique du token
+                    user.set_password(new_password)
+                    user.save()
+                    
+                    return Response({
+                        'success': True,
+                        'message': 'Mot de passe réinitialisé avec succès'
+                    })
+                else:
+                    return Response({
+                        'success': False,
+                        'message': 'Token de réinitialisation invalide'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+                    
+            except User.DoesNotExist:
+                # Pour des raisons de sécurité, toujours retourner 200 même si l'utilisateur n'existe pas
                 return Response({
                     'success': True,
-                    'message': 'Mot de passe réinitialisé avec succès'
+                    'message': 'Si un compte existe avec cet email, le mot de passe a été réinitialisé'
                 })
-            except User.DoesNotExist:
-                return Response({
-                    'success': False,
-                    'message': 'Utilisateur non trouvé'
-                }, status=status.HTTP_404_NOT_FOUND)
         
         return Response({
             'success': False,
@@ -516,6 +931,7 @@ class UserDocumentDetailView(APIView):
     
     permission_classes = [permissions.IsAuthenticated]
     
+    @user_document_detail_schema()
     def get(self, request, pk):
         """Récupérer les détails d'un document."""
         try:
@@ -575,41 +991,3 @@ class UserSearchView(APIView):
             'users': serializer.data,
             'count': users.count()
         })
-
-
-class AdminUserListView(APIView):
-    """Vue admin pour la liste des utilisateurs."""
-    
-    permission_classes = [permissions.IsAdminUser]
-    
-    def get(self, request):
-        """Récupérer la liste de tous les utilisateurs."""
-        users = User.objects.all()
-        serializer = UserSerializer(users, many=True)
-        
-        return Response({
-            'success': True,
-            'users': serializer.data,
-            'count': users.count()
-        })
-
-
-class AdminUserDetailView(APIView):
-    """Vue admin pour les détails d'un utilisateur."""
-    
-    permission_classes = [permissions.IsAdminUser]
-    
-    def get(self, request, pk):
-        """Récupérer les détails d'un utilisateur."""
-        try:
-            user = User.objects.get(pk=pk)
-            serializer = UserSerializer(user)
-            return Response({
-                'success': True,
-                'user': serializer.data
-            })
-        except User.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Utilisateur non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)

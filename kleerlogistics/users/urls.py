@@ -3,45 +3,44 @@ URLs for users app - Authentication and user management
 """
 
 from django.urls import path
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-    TokenVerifyView,
-)
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from . import views
 
 app_name = 'users'
 
 urlpatterns = [
-    # JWT Authentication
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/verify/', TokenVerifyView.as_view(), name='token_verify'),
+    # Authentication JWT
+    path('auth/login/', views.UserLoginView.as_view(), name='user_login'),
+    path('auth/register/', views.UserRegistrationView.as_view(), name='user_registration'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
-    # User Registration and Management
-    path('register/', views.UserRegistrationView.as_view(), name='user_register'),
+    # OTP Verification
+    path('auth/otp/send/', views.SendOTPView.as_view(), name='send_otp'),
+    path('auth/otp/verify/', views.VerifyOTPView.as_view(), name='verify_otp'),
+    path('auth/phone/status/', views.PhoneVerificationView.as_view(), name='phone_verification_status'),
+    
+    # Password Management
+    path('auth/password/change/', views.ChangePasswordView.as_view(), name='change_password'),
+    path('auth/password/reset/', views.ResetPasswordView.as_view(), name='reset_password'),
+    path('auth/password/reset/confirm/', views.ResetPasswordConfirmView.as_view(), name='reset_password_confirm'),
+    
+    # User Profile
     path('profile/', views.UserProfileView.as_view(), name='user_profile'),
     path('profile/update/', views.UserProfileUpdateView.as_view(), name='user_profile_update'),
     
-    # Phone Verification
-    path('verify-phone/', views.PhoneVerificationView.as_view(), name='phone_verification'),
-    path('verify-phone/send-otp/', views.SendOTPView.as_view(), name='send_otp'),
-    path('verify-phone/verify-otp/', views.VerifyOTPView.as_view(), name='verify_otp'),
+    # User Permissions
+    path('permissions/', views.UserPermissionsView.as_view(), name='user_permissions'),
     
-    # Password Management
-    path('password/change/', views.ChangePasswordView.as_view(), name='change_password'),
-    path('password/reset/', views.ResetPasswordView.as_view(), name='reset_password'),
-    path('password/reset/confirm/', views.ResetPasswordConfirmView.as_view(), name='reset_password_confirm'),
-    
-    # Document Management
+    # User Documents
     path('documents/', views.UserDocumentListView.as_view(), name='user_documents'),
-    path('documents/upload/', views.UserDocumentUploadView.as_view(), name='upload_document'),
-    path('documents/<int:pk>/', views.UserDocumentDetailView.as_view(), name='document_detail'),
+    path('documents/upload/', views.UserDocumentUploadView.as_view(), name='user_document_upload'),
+    path('documents/<int:pk>/', views.UserDocumentDetailView.as_view(), name='user_document_detail'),
     
-    # User Search (for matching)
+    # User Search
     path('search/', views.UserSearchView.as_view(), name='user_search'),
     
-    # Admin endpoints (if needed)
+    # Admin Views
     path('admin/users/', views.AdminUserListView.as_view(), name='admin_user_list'),
     path('admin/users/<int:pk>/', views.AdminUserDetailView.as_view(), name='admin_user_detail'),
+    path('admin/users/<int:user_id>/role/', views.RoleUpdateView.as_view(), name='admin_role_update'),
 ] 

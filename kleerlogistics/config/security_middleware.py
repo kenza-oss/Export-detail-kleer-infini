@@ -1,261 +1,248 @@
 """
-Security middleware for KleerLogistics project.
+Security Middleware for KleerLogistics
+Provides advanced security features including anomaly detection, IP tracking, and threat prevention.
 """
 
-import re
 import logging
-from django.http import HttpResponse, JsonResponse
-from django.conf import settings
+from django.http import HttpResponseForbidden, HttpResponse
+from django.utils import timezone
 from django.core.cache import cache
-from django.utils.deprecation import MiddlewareMixin
+from django.conf import settings
+import ipaddress
+import re
+from datetime import timedelta
+from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('security')
 
-
-class SecurityHeadersMiddleware(MiddlewareMixin):
-    """Middleware pour ajouter des en-têtes de sécurité."""
+class SecurityMiddleware:
+    """
+    Middleware de sécurité avancé pour KleerLogistics.
+    """
     
-    def process_response(self, request, response):
-        """Ajouter les en-têtes de sécurité à la réponse."""
-        # Headers de sécurité de base
-        response['X-Content-Type-Options'] = 'nosniff'
-        response['X-Frame-Options'] = 'DENY'
-        response['X-XSS-Protection'] = '1; mode=block'
-        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-        
-        # HSTS (HTTP Strict Transport Security)
-        if getattr(settings, 'SECURE_SSL_REDIRECT', False):
-            response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        
-        return response
-
-
-class RateLimitMiddleware(MiddlewareMixin):
-    """Middleware pour la limitation de taux."""
-    
-    def process_request(self, request):
-        """Vérifier la limitation de taux."""
-        if not getattr(settings, 'RATELIMIT_ENABLE', True):
-            return None
-        
-        # Identifier la clé de rate limiting
-        client_ip = self.get_client_ip(request)
-        endpoint = request.path
-        
-        # Créer une clé unique pour cette combinaison IP/endpoint
-        rate_key = f"{settings.RATELIMIT_KEY_PREFIX}:{client_ip}:{endpoint}"
-        
-        # Vérifier le nombre de requêtes
-        request_count = cache.get(rate_key, 0)
-        
-        # Limites par défaut (peuvent être configurées dans settings)
-        limits = getattr(settings, 'RATELIMIT_RULES', {})
-        default_limit = limits.get('api_general', '100/h')  # 100 requêtes par heure
-        
-        # Parser la limite (format: "nombre/période")
-        limit_parts = default_limit.split('/')
-        max_requests = int(limit_parts[0])
-        period = limit_parts[1]
-        
-        # Convertir la période en secondes
-        period_seconds = {
-            's': 1,
-            'm': 60,
-            'h': 3600,
-            'd': 86400
-        }.get(period[-1], 3600)
-        
-        if request_count >= max_requests:
-            return JsonResponse({
-                'success': False,
-                'error': 'Rate limit exceeded',
-                'message': f'Too many requests. Limit: {max_requests} per {period}'
-            }, status=429)
-        
-        # Incrémenter le compteur
-        cache.set(rate_key, request_count + 1, period_seconds)
-        
-        return None
-    
-    def get_client_ip(self, request):
-        """Obtenir l'IP du client."""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip
-
-
-class InputSanitizationMiddleware(MiddlewareMixin):
-    """Middleware pour la sanitisation des entrées."""
-    
-    def process_request(self, request):
-        """Sanitiser les données d'entrée."""
-        # Liste des patterns suspects
-        suspicious_patterns = [
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.suspicious_patterns = [
             r'<script[^>]*>.*?</script>',
             r'javascript:',
             r'vbscript:',
             r'onload=',
             r'onerror=',
-            r'onclick=',
             r'<iframe',
             r'<object',
             r'<embed',
+            r'<applet',
+            r'<meta[^>]*refresh',
+            r'<link[^>]*javascript',
+            r'<form[^>]*action[^>]*javascript',
         ]
         
+        # IPs suspectes (à étendre)
+        self.suspicious_ips = set()
+        
+        # User agents suspects
+        self.suspicious_user_agents = [
+            'sqlmap',
+            'nikto',
+            'nmap',
+            'w3af',
+            'burp',
+            'zap',
+            'acunetix',
+            'nessus',
+            'openvas',
+            'metasploit',
+            'hydra',
+            'medusa',
+            'john',
+            'hashcat',
+        ]
+
+    def __call__(self, request):
+        # Vérifications de sécurité avant traitement
+        security_check = self.perform_security_checks(request)
+        if security_check:
+            return security_check
+        
+        # Traitement de la requête
+        response = self.get_response(request)
+        
+        # Ajout des headers de sécurité
+        response = self.add_security_headers(response)
+        
+        # Logging de sécurité
+        self.log_security_event(request, response)
+        
+        return response
+
+    def perform_security_checks(self, request) -> Optional[HttpResponse]:
+        """Effectuer toutes les vérifications de sécurité."""
+        
+        # 1. Vérification de l'IP
+        ip_check = self.check_ip_address(request)
+        if ip_check:
+            return ip_check
+        
+        # 2. Vérification du User Agent
+        ua_check = self.check_user_agent(request)
+        if ua_check:
+            return ua_check
+        
+        # 3. Vérification des paramètres suspects
+        param_check = self.check_suspicious_parameters(request)
+        if param_check:
+            return param_check
+        
+        # 4. Vérification du rate limiting
+        rate_check = self.check_rate_limiting(request)
+        if rate_check:
+            return rate_check
+        
+        # 5. Vérification des tentatives de connexion échouées
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            login_check = self.check_failed_login_attempts(request)
+            if login_check:
+                return login_check
+        
+        return None
+
+    def check_ip_address(self, request) -> Optional[HttpResponse]:
+        """Vérifier l'adresse IP pour les menaces."""
+        client_ip = self.get_client_ip(request)
+        
+        # Vérifier si l'IP est dans la liste noire
+        if client_ip in self.suspicious_ips:
+            logger.warning(f"Suspicious IP detected: {client_ip}")
+            return HttpResponseForbidden("Access denied")
+        
+        # Vérifier les IPs privées (si non autorisées)
+        if not settings.DEBUG and not getattr(settings, 'TESTING', False):
+            try:
+                ip = ipaddress.ip_address(client_ip)
+                if ip.is_private and not self.is_allowed_private_ip(client_ip):
+                    logger.warning(f"Private IP access attempt: {client_ip}")
+                    return HttpResponseForbidden("Access denied")
+            except ValueError:
+                pass
+        
+        return None
+
+    def check_user_agent(self, request) -> Optional[HttpResponse]:
+        """Vérifier le User Agent pour les outils d'attaque."""
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+        
+        for suspicious_ua in self.suspicious_user_agents:
+            if suspicious_ua in user_agent:
+                logger.warning(f"Suspicious User Agent detected: {user_agent}")
+                return HttpResponseForbidden("Access denied")
+        
+        return None
+
+    def check_suspicious_parameters(self, request) -> Optional[HttpResponse]:
+        """Vérifier les paramètres pour les injections."""
         # Vérifier les paramètres GET
         for key, value in request.GET.items():
-            if self.contains_suspicious_content(value, suspicious_patterns):
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Suspicious input detected',
-                    'message': 'Input contains potentially dangerous content'
-                }, status=400)
+            if self.is_suspicious_content(value):
+                logger.warning(f"Suspicious GET parameter detected: {key}={value}")
+                return HttpResponseForbidden("Access denied")
         
         # Vérifier les paramètres POST
-        if request.method == 'POST':
-            for key, value in request.POST.items():
-                if self.contains_suspicious_content(value, suspicious_patterns):
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'Suspicious input detected',
-                        'message': 'Input contains potentially dangerous content'
-                    }, status=400)
+        for key, value in request.POST.items():
+            if self.is_suspicious_content(value):
+                logger.warning(f"Suspicious POST parameter detected: {key}={value}")
+                return HttpResponseForbidden("Access denied")
         
         return None
-    
-    def contains_suspicious_content(self, value, patterns):
-        """Vérifier si une valeur contient du contenu suspect."""
-        if not isinstance(value, str):
-            return False
+
+    def check_rate_limiting(self, request) -> Optional[HttpResponse]:
+        """Vérifier le rate limiting."""
+        client_ip = self.get_client_ip(request)
+        endpoint = request.path
         
-        value_lower = value.lower()
-        for pattern in patterns:
-            if re.search(pattern, value_lower, re.IGNORECASE):
-                return True
-        return False
+        # Clé de cache pour le rate limiting
+        cache_key = f"rate_limit:{client_ip}:{endpoint}"
+        
+        # Récupérer le nombre de requêtes
+        request_count = cache.get(cache_key, 0)
+        
+        # Définir les limites selon l'endpoint
+        limits = {
+            '/api/auth/login/': 5,  # 5 tentatives par minute
+            '/api/auth/register/': 3,  # 3 inscriptions par heure
+            '/api/payments/': 20,  # 20 paiements par heure
+            'default': 100,  # 100 requêtes par heure par défaut
+        }
+        
+        limit = limits.get(endpoint, limits['default'])
+        
+        if request_count >= limit:
+            logger.warning(f"Rate limit exceeded for {client_ip} on {endpoint}")
+            return HttpResponseForbidden("Rate limit exceeded")
+        
+        # Incrémenter le compteur
+        cache.set(cache_key, request_count + 1, 3600)  # 1 heure
+        
+        return None
 
+    def check_failed_login_attempts(self, request) -> Optional[HttpResponse]:
+        """Vérifier les tentatives de connexion échouées."""
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            if request.user.is_account_locked():
+                logger.warning(f"Account locked for user: {request.user.email}")
+                return HttpResponseForbidden("Account temporarily locked")
+        
+        return None
 
-class SQLInjectionProtectionMiddleware(MiddlewareMixin):
-    """Middleware pour la protection contre les injections SQL."""
-    
-    def process_request(self, request):
-        """Détecter les tentatives d'injection SQL."""
-        sql_patterns = [
-            r'(\b(union|select|insert|update|delete|drop|create|alter)\b)',
-            r'(\b(or|and)\b\s+\d+\s*=\s*\d+)',
-            r'(\b(union|select)\b.*\bfrom\b)',
-            r'(\b(union|select)\b.*\bwhere\b)',
-            r'(\b(union|select)\b.*\border\b\s+by)',
-            r'(\b(union|select)\b.*\bgroup\b\s+by)',
-            r'(\b(union|select)\b.*\bhaving\b)',
-            r'(\b(union|select)\b.*\blimit\b)',
-            r'(\b(union|select)\b.*\boffset\b)',
-            r'(\b(union|select)\b.*\btop\b)',
-            r'(\b(union|select)\b.*\bdistinct\b)',
-            r'(\b(union|select)\b.*\bcount\b)',
-            r'(\b(union|select)\b.*\bsum\b)',
-            r'(\b(union|select)\b.*\bavg\b)',
-            r'(\b(union|select)\b.*\bmax\b)',
-            r'(\b(union|select)\b.*\bmin\b)',
-            r'(\b(union|select)\b.*\bcase\b)',
-            r'(\b(union|select)\b.*\bwhen\b)',
-            r'(\b(union|select)\b.*\bthen\b)',
-            r'(\b(union|select)\b.*\belse\b)',
-            r'(\b(union|select)\b.*\bend\b)',
-            r'(\b(union|select)\b.*\bas\b)',
-            r'(\b(union|select)\b.*\bin\b)',
-            r'(\b(union|select)\b.*\bbetween\b)',
-            r'(\b(union|select)\b.*\blike\b)',
-            r'(\b(union|select)\b.*\bis\b\s+null)',
-            r'(\b(union|select)\b.*\bis\b\s+not\s+null)',
-            r'(\b(union|select)\b.*\bexists\b)',
-            r'(\b(union|select)\b.*\bnot\b\s+exists)',
-            r'(\b(union|select)\b.*\bin\b\s*\()',
-            r'(\b(union|select)\b.*\bnot\b\s+in\b\s*\()',
-            r'(\b(union|select)\b.*\bany\b)',
-            r'(\b(union|select)\b.*\ball\b)',
-            r'(\b(union|select)\b.*\bsome\b)',
-            r'(\b(union|select)\b.*\bwith\b)',
-            r'(\b(union|select)\b.*\bcte\b)',
-            r'(\b(union|select)\b.*\brecursive\b)',
-            r'(\b(union|select)\b.*\bwindow\b)',
-            r'(\b(union|select)\b.*\bover\b)',
-            r'(\b(union|select)\b.*\bpartition\b\s+by)',
-            r'(\b(union|select)\b.*\border\b\s+by)',
-            r'(\b(union|select)\b.*\brows\b)',
-            r'(\b(union|select)\b.*\brange\b)',
-            r'(\b(union|select)\b.*\bpreceding\b)',
-            r'(\b(union|select)\b.*\bfollowing\b)',
-            r'(\b(union|select)\b.*\bunbounded\b)',
-            r'(\b(union|select)\b.*\bcurrent\b\s+row)',
-            r'(\b(union|select)\b.*\brow\b\s+number)',
-            r'(\b(union|select)\b.*\brank\b)',
-            r'(\b(union|select)\b.*\bdense_rank\b)',
-            r'(\b(union|select)\b.*\bntile\b)',
-            r'(\b(union|select)\b.*\blead\b)',
-            r'(\b(union|select)\b.*\blag\b)',
-            r'(\b(union|select)\b.*\bfirst_value\b)',
-            r'(\b(union|select)\b.*\blast_value\b)',
-            r'(\b(union|select)\b.*\bnth_value\b)',
-            r'(\b(union|select)\b.*\bpercent_rank\b)',
-            r'(\b(union|select)\b.*\bcume_dist\b)',
-            r'(\b(union|select)\b.*\bpercentile_cont\b)',
-            r'(\b(union|select)\b.*\bpercentile_disc\b)',
-            r'(\b(union|select)\b.*\bmedian\b)',
-            r'(\b(union|select)\b.*\bstddev\b)',
-            r'(\b(union|select)\b.*\bvariance\b)',
-            r'(\b(union|select)\b.*\bcorr\b)',
-            r'(\b(union|select)\b.*\bcovar_pop\b)',
-            r'(\b(union|select)\b.*\bcovar_samp\b)',
-            r'(\b(union|select)\b.*\bregr_slope\b)',
-            r'(\b(union|select)\b.*\bregr_intercept\b)',
-            r'(\b(union|select)\b.*\bregr_count\b)',
-            r'(\b(union|select)\b.*\bregr_r2\b)',
-            r'(\b(union|select)\b.*\bregr_avgx\b)',
-            r'(\b(union|select)\b.*\bregr_avgy\b)',
-            r'(\b(union|select)\b.*\bregr_sxx\b)',
-            r'(\b(union|select)\b.*\bregr_syy\b)',
-            r'(\b(union|select)\b.*\bregr_sxy\b)',
-            r'(\b(union|select)\b.*\bregr_slope\b)',
-            r'(\b(union|select)\b.*\bregr_intercept\b)',
-            r'(\b(union|select)\b.*\bregr_count\b)',
-            r'(\b(union|select)\b.*\bregr_r2\b)',
-            r'(\b(union|select)\b.*\bregr_avgx\b)',
-            r'(\b(union|select)\b.*\bregr_avgy\b)',
-            r'(\b(union|select)\b.*\bregr_sxx\b)',
-            r'(\b(union|select)\b.*\bregr_syy\b)',
-            r'(\b(union|select)\b.*\bregr_sxy\b)',
+    def add_security_headers(self, response: HttpResponse) -> HttpResponse:
+        """Ajouter les headers de sécurité."""
+        security_headers = getattr(settings, 'SECURITY_HEADERS', {})
+        
+        for header, value in security_headers.items():
+            response[header] = value
+        
+        # Headers supplémentaires
+        response['X-Content-Type-Options'] = 'nosniff'
+        response['X-Frame-Options'] = 'DENY'
+        response['X-XSS-Protection'] = '1; mode=block'
+        response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        response['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+        
+        if not settings.DEBUG:
+            response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains; preload'
+        
+        return response
+
+    def log_security_event(self, request, response):
+        """Logger les événements de sécurité."""
+        client_ip = self.get_client_ip(request)
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        method = request.method
+        path = request.path
+        status_code = response.status_code
+        
+        # Logger les événements suspects
+        if status_code in [403, 404, 500]:
+            logger.warning(
+                f"Security event - IP: {client_ip}, Method: {method}, "
+                f"Path: {path}, Status: {status_code}, UA: {user_agent}"
+            )
+        
+        # Logger les tentatives d'accès aux endpoints sensibles
+        sensitive_endpoints = [
+            '/admin/',
+            '/api/auth/',
+            '/api/payments/',
+            '/api/users/',
         ]
         
-        # Vérifier tous les paramètres
-        all_params = {}
-        all_params.update(request.GET)
-        all_params.update(request.POST)
-        
-        for key, value in all_params.items():
-            if isinstance(value, str) and self.detect_sql_injection(value, sql_patterns):
-                logger.warning(f"Potential SQL injection detected from IP: {self.get_client_ip(request)}")
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Invalid input detected',
-                    'message': 'Request contains invalid characters'
-                }, status=400)
-        
-        return None
-    
-    def detect_sql_injection(self, value, patterns):
-        """Détecter les tentatives d'injection SQL."""
-        value_lower = value.lower()
-        for pattern in patterns:
-            if re.search(pattern, value_lower, re.IGNORECASE):
-                return True
-        return False
-    
-    def get_client_ip(self, request):
-        """Obtenir l'IP du client."""
+        if any(endpoint in path for endpoint in sensitive_endpoints):
+            logger.info(
+                f"Access to sensitive endpoint - IP: {client_ip}, "
+                f"Method: {method}, Path: {path}, User: {getattr(request.user, 'email', 'anonymous')}"
+            )
+
+    def get_client_ip(self, request) -> str:
+        """Obtenir l'adresse IP du client."""
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
             ip = x_forwarded_for.split(',')[0]
@@ -263,74 +250,41 @@ class SQLInjectionProtectionMiddleware(MiddlewareMixin):
             ip = request.META.get('REMOTE_ADDR')
         return ip
 
+    def is_allowed_private_ip(self, ip: str) -> bool:
+        """Vérifier si une IP privée est autorisée."""
+        allowed_private_ips = getattr(settings, 'ALLOWED_PRIVATE_IPS', [])
+        return ip in allowed_private_ips
 
-class FileUploadSecurityMiddleware(MiddlewareMixin):
-    """Middleware pour la sécurité des uploads de fichiers."""
-    
-    def process_request(self, request):
-        """Vérifier la sécurité des fichiers uploadés."""
-        if request.method == 'POST' and request.FILES:
-            for uploaded_file in request.FILES.values():
-                if not self.is_file_safe(uploaded_file):
-                    return JsonResponse({
-                        'success': False,
-                        'error': 'Unsafe file type',
-                        'message': 'File type not allowed'
-                    }, status=400)
+    def is_suspicious_content(self, content: str) -> bool:
+        """Vérifier si le contenu est suspect."""
+        if not isinstance(content, str):
+            return False
         
-        return None
-    
-    def is_file_safe(self, uploaded_file):
-        """Vérifier si un fichier est sûr."""
-        # Types de fichiers autorisés
-        allowed_types = [
-            'image/jpeg',
-            'image/png',
-            'image/gif',
-            'image/webp',
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/plain',
+        content_lower = content.lower()
+        
+        # Vérifier les patterns suspects
+        for pattern in self.suspicious_patterns:
+            if re.search(pattern, content_lower, re.IGNORECASE):
+                return True
+        
+        # Vérifier les tentatives d'injection SQL
+        sql_patterns = [
+            'union select',
+            'drop table',
+            'delete from',
+            'insert into',
+            'update set',
+            'or 1=1',
+            'or 1 = 1',
+            '--',
+            '/*',
+            '*/',
+            'xp_',
+            'sp_',
         ]
         
-        # Vérifier le type MIME
-        if uploaded_file.content_type not in allowed_types:
-            return False
+        for pattern in sql_patterns:
+            if pattern in content_lower:
+                return True
         
-        # Vérifier la taille (max 10MB)
-        if uploaded_file.size > 10 * 1024 * 1024:
-            return False
-        
-        # Vérifier l'extension
-        safe_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt']
-        file_name = uploaded_file.name.lower()
-        if not any(file_name.endswith(ext) for ext in safe_extensions):
-            return False
-        
-        return True
-
-
-class RequestLoggingMiddleware(MiddlewareMixin):
-    """Middleware pour le logging des requêtes."""
-    
-    def process_request(self, request):
-        """Logger les informations de la requête."""
-        logger.info(f"Request: {request.method} {request.path} from {self.get_client_ip(request)}")
-        return None
-    
-    def process_response(self, request, response):
-        """Logger les informations de la réponse."""
-        logger.info(f"Response: {response.status_code} for {request.method} {request.path}")
-        return response
-    
-    def get_client_ip(self, request):
-        """Obtenir l'IP du client."""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
-        else:
-            ip = request.META.get('REMOTE_ADDR')
-        return ip 
+        return False 

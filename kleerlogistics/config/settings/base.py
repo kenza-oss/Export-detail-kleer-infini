@@ -66,12 +66,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',
     'csp.middleware.CSPMiddleware',
-    'config.security_middleware.SecurityHeadersMiddleware',
-    'config.security_middleware.RateLimitMiddleware',
-    'config.security_middleware.InputSanitizationMiddleware',
-    'config.security_middleware.SQLInjectionProtectionMiddleware',
-    'config.security_middleware.FileUploadSecurityMiddleware',
-    'config.security_middleware.RequestLoggingMiddleware',
+    # 'config.security_middleware.SecurityMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

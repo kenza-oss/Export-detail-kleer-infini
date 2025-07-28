@@ -55,7 +55,7 @@ class DashboardAnalyticsView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics du tableau de bord",
-                examples={"application/json": ANALYTICS_DASHBOARD_EXAMPLE["response"]}
+                examples={"application/json": ANALYTICS_DASHBOARD_EXAMPLE["application/json"]}
             )
         }
     )
@@ -250,7 +250,7 @@ class ShipmentAnalyticsView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics des expéditions",
-                examples={"application/json": ANALYTICS_SHIPMENT_EXAMPLE["response"]}
+                examples={"application/json": ANALYTICS_SHIPMENT_EXAMPLE["application/json"]}
             )
         }
     )
@@ -371,7 +371,7 @@ class TripAnalyticsView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics des voyages",
-                examples={"application/json": ANALYTICS_TRIP_EXAMPLE["response"]}
+                examples={"application/json": ANALYTICS_TRIP_EXAMPLE["application/json"]}
             )
         }
     )
@@ -473,7 +473,7 @@ class FinancialAnalyticsView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Analytics financiers",
-                examples={"application/json": ANALYTICS_FINANCIAL_EXAMPLE["response"]}
+                examples={"application/json": ANALYTICS_FINANCIAL_EXAMPLE["application/json"]}
             )
         }
     )
@@ -573,7 +573,7 @@ class AnalyticsEventView(APIView):
         responses={
             status.HTTP_201_CREATED: openapi.Response(
                 description="Événement enregistré",
-                examples={"application/json": ANALYTICS_EVENT_EXAMPLE["response"]}
+                examples={"application/json": ANALYTICS_EVENT_EXAMPLE["application/json"]}
             ),
             status.HTTP_400_BAD_REQUEST: openapi.Response(
                 description="Erreur de validation",

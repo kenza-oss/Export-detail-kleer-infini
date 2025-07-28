@@ -1,0 +1,410 @@
+### Kleer Logistics API - HTTP Requests
+
+# Base URL
+@baseUrl = http://localhost:8000/api/v1
+
+# Variables
+@contentType = application/json
+@authToken = {{login.response.body.access}}
+
+### 1. User Registration
+POST {{baseUrl}}/users/auth/register/
+Content-Type: {{contentType}}
+
+{
+    "username": "hash",
+    "email": "romualdo@kleer.com",
+    "password": "TestPassword123!",
+    "password_confirm": "TestPassword123!",
+    "first_name": "Test",
+    "last_name": "User",
+    "phone_number": "+261234567890",
+    "role": "sender"
+}
+
+### 2. User Login
+# @name login
+POST {{baseUrl}}/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "hash",
+    "password": "TestPassword123!"
+}
+
+### 3. Refresh Token
+POST {{baseUrl}}/users/auth/token/refresh/
+Content-Type: {{contentType}}
+
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1MzgyNDg2MCwiaWF0IjoxNzUzNzM4NDYwLCJqdGkiOiJmMDA2NGFkYmFiYzc0ZGM1YTc4MmE3Nzg3ZGVkYmM4OSIsInVzZXJfaWQiOiIyIn0.joE9YCOyXF55CNMZbefhxSgd5MaJcV85GW9qCotatSc"
+}
+
+### 4. Send OTP
+POST {{baseUrl}}/users/auth/otp/send/
+Content-Type: {{contentType}}
+
+{
+    "phone_number": "+261234567890"
+}
+
+### 5. Verify OTP
+POST {{baseUrl}}/users/auth/otp/verify/
+Content-Type: {{contentType}}
+
+{
+    "phone_number": "+261234567890",
+    "code": "123456"
+}
+
+### 6. Check Phone Verification Status
+GET {{baseUrl}}/users/auth/phone/status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 7. Get User Profile
+GET {{baseUrl}}/users/profile/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 8. Update User Profile
+PUT {{baseUrl}}/users/profile/update/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "address": "123 Main St, City, Country",
+    "city": "New York",
+    "country": "US",
+    "birth_date": "1990-01-01"
+}
+
+### 9. Change Password
+POST {{baseUrl}}/users/auth/password/change/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "old_password": "TestPassword123!",
+    "new_password": "NewPassword123!",
+    "new_password_confirm": "NewPassword123!"
+}
+
+### 10. Reset Password Request
+POST {{baseUrl}}/users/auth/password/reset/
+Content-Type: {{contentType}}
+
+{
+    "email": "test@example.com"
+}
+
+### 11. Reset Password Confirm
+POST {{baseUrl}}/users/auth/password/reset/confirm/
+Content-Type: {{contentType}}
+
+{
+    "email": "test@example.com",
+    "token": "reset_token_123",
+    "new_password": "NewPassword123!",
+    "new_password_confirm": "NewPassword123!"
+}
+
+### 12. Get User Permissions
+GET {{baseUrl}}/users/permissions/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 13. Upload User Document
+POST {{baseUrl}}/users/documents/upload/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_number"
+
+AB123456
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="expiry_date"
+
+2025-12-31
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="passport.pdf"
+Content-Type: application/pdf
+
+< ./passport.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 14. List User Documents
+GET {{baseUrl}}/users/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 15. Get User Document Detail
+GET {{baseUrl}}/users/documents/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 16. Search Users (Admin only)
+GET {{baseUrl}}/users/search/?q=test
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 17. List All Users (Admin only)
+GET {{baseUrl}}/users/admin/users/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 18. Get User Detail (Admin only)
+GET {{baseUrl}}/users/admin/users/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 19. Update User Role (Admin only)
+PUT {{baseUrl}}/users/admin/users/1/role/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "role": "traveler"
+}
+
+##------------------------------------------------------------------------#
+
+### 20. Analytics Endpoints
+
+# Get Analytics Dashboard
+GET {{baseUrl}}/analytics/dashboard/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Get User Statistics
+GET {{baseUrl}}/analytics/users/stats/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Get Shipment Analytics
+GET {{baseUrl}}/analytics/shipments/stats/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 21. Chat Endpoints
+
+# Get Chat Conversations
+GET {{baseUrl}}/chat/conversations/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Get Chat Messages
+GET {{baseUrl}}/chat/conversations/1/messages/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Send Chat Message
+POST {{baseUrl}}/chat/conversations/1/messages/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "content": "Hello, I have a question about my shipment."
+}
+
+### 22. Documents Endpoints
+
+# List Documents
+GET {{baseUrl}}/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Upload Document
+POST {{baseUrl}}/documents/upload/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="title"
+
+Invoice
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Invoice for shipment #12345
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+invoice
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="invoice.pdf"
+Content-Type: application/pdf
+
+< ./invoice.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 23. Matching Endpoints
+
+# Get Matching Opportunities
+GET {{baseUrl}}/matching/opportunities/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Create Matching Request
+POST {{baseUrl}}/matching/requests/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "shipment_id": 1,
+    "traveler_id": 2,
+    "status": "pending"
+}
+
+### 24. Notifications Endpoints
+
+# Get User Notifications
+GET {{baseUrl}}/notifications/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Mark Notification as Read
+PUT {{baseUrl}}/notifications/1/read/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 25. Payments Endpoints
+
+# Get Payment Methods
+GET {{baseUrl}}/payments/methods/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Create Payment
+POST {{baseUrl}}/payments/create/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "amount": 100.00,
+    "currency": "USD",
+    "payment_method": "card",
+    "description": "Payment for shipment #12345"
+}
+
+### 26. Ratings Endpoints
+
+# Get User Ratings
+GET {{baseUrl}}/ratings/user/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Create Rating
+POST {{baseUrl}}/ratings/create/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "rated_user_id": 2,
+    "rating": 5,
+    "comment": "Excellent service!"
+}
+
+### 27. Shipments Endpoints
+
+# Get User Shipments
+GET {{baseUrl}}/shipments/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Create Shipment
+POST {{baseUrl}}/shipments/create/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "title": "Electronics Package",
+    "description": "Fragile electronics package",
+    "origin": "New York, NY",
+    "destination": "Los Angeles, CA",
+    "weight": 5.5,
+    "dimensions": "30x20x15",
+    "value": 500.00,
+    "delivery_date": "2024-02-15"
+}
+
+### 28. Trips Endpoints
+
+# Get User Trips
+GET {{baseUrl}}/trips/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Create Trip
+POST {{baseUrl}}/trips/create/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "origin": "New York, NY",
+    "destination": "Los Angeles, CA",
+    "departure_date": "2024-02-10",
+    "return_date": "2024-02-20",
+    "available_space": 50.0,
+    "description": "Business trip with available cargo space"
+}
+
+### 29. Admin Panel Endpoints
+
+# Get Admin Dashboard
+GET {{baseUrl}}/admin/dashboard/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Get System Statistics
+GET {{baseUrl}}/admin/stats/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+### 30. Internationalization Endpoints
+
+# Get Available Languages
+GET {{baseUrl}}/i18n/languages/
+
+# Get Translations
+GET {{baseUrl}}/i18n/translations/fr/
+
+### 31. Verification Endpoints
+
+# Get Verification Status
+GET {{baseUrl}}/verification/status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+
+# Submit Verification
+POST {{baseUrl}}/verification/submit/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0
+Content-Type: {{contentType}}
+
+{
+    "verification_type": "identity",
+    "document_data": {
+        "document_type": "passport",
+        "document_number": "AB123456",
+        "expiry_date": "2025-12-31"
+    }
+}
+
+### 32. Health Check
+GET {{baseUrl}}/health/
+
+### 33. API Documentation
+GET {{baseUrl}}/swagger/
+
+### 34. Error Testing
+
+# Test Invalid Login
+POST {{baseUrl}}/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "invalid@example.com",
+    "password": "wrongpassword"
+}
+
+# Test Invalid Registration
+POST {{baseUrl}}/users/auth/register/
+Content-Type: {{contentType}}
+
+{
+    "username": "test",
+    "email": "invalid-email",
+    "password": "123",
+    "password_confirm": "456"
+}
+
+# Test Unauthorized Access
+GET {{baseUrl}}/users/profile/
+
+### Notes:
+# 1. Replace eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzNzQyMTQ2LCJpYXQiOjE3NTM3Mzg1NDYsImp0aSI6IjMxZTZjYjU3YTYzZTQ3NDFiMTc3YTE4Y2Y1OTVlYTQyIiwidXNlcl9pZCI6IjIifQ.CEWUsA41Kno3ivbXRVfAK3zoj8yXw5RzaJFkFEXLfe0 with actual token after login
+# 2. Update file paths for document uploads
+# 3. Adjust base URL for your environment
+# 4. Some endpoints require admin privileges
+# 5. Test with different user roles (sender, traveler, admin) 

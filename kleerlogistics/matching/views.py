@@ -312,7 +312,7 @@ class MatchListView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Liste des matches",
-                examples={"application/json": MATCHING_LIST_EXAMPLE["response"]}
+                examples={"application/json": MATCHING_LIST_EXAMPLE}
             )
         }
     )
@@ -356,7 +356,7 @@ class AcceptMatchView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Match accepté",
-                examples={"application/json": MATCHING_ACCEPT_EXAMPLE["response"]}
+                examples={"application/json": MATCHING_ACCEPT_EXAMPLE}
             ),
             status.HTTP_403_FORBIDDEN: openapi.Response(
                 description="Non autorisé",
@@ -446,7 +446,7 @@ class RejectMatchView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Match rejeté",
-                examples={"application/json": MATCHING_REJECT_EXAMPLE["response"]}
+                examples={"application/json": MATCHING_REJECT_EXAMPLE}
             ),
             status.HTTP_403_FORBIDDEN: openapi.Response(
                 description="Non autorisé",

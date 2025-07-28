@@ -66,6 +66,12 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 # Disable CORS for testing
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Allow private IPs for testing
+ALLOWED_PRIVATE_IPS = ['127.0.0.1', 'localhost', '::1']
+
+# Disable security middleware for testing
+MIDDLEWARE = [mw for mw in MIDDLEWARE if 'security_middleware' not in mw]
+
 # Static files for Testing
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 

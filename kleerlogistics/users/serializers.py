@@ -8,44 +8,42 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from phonenumber_field.serializerfields import PhoneNumberField
 
-from .models import User, UserProfile, UserDocument
+from .models import User, UserProfile, UserDocument, OTPCode
 
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer pour les utilisateurs avec profil."""
     
     profile = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
     
     class Meta:
         model = User
-        fields = [
-            'id', 'email', 'username', 'first_name', 'last_name',
-            'is_active', 'date_joined', 'last_login', 'profile'
-        ]
-        read_only_fields = ['id', 'date_joined', 'last_login']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number', 'is_phone_verified', 'is_document_verified', 'rating', 'total_trips', 'total_shipments', 'preferred_language', 'created_at', 'updated_at', 'profile', 'permissions']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'rating', 'total_trips', 'total_shipments', 'is_phone_verified', 'is_document_verified']
     
     def get_profile(self, obj):
         """Récupérer les données du profil utilisateur."""
         try:
-            profile = obj.userprofile
+            profile = obj.profile
             return {
-                'user_type': profile.user_type,
-                'phone_number': profile.phone_number,
-                'phone_verified': profile.phone_verified,
-                'first_name': profile.first_name,
-                'last_name': profile.last_name,
-                'date_of_birth': profile.date_of_birth,
-                'country': profile.country,
-                'city': profile.city,
+                'birth_date': profile.birth_date,
                 'address': profile.address,
-                'rating': profile.rating,
-                'total_trips': profile.total_trips,
-                'total_shipments': profile.total_shipments,
-                'is_verified': profile.is_verified,
-                'verification_status': profile.verification_status,
+                'city': profile.city,
+                'country': profile.country,
+                'avatar': profile.avatar.url if profile.avatar else None,
+                'bio': profile.bio,
             }
         except UserProfile.DoesNotExist:
             return None
+    
+    def get_permissions(self, obj):
+        return {
+            'is_admin': obj.is_admin,
+            'is_sender': obj.is_sender,
+            'is_traveler': obj.is_traveler,
+            'can_access_admin_panel': obj.can_access_admin_panel(),
+        }
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -53,47 +51,61 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    email = serializers.EmailField()
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='sender')
     
     class Meta:
         model = User
-        fields = [
-            'email', 'username', 'first_name', 'last_name',
-            'password', 'password_confirm'
-        ]
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'phone_number', 'role']
+        extra_kwargs = {
+            'password': {'write_only': True},
+            'password_confirm': {'write_only': True}
+        }
     
     def validate(self, attrs):
         """Valider les données d'inscription."""
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError("Les mots de passe ne correspondent pas.")
+            raise serializers.ValidationError({'non_field_errors': 'Les mots de passe ne correspondent pas.'})
         
-        # Valider le mot de passe
-        try:
-            validate_password(attrs['password'])
-        except ValidationError as e:
-            raise serializers.ValidationError({'password': e.messages})
-        
-        # Vérifier que l'email n'existe pas déjà
-        if User.objects.filter(email=attrs['email']).exists():
-            raise serializers.ValidationError({'email': 'Cet email est déjà utilisé.'})
-        
-        # Vérifier que le nom d'utilisateur n'existe pas déjà
-        if User.objects.filter(username=attrs['username']).exists():
-            raise serializers.ValidationError({'username': 'Ce nom d\'utilisateur est déjà utilisé.'})
+        # Vérifier l'unicité du numéro de téléphone
+        if attrs.get('phone_number') and User.objects.filter(phone_number=attrs['phone_number']).exists():
+            raise serializers.ValidationError({'phone_number': 'Ce numéro de téléphone est déjà utilisé.'})
         
         return attrs
     
     def create(self, validated_data):
         """Créer un nouvel utilisateur."""
         validated_data.pop('password_confirm')
-        user = User.objects.create_user(
-            email=validated_data['email'],
-            username=validated_data['username'],
-            first_name=validated_data.get('first_name', ''),
-            last_name=validated_data.get('last_name', ''),
-            password=validated_data['password']
-        )
+        user = User.objects.create_user(**validated_data)
         return user
+
+
+class UserLoginSerializer(serializers.Serializer):
+    """Serializer pour la connexion des utilisateurs."""
+    
+    username = serializers.CharField()
+    password = serializers.CharField()
+    
+    def __init__(self, *args, **kwargs):
+        self.request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+    
+    def validate(self, attrs):
+        """Valider les identifiants de connexion."""
+        username = attrs.get('username')
+        password = attrs.get('password')
+        
+        if username and password:
+            # Pass the request object to authenticate for Axes compatibility
+            user = authenticate(request=self.request, username=username, password=password)
+            if not user:
+                raise serializers.ValidationError('Identifiants invalides.')
+            if not user.is_active:
+                raise serializers.ValidationError('Compte désactivé.')
+            attrs['user'] = user
+        else:
+            raise serializers.ValidationError('Nom d\'utilisateur et mot de passe requis.')
+        
+        return attrs
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -101,46 +113,76 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UserProfile
-        fields = [
-            'user_type', 'phone_number', 'phone_verified',
-            'first_name', 'last_name', 'date_of_birth',
-            'country', 'city', 'address', 'rating',
-            'total_trips', 'total_shipments', 'is_verified',
-            'verification_status', 'bio', 'profile_picture'
-        ]
-        read_only_fields = ['rating', 'total_trips', 'total_shipments', 'is_verified']
+        fields = ['birth_date', 'address', 'city', 'country', 'avatar', 'bio']
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer pour la mise à jour du profil utilisateur."""
     
-    def validate_phone_number(self, value):
-        """Valider le numéro de téléphone."""
-        if value and UserProfile.objects.filter(phone_number=value).exists():
-            raise serializers.ValidationError("Ce numéro de téléphone est déjà utilisé.")
-        return value
+    class Meta:
+        model = UserProfile
+        fields = ['birth_date', 'address', 'city', 'country', 'avatar', 'bio']
 
 
 class PhoneVerificationSerializer(serializers.Serializer):
     """Serializer pour la vérification du téléphone."""
     
-    phone = PhoneNumberField()
-    otp = serializers.CharField(max_length=6, min_length=6)
+    phone_number = serializers.CharField(max_length=15)
     
-    def validate_otp(self, value):
-        """Valider le format de l'OTP."""
-        if not value.isdigit():
-            raise serializers.ValidationError("L'OTP doit contenir uniquement des chiffres.")
+    def validate_phone_number(self, value):
+        """Valider le format du numéro de téléphone."""
+        # Validation basique du format du numéro de téléphone
+        if not value.startswith('+'):
+            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
         return value
+
+
+class OTPSendSerializer(serializers.Serializer):
+    """Serializer pour l'envoi d'un OTP."""
+    
+    phone_number = serializers.CharField(max_length=15)
+    
+    def validate_phone_number(self, value):
+        """Valider le format du numéro de téléphone pour l'envoi d'OTP."""
+        if not value.startswith('+'):
+            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
+        return value
+
+
+class OTPVerifySerializer(serializers.Serializer):
+    """Serializer pour la vérification d'un OTP."""
+    
+    phone_number = serializers.CharField(max_length=15)
+    code = serializers.CharField(max_length=6, min_length=6)
+    
+    def validate_phone_number(self, value):
+        """Valider le format du numéro de téléphone pour la vérification d'OTP."""
+        if not value.startswith('+'):
+            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
+        return value
+    
+    def validate(self, attrs):
+        """Valider le format de l'OTP."""
+        phone_number = attrs.get('phone_number')
+        code = attrs.get('code')
+        
+        if not code.isdigit():
+            raise serializers.ValidationError({'code': 'Le code OTP doit contenir uniquement des chiffres.'})
+        
+        return attrs
 
 
 class ChangePasswordSerializer(serializers.Serializer):
     """Serializer pour le changement de mot de passe."""
     
-    old_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, min_length=8)
-    new_password_confirm = serializers.CharField(write_only=True)
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+    new_password_confirm = serializers.CharField(required=True)
     
     def validate(self, attrs):
         """Valider le changement de mot de passe."""
         if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError("Les nouveaux mots de passe ne correspondent pas.")
+            raise serializers.ValidationError({'new_password_confirm': 'Les mots de passe ne correspondent pas.'})
         
         # Valider le nouveau mot de passe
         try:
@@ -155,59 +197,25 @@ class ResetPasswordSerializer(serializers.Serializer):
     """Serializer pour la réinitialisation de mot de passe."""
     
     email = serializers.EmailField()
+    new_password = serializers.CharField(min_length=8)
+    new_password_confirm = serializers.CharField()
+    token = serializers.CharField()  # Token de réinitialisation
     
-    def validate_email(self, value):
-        """Valider que l'email existe."""
-        if not User.objects.filter(email=value, is_active=True).exists():
-            raise serializers.ValidationError("Aucun utilisateur actif trouvé avec cet email.")
-        return value
+    def validate(self, attrs):
+        """Valider la réinitialisation de mot de passe."""
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Les mots de passe ne correspondent pas.'})
+        
+        return attrs
 
 
 class UserDocumentSerializer(serializers.ModelSerializer):
     """Serializer pour les documents utilisateur."""
     
-    file_url = serializers.SerializerMethodField()
-    file_size = serializers.SerializerMethodField()
-    
     class Meta:
         model = UserDocument
-        fields = [
-            'id', 'document_type', 'file', 'file_url', 'file_size',
-            'upload_date', 'is_verified', 'verification_date',
-            'verification_notes'
-        ]
-        read_only_fields = ['id', 'upload_date', 'is_verified', 'verification_date']
-    
-    def get_file_url(self, obj):
-        """Obtenir l'URL du fichier."""
-        if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None
-    
-    def get_file_size(self, obj):
-        """Obtenir la taille du fichier en bytes."""
-        if obj.file:
-            try:
-                return obj.file.size
-            except:
-                return 0
-        return 0
-    
-    def validate_file(self, value):
-        """Valider le fichier uploadé."""
-        # Vérifier la taille du fichier (max 10MB)
-        if value.size > 10 * 1024 * 1024:
-            raise serializers.ValidationError("Le fichier ne doit pas dépasser 10MB.")
-        
-        # Vérifier le type de fichier
-        allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf']
-        if value.content_type not in allowed_types:
-            raise serializers.ValidationError("Type de fichier non autorisé. Utilisez JPEG, PNG, GIF ou PDF.")
-        
-        return value
+        fields = ['id', 'document_type', 'document_file', 'status', 'uploaded_at', 'verified_at', 'rejection_reason']
+        read_only_fields = ['id', 'status', 'uploaded_at', 'verified_at', 'rejection_reason']
 
 
 class UserSearchSerializer(serializers.ModelSerializer):
@@ -217,18 +225,17 @@ class UserSearchSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'profile_summary']
+        fields = ['id', 'username', 'first_name', 'last_name', 'role', 'rating', 'total_trips', 'total_shipments', 'is_document_verified', 'profile_summary']
     
     def get_profile_summary(self, obj):
-        """Obtenir un résumé du profil pour la recherche."""
+        """Récupérer un résumé du profil utilisateur."""
         try:
-            profile = obj.userprofile
+            profile = obj.profile
             return {
-                                 'user_type': profile.user_type,
-                 'rating': profile.rating,
-                 'total_trips': profile.total_trips,
-                'total_shipments': profile.total_shipments,
-                'is_verified': profile.is_verified,
+                'rating': obj.rating,
+                'total_trips': obj.total_trips,
+                'total_shipments': obj.total_shipments,
+                'is_verified': obj.is_document_verified,
                 'country': profile.country,
                 'city': profile.city,
             }
@@ -236,28 +243,51 @@ class UserSearchSerializer(serializers.ModelSerializer):
             return None
 
 
-class LoginSerializer(serializers.Serializer):
-    """Serializer pour la connexion."""
+class RoleUpdateSerializer(serializers.Serializer):
+    """Serializer pour la mise à jour du rôle d'un utilisateur."""
     
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES)
     
-    def validate(self, attrs):
-        """Valider les identifiants de connexion."""
-        email = attrs.get('email')
-        password = attrs.get('password')
-        
-        if email and password:
-            user = authenticate(email=email, password=password)
-            if not user:
-                raise serializers.ValidationError("Identifiants invalides.")
-            if not user.is_active:
-                raise serializers.ValidationError("Compte désactivé.")
-            attrs['user'] = user
-        else:
-            raise serializers.ValidationError("Email et mot de passe requis.")
-        
-        return attrs
+    def validate_role(self, value):
+        """Valider le rôle."""
+        if value not in dict(User.ROLE_CHOICES):
+            raise serializers.ValidationError('Rôle invalide.')
+        return value
+
+
+class AdminUserSerializer(serializers.ModelSerializer):
+    """Serializer pour les utilisateurs administrateurs."""
+    
+    profile = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number', 'is_phone_verified', 'is_document_verified', 'rating', 'total_trips', 'total_shipments', 'preferred_language', 'created_at', 'updated_at', 'is_active', 'is_staff', 'is_superuser', 'profile', 'permissions']
+    
+    def get_profile(self, obj):
+        """Récupérer les données du profil utilisateur."""
+        try:
+            profile = obj.profile
+            return {
+                'birth_date': profile.birth_date,
+                'address': profile.address,
+                'city': profile.city,
+                'country': profile.country,
+                'avatar': profile.avatar.url if profile.avatar else None,
+                'bio': profile.bio,
+            }
+        except UserProfile.DoesNotExist:
+            return None
+    
+    def get_permissions(self, obj):
+        """Récupérer les permissions de l'utilisateur."""
+        return {
+            'is_admin': obj.is_admin,
+            'is_sender': obj.is_sender,
+            'is_traveler': obj.is_traveler,
+            'can_access_admin_panel': obj.can_access_admin_panel(),
+        }
 
 
 class UserStatsSerializer(serializers.Serializer):
@@ -272,16 +302,13 @@ class UserStatsSerializer(serializers.Serializer):
     member_since = serializers.DateTimeField()
     
     def to_representation(self, instance):
-        """Formater les statistiques pour l'API."""
+        """Convertir l'instance en représentation JSON."""
         return {
-            'success': True,
-            'stats': {
-                'total_trips': instance.total_trips,
-                'total_shipments': instance.total_shipments,
-                'rating': float(instance.rating),
-                'is_phone_verified': instance.is_phone_verified,
-                'is_document_verified': instance.is_document_verified,
-                'verification_status': instance.verification_status,
-                'member_since': instance.date_joined,
-            }
+            'total_trips': instance.total_trips,
+            'total_shipments': instance.total_shipments,
+            'rating': float(instance.rating),
+            'is_phone_verified': instance.is_phone_verified,
+            'is_document_verified': instance.is_document_verified,
+            'verification_status': 'verified' if instance.is_document_verified else 'pending',
+            'member_since': instance.created_at
         } 

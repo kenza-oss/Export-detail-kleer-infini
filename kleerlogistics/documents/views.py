@@ -281,7 +281,7 @@ class DocumentListView(APIView):
         responses={
             status.HTTP_200_OK: openapi.Response(
                 description="Liste des documents",
-                examples={"application/json": DOCUMENT_LIST_EXAMPLE["response"]}
+                examples={"application/json": DOCUMENT_LIST_EXAMPLE["application/json"]}
             )
         }
     )
