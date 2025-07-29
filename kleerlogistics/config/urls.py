@@ -6,7 +6,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.shortcuts import redirect
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -19,6 +20,16 @@ def health_check(request):
         'service': 'kleerlogistics',
         'version': '1.0.0'
     })
+
+# Root URL View - Redirect to API documentation
+def root_redirect(request):
+    """Redirect root URL to API documentation."""
+    return redirect('schema-swagger-ui')
+
+# Favicon View
+def favicon(request):
+    """Handle favicon requests."""
+    return HttpResponse(status=204)  # No content response
 
 # Swagger Schema View
 schema_view = get_schema_view(
@@ -35,6 +46,12 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+    # Root URL - Redirect to API documentation
+    path('', root_redirect, name='root'),
+    
+    # Favicon
+    path('favicon.ico', favicon, name='favicon'),
+    
     # Health Check
     path('health/', health_check, name='health_check'),
     
