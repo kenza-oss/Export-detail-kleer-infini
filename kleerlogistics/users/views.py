@@ -8,12 +8,18 @@ from rest_framework.response import Response
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+
+class LoginRateThrottle(AnonRateThrottle):
+    """Throttle spécifique pour le login."""
+    rate = '5/minute'
+    scope = 'login'
 
 from .models import User, UserProfile, UserDocument, OTPCode
 from .serializers import (
@@ -42,6 +48,7 @@ class UserRegistrationView(APIView):
     """Vue pour l'inscription des utilisateurs."""
     
     permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @swagger_auto_schema(
         operation_description="Inscription d'un nouvel utilisateur",
@@ -109,6 +116,8 @@ class UserLoginView(APIView):
     """Vue pour la connexion des utilisateurs."""
     
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @user_login_schema()
     def post(self, request):
@@ -149,10 +158,76 @@ class UserLoginView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class UserLogoutView(APIView):
+    """Vue pour la déconnexion des utilisateurs."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Déconnexion de l'utilisateur",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'refresh': openapi.Schema(type=openapi.TYPE_STRING, description="Refresh token à invalider")
+            },
+            required=['refresh']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Déconnexion réussie",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Déconnexion réussie"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Token invalide",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Token de rafraîchissement invalide"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Déconnexion de l'utilisateur."""
+        try:
+            refresh_token = request.data.get('refresh')
+            
+            if not refresh_token:
+                return Response({
+                    'success': False,
+                    'message': 'Token de rafraîchissement requis'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Invalider le refresh token
+            try:
+                token = RefreshToken(refresh_token)
+                token.blacklist()
+                
+                return Response({
+                    'success': True,
+                    'message': 'Déconnexion réussie'
+                })
+            except Exception as e:
+                return Response({
+                    'success': False,
+                    'message': 'Token de rafraîchissement invalide'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la déconnexion: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
 class UserProfileView(APIView):
     """Vue pour la gestion du profil utilisateur."""
     
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @user_profile_get_schema()
     def get(self, request):
@@ -174,7 +249,21 @@ class UserProfileView(APIView):
     def put(self, request):
         """Mettre à jour le profil utilisateur."""
         try:
-            profile = request.user.profile
+            user = request.user
+            profile = user.profile
+            
+            # Mettre à jour les champs de l'utilisateur
+            if 'first_name' in request.data:
+                user.first_name = request.data['first_name']
+            if 'last_name' in request.data:
+                user.last_name = request.data['last_name']
+            if 'phone_number' in request.data:
+                user.phone_number = request.data['phone_number']
+            
+            # Sauvegarder l'utilisateur
+            user.save()
+            
+            # Mettre à jour le profil
             serializer = UserProfileSerializer(profile, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -379,6 +468,7 @@ class ChangePasswordView(APIView):
     """Vue pour changer le mot de passe."""
     
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @swagger_auto_schema(
         operation_description="Changer le mot de passe",
@@ -439,6 +529,7 @@ class RoleUpdateView(APIView):
     """Vue pour mettre à jour le rôle d'un utilisateur."""
     
     permission_classes = [IsAdminUser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @swagger_auto_schema(
         operation_description="Mettre à jour le rôle d'un utilisateur",
@@ -561,6 +652,7 @@ class AdminUserDetailView(APIView):
     """Vue admin pour les détails d'un utilisateur."""
     
     permission_classes = [IsAdminUser]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @admin_user_detail_schema()
     def get(self, request, pk):
@@ -651,6 +743,7 @@ class UserProfileUpdateView(APIView):
     """Vue pour la mise à jour du profil."""
     
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @swagger_auto_schema(
         operation_description="Mettre à jour partiellement le profil",
@@ -787,6 +880,7 @@ class ResetPasswordView(APIView):
     """Vue pour réinitialiser le mot de passe."""
     
     permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @swagger_auto_schema(
         operation_description="Demander une réinitialisation de mot de passe",
@@ -843,6 +937,7 @@ class ResetPasswordConfirmView(APIView):
     """Vue pour confirmer la réinitialisation du mot de passe."""
     
     permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @reset_password_confirm_schema()
     def post(self, request):
@@ -907,6 +1002,7 @@ class UserDocumentUploadView(APIView):
     """Vue pour uploader un document."""
     
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @user_document_upload_schema()
     def post(self, request):

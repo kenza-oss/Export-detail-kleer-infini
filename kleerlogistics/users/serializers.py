@@ -19,8 +19,18 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number', 'is_phone_verified', 'is_document_verified', 'rating', 'total_trips', 'total_shipments', 'preferred_language', 'created_at', 'updated_at', 'profile', 'permissions']
-        read_only_fields = ['id', 'created_at', 'updated_at', 'rating', 'total_trips', 'total_shipments', 'is_phone_verified', 'is_document_verified']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'role', 
+            'phone_number', 'is_phone_verified', 'is_document_verified', 
+            'rating', 'total_trips', 'total_shipments', 'preferred_language',
+            'is_active_traveler', 'is_active_sender', 'wallet_balance', 'commission_rate',
+            'created_at', 'updated_at', 'profile', 'permissions'
+        ]
+        read_only_fields = [
+            'id', 'created_at', 'updated_at', 'rating', 'total_trips', 
+            'total_shipments', 'is_phone_verified', 'is_document_verified',
+            'is_active_traveler', 'is_active_sender', 'wallet_balance'
+        ]
     
     def get_profile(self, obj):
         """Récupérer les données du profil utilisateur."""
@@ -177,13 +187,9 @@ class ChangePasswordSerializer(serializers.Serializer):
     
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True, min_length=8)
-    new_password_confirm = serializers.CharField(required=True)
     
     def validate(self, attrs):
         """Valider le changement de mot de passe."""
-        if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError({'new_password_confirm': 'Les mots de passe ne correspondent pas.'})
-        
         # Valider le nouveau mot de passe
         try:
             validate_password(attrs['new_password'])
@@ -263,7 +269,14 @@ class AdminUserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'phone_number', 'is_phone_verified', 'is_document_verified', 'rating', 'total_trips', 'total_shipments', 'preferred_language', 'created_at', 'updated_at', 'is_active', 'is_staff', 'is_superuser', 'profile', 'permissions']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'role', 
+            'phone_number', 'is_phone_verified', 'is_document_verified', 
+            'rating', 'total_trips', 'total_shipments', 'preferred_language',
+            'is_active_traveler', 'is_active_sender', 'wallet_balance', 'commission_rate',
+            'created_at', 'updated_at', 'is_active', 'is_staff', 'is_superuser', 
+            'profile', 'permissions'
+        ]
     
     def get_profile(self, obj):
         """Récupérer les données du profil utilisateur."""
@@ -311,4 +324,51 @@ class UserStatsSerializer(serializers.Serializer):
             'is_document_verified': instance.is_document_verified,
             'verification_status': 'verified' if instance.is_document_verified else 'pending',
             'member_since': instance.created_at
-        } 
+        }
+
+
+class UserWalletSerializer(serializers.ModelSerializer):
+    """Serializer pour la gestion du portefeuille utilisateur."""
+    
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'wallet_balance', 'commission_rate']
+        read_only_fields = ['id', 'username']
+
+
+class WalletTransactionSerializer(serializers.Serializer):
+    """Serializer pour les transactions du portefeuille."""
+    
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    transaction_type = serializers.ChoiceField(choices=[
+        ('deposit', 'Dépôt'),
+        ('withdrawal', 'Retrait'),
+        ('commission', 'Commission'),
+        ('payment', 'Paiement'),
+        ('refund', 'Remboursement')
+    ])
+    description = serializers.CharField(max_length=255, required=False)
+    
+    def validate_amount(self, value):
+        """Valider le montant de la transaction."""
+        if value <= 0:
+            raise serializers.ValidationError('Le montant doit être positif.')
+        return value
+
+
+class UserVerificationStatusSerializer(serializers.ModelSerializer):
+    """Serializer pour le statut de vérification de l'utilisateur."""
+    
+    verification_status = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'is_phone_verified', 'is_document_verified',
+            'verification_status'
+        ]
+        read_only_fields = ['id', 'username', 'is_phone_verified', 'is_document_verified']
+    
+    def get_verification_status(self, obj):
+        """Récupérer le statut de vérification complet."""
+        return obj.get_verification_status() 

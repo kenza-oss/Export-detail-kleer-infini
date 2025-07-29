@@ -12,6 +12,7 @@ urlpatterns = [
     # Authentication JWT
     path('auth/login/', views.UserLoginView.as_view(), name='user_login'),
     path('auth/register/', views.UserRegistrationView.as_view(), name='user_registration'),
+    path('auth/logout/', views.UserLogoutView.as_view(), name='user_logout'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # OTP Verification

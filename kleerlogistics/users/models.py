@@ -3,6 +3,8 @@ from django.db import models
 from django.core.validators import RegexValidator
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class User(AbstractUser):
     ROLE_CHOICES = [
@@ -26,6 +28,10 @@ class User(AbstractUser):
     total_trips = models.PositiveIntegerField(default=0)
     total_shipments = models.PositiveIntegerField(default=0)
     preferred_language = models.CharField(max_length=5, default='fr')
+    is_active_traveler = models.BooleanField(default=False, help_text="Voyageur actif avec trajets en cours")
+    is_active_sender = models.BooleanField(default=False, help_text="Expéditeur actif avec envois en cours")
+    wallet_balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Solde du portefeuille")
+    commission_rate = models.DecimalField(max_digits=5, decimal_places=2, default=10.00, help_text="Taux de commission en %")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -50,6 +56,29 @@ class User(AbstractUser):
     
     def can_access_admin_panel(self):
         return self.is_admin
+    
+    def get_verification_status(self):
+        """Retourne le statut de vérification complet de l'utilisateur"""
+        return {
+            'phone_verified': self.is_phone_verified,
+            'document_verified': self.is_document_verified,
+            'fully_verified': self.is_phone_verified and self.is_document_verified
+        }
+
+# Signal pour créer automatiquement le profil utilisateur
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Créer automatiquement le profil utilisateur lors de la création d'un utilisateur."""
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    """Sauvegarder le profil utilisateur."""
+    try:
+        instance.profile.save()
+    except UserProfile.DoesNotExist:
+        UserProfile.objects.create(user=instance)
 
 class OTPCode(models.Model):
     """Modèle pour gérer les codes OTP"""
@@ -77,6 +106,35 @@ class OTPCode(models.Model):
     def mark_as_used(self):
         self.is_used = True
         self.save()
+    
+    @classmethod
+    def create_otp(cls, phone_number, user=None, expiry_minutes=10):
+        """Crée un nouveau code OTP"""
+        import random
+        code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
+        
+        return cls.objects.create(
+            user=user,
+            phone_number=phone_number,
+            code=code,
+            expires_at=expires_at
+        )
+    
+    @classmethod
+    def get_valid_otp(cls, phone_number, code):
+        """Récupère un code OTP valide"""
+        try:
+            otp = cls.objects.get(
+                phone_number=phone_number,
+                code=code,
+                is_used=False
+            )
+            if not otp.is_expired():
+                return otp
+        except cls.DoesNotExist:
+            pass
+        return None
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -109,3 +167,44 @@ class UserDocument(models.Model):
     verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='verified_documents')
     rejection_reason = models.TextField(blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        verbose_name = 'Document utilisateur'
+        verbose_name_plural = 'Documents utilisateur'
+        ordering = ['-uploaded_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_document_type_display()}"
+    
+    def approve(self, verified_by_user):
+        """Approuve le document"""
+        self.status = 'approved'
+        self.verified_at = timezone.now()
+        self.verified_by = verified_by_user
+        self.save()
+        
+        # Mettre à jour le statut de vérification de l'utilisateur
+        user_documents = self.user.documents.filter(status='approved')
+        if user_documents.count() >= 2:  # Au moins 2 documents approuvés
+            self.user.is_document_verified = True
+            self.user.save()
+    
+    def reject(self, verified_by_user, reason):
+        """Rejette le document"""
+        self.status = 'rejected'
+        self.verified_at = timezone.now()
+        self.verified_by = verified_by_user
+        self.rejection_reason = reason
+        self.save()
+    
+    @property
+    def is_approved(self):
+        return self.status == 'approved'
+    
+    @property
+    def is_pending(self):
+        return self.status == 'pending'
+    
+    @property
+    def is_rejected(self):
+        return self.status == 'rejected'

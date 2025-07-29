@@ -480,3 +480,284 @@ class OTPIntegrationTests(TestCase):
         # Assert
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data['success'])
+
+
+class UserModelTests(TestCase):
+    """Tests unitaires pour les modèles User."""
+    
+    def setUp(self):
+        """Configuration initiale."""
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='TestPass123!',
+            role='sender'
+        )
+    
+    def test_user_creation_with_default_values(self):
+        """Test de création d'utilisateur avec les valeurs par défaut."""
+        self.assertEqual(self.user.wallet_balance, 0.00)
+        self.assertEqual(self.user.commission_rate, 10.00)
+        self.assertFalse(self.user.is_active_traveler)
+        self.assertFalse(self.user.is_active_sender)
+        self.assertEqual(self.user.preferred_language, 'fr')
+    
+    def test_user_role_properties(self):
+        """Test des propriétés de rôle utilisateur."""
+        # Test sender
+        self.assertTrue(self.user.is_sender)
+        self.assertFalse(self.user.is_traveler)
+        self.assertFalse(self.user.is_admin)
+        
+        # Test traveler
+        self.user.role = 'traveler'
+        self.user.save()
+        self.assertFalse(self.user.is_sender)
+        self.assertTrue(self.user.is_traveler)
+        
+        # Test both
+        self.user.role = 'both'
+        self.user.save()
+        self.assertTrue(self.user.is_sender)
+        self.assertTrue(self.user.is_traveler)
+        
+        # Test admin
+        self.user.role = 'admin'
+        self.user.save()
+        self.assertTrue(self.user.is_admin)
+    
+    def test_user_verification_status(self):
+        """Test du statut de vérification utilisateur."""
+        status = self.user.get_verification_status()
+        
+        self.assertIn('phone_verified', status)
+        self.assertIn('document_verified', status)
+        self.assertIn('fully_verified', status)
+        
+        self.assertFalse(status['phone_verified'])
+        self.assertFalse(status['document_verified'])
+        self.assertFalse(status['fully_verified'])
+        
+        # Vérifier le téléphone
+        self.user.is_phone_verified = True
+        self.user.save()
+        status = self.user.get_verification_status()
+        self.assertTrue(status['phone_verified'])
+        self.assertFalse(status['fully_verified'])
+        
+        # Vérifier les documents
+        self.user.is_document_verified = True
+        self.user.save()
+        status = self.user.get_verification_status()
+        self.assertTrue(status['fully_verified'])
+    
+    def test_user_wallet_operations(self):
+        """Test des opérations de portefeuille utilisateur."""
+        # Test initial
+        self.assertEqual(self.user.wallet_balance, 0.00)
+        
+        # Test dépôt
+        self.user.wallet_balance += 100.00
+        self.user.save()
+        self.assertEqual(self.user.wallet_balance, 100.00)
+        
+        # Test retrait
+        self.user.wallet_balance -= 25.50
+        self.user.save()
+        self.assertEqual(self.user.wallet_balance, 74.50)
+    
+    def test_user_commission_rate(self):
+        """Test du taux de commission utilisateur."""
+        # Test valeur par défaut
+        self.assertEqual(self.user.commission_rate, 10.00)
+        
+        # Test modification
+        self.user.commission_rate = 15.50
+        self.user.save()
+        self.assertEqual(self.user.commission_rate, 15.50)
+    
+    def test_user_active_status(self):
+        """Test du statut actif utilisateur."""
+        # Test initial
+        self.assertFalse(self.user.is_active_traveler)
+        self.assertFalse(self.user.is_active_sender)
+        
+        # Test activation voyageur
+        self.user.is_active_traveler = True
+        self.user.save()
+        self.assertTrue(self.user.is_active_traveler)
+        
+        # Test activation expéditeur
+        self.user.is_active_sender = True
+        self.user.save()
+        self.assertTrue(self.user.is_active_sender)
+
+
+class OTPCodeModelTests(TestCase):
+    """Tests unitaires pour le modèle OTPCode."""
+    
+    def setUp(self):
+        """Configuration initiale."""
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='TestPass123!'
+        )
+    
+    def test_otp_creation(self):
+        """Test de création d'un code OTP."""
+        otp = OTPCode.create_otp(
+            phone_number='+213123456789',
+            user=self.user,
+            expiry_minutes=10
+        )
+        
+        self.assertEqual(otp.phone_number, '+213123456789')
+        self.assertEqual(otp.user, self.user)
+        self.assertEqual(len(otp.code), 6)
+        self.assertTrue(otp.code.isdigit())
+        self.assertFalse(otp.is_used)
+        self.assertFalse(otp.is_expired())
+    
+    def test_otp_validation(self):
+        """Test de validation d'un code OTP."""
+        otp = OTPCode.create_otp(
+            phone_number='+213123456789',
+            user=self.user
+        )
+        
+        # Test OTP valide
+        valid_otp = OTPCode.get_valid_otp('+213123456789', otp.code)
+        self.assertEqual(valid_otp, otp)
+        
+        # Test OTP utilisé
+        otp.mark_as_used()
+        valid_otp = OTPCode.get_valid_otp('+213123456789', otp.code)
+        self.assertIsNone(valid_otp)
+    
+    def test_otp_expiration(self):
+        """Test d'expiration d'un code OTP."""
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        otp = OTPCode.objects.create(
+            user=self.user,
+            phone_number='+213123456789',
+            code='123456',
+            expires_at=timezone.now() - timedelta(minutes=1)  # Expiré
+        )
+        
+        self.assertTrue(otp.is_expired())
+        self.assertFalse(otp.is_valid())
+    
+    def test_otp_mark_as_used(self):
+        """Test de marquage d'un OTP comme utilisé."""
+        otp = OTPCode.create_otp(
+            phone_number='+213123456789',
+            user=self.user
+        )
+        
+        self.assertFalse(otp.is_used)
+        otp.mark_as_used()
+        self.assertTrue(otp.is_used)
+
+
+class UserDocumentModelTests(TestCase):
+    """Tests unitaires pour le modèle UserDocument."""
+    
+    def setUp(self):
+        """Configuration initiale."""
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='TestPass123!'
+        )
+        self.admin = User.objects.create_user(
+            username='admin',
+            email='admin@example.com',
+            password='AdminPass123!',
+            role='admin'
+        )
+    
+    def test_document_creation(self):
+        """Test de création d'un document utilisateur."""
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        
+        test_file = SimpleUploadedFile(
+            "test_document.pdf",
+            b"test file content",
+            content_type="application/pdf"
+        )
+        
+        document = UserDocument.objects.create(
+            user=self.user,
+            document_type='passport',
+            document_file=test_file
+        )
+        
+        self.assertEqual(document.user, self.user)
+        self.assertEqual(document.document_type, 'passport')
+        self.assertEqual(document.status, 'pending')
+        self.assertIsNone(document.verified_at)
+        self.assertIsNone(document.verified_by)
+    
+    def test_document_approval(self):
+        """Test d'approbation d'un document."""
+        document = UserDocument.objects.create(
+            user=self.user,
+            document_type='passport',
+            document_file='test.pdf'
+        )
+        
+        self.assertEqual(document.status, 'pending')
+        self.assertFalse(document.is_approved)
+        
+        document.approve(self.admin)
+        
+        self.assertEqual(document.status, 'approved')
+        self.assertTrue(document.is_approved)
+        self.assertIsNotNone(document.verified_at)
+        self.assertEqual(document.verified_by, self.admin)
+    
+    def test_document_rejection(self):
+        """Test de rejet d'un document."""
+        document = UserDocument.objects.create(
+            user=self.user,
+            document_type='passport',
+            document_file='test.pdf'
+        )
+        
+        reason = "Document illisible"
+        document.reject(self.admin, reason)
+        
+        self.assertEqual(document.status, 'rejected')
+        self.assertTrue(document.is_rejected)
+        self.assertEqual(document.rejection_reason, reason)
+        self.assertEqual(document.verified_by, self.admin)
+    
+    def test_document_status_properties(self):
+        """Test des propriétés de statut de document."""
+        document = UserDocument.objects.create(
+            user=self.user,
+            document_type='passport',
+            document_file='test.pdf'
+        )
+        
+        # Test pending
+        self.assertTrue(document.is_pending)
+        self.assertFalse(document.is_approved)
+        self.assertFalse(document.is_rejected)
+        
+        # Test approved
+        document.status = 'approved'
+        document.save()
+        self.assertFalse(document.is_pending)
+        self.assertTrue(document.is_approved)
+        self.assertFalse(document.is_rejected)
+        
+        # Test rejected
+        document.status = 'rejected'
+        document.save()
+        self.assertFalse(document.is_pending)
+        self.assertFalse(document.is_approved)
+        self.assertTrue(document.is_rejected)

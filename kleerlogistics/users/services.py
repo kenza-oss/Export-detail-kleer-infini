@@ -161,23 +161,23 @@ class AuthService:
     
     @staticmethod
     def create_user_with_profile(user_data):
-        """Crée un utilisateur avec son profil"""
+        """Créer un utilisateur avec son profil."""
         from django.db import transaction
-        from .models import UserProfile
         
         with transaction.atomic():
+            # Créer l'utilisateur
             user = User.objects.create_user(
                 username=user_data['username'],
                 email=user_data['email'],
                 password=user_data['password'],
                 first_name=user_data.get('first_name', ''),
                 last_name=user_data.get('last_name', ''),
-                phone_number=user_data.get('phone_number', ''),
+                phone_number=user_data.get('phone_number'),
                 role=user_data.get('role', 'sender')
             )
             
-            # Créer le profil utilisateur
-            UserProfile.objects.create(user=user)
+            # Le profil sera créé automatiquement par le signal
+            # Pas besoin de le créer manuellement
             
             return user
     

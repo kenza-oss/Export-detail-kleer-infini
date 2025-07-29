@@ -86,4 +86,87 @@ class IsDocumentVerified(permissions.BasePermission):
             request.user and
             request.user.is_authenticated and
             request.user.is_document_verified
+        )
+
+
+class IsActiveTraveler(permissions.BasePermission):
+    """
+    Permission pour les voyageurs actifs.
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_traveler and
+            request.user.is_active_traveler
+        )
+
+
+class IsActiveSender(permissions.BasePermission):
+    """
+    Permission pour les expéditeurs actifs.
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_sender and
+            request.user.is_active_sender
+        )
+
+
+class IsFullyVerified(permissions.BasePermission):
+    """
+    Permission pour les utilisateurs entièrement vérifiés (téléphone + documents).
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_phone_verified and
+            request.user.is_document_verified
+        )
+
+
+class CanAccessWallet(permissions.BasePermission):
+    """
+    Permission pour accéder aux fonctionnalités de portefeuille.
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_phone_verified
+        )
+
+
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    """
+    Permission pour permettre la lecture à tous les utilisateurs authentifiés,
+    mais la modification uniquement au propriétaire.
+    """
+    def has_object_permission(self, request, view, obj):
+        # Lecture autorisée pour tous les utilisateurs authentifiés
+        if request.method in permissions.SAFE_METHODS:
+            return request.user and request.user.is_authenticated
+        
+        # Écriture uniquement pour le propriétaire ou admin
+        if hasattr(obj, 'user'):
+            return obj.user == request.user or request.user.is_admin
+        elif hasattr(obj, 'id'):
+            return obj.id == request.user.id or request.user.is_admin
+        
+        return False
+
+
+class IsVerifiedForTransactions(permissions.BasePermission):
+    """
+    Permission pour les transactions (nécessite une vérification complète).
+    """
+    def has_permission(self, request, view):
+        return bool(
+            request.user and
+            request.user.is_authenticated and
+            request.user.is_phone_verified and
+            request.user.is_document_verified
         ) 
