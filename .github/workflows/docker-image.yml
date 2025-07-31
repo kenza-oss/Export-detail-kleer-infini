@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - backend/romualdo
+  workflow_dispatch:
 
 jobs:
   build-and-push:
