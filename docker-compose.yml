@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: kleerlogistics_postgres
+    environment:
+      POSTGRES_DB: kleerlogistics
+      POSTGRES_USER: romualdo
+      POSTGRES_PASSWORD: supersecure
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+  # Cache Redis
+  redis:
+    image: redis:7-alpine
+    container_name: kleerlogistics_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+  # Application Django served via Gunicorn
+  web:
+    build: .
+    container_name: kleerlogistics_web
+    volumes:
+      #- ./kleerlogistics/Export-detail-kleer-infini:/app
+      # ADDED: shared volume for static files
+      - static_volume:/app/static
+    # CHANGED: expose instead of ports (Nginx will handle incoming requests)
+    expose:
+      - "8000"
+    environment:
+      - DEBUG=True
+      - DB_HOST=postgres
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+  # ADDED: Nginx reverse proxy service
+  nginx:
+    image: nginx:alpine
+    container_name: kleerlogistics_nginx
+    ports:
+      - "80:80"  # Public port
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf  # Nginx config file
+      - static_volume:/app/static           # Serve static files
+    depends_on:
+      - web
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
+# ADDED: volume for static files
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  static_volume:
+
+networks:
+  kleerlogistics_network:
+    driver: bridge
