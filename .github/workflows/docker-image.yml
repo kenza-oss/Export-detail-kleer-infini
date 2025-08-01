@@ -1,10 +1,11 @@
 name: Deploy backend with DevOps Docker configs
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - backend/romualdo
-  workflow_dispatch:
+  
 
 jobs:
   build-and-push:
