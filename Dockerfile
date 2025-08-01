@@ -42,4 +42,4 @@ USER appuser
 EXPOSE 8000
 # Lancer l'application avec Gunicorn
 
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "--access-logfile", "-", "--workers", "3", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
