@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
-          ref: devops
+          ref: Meriem-→-infra/meriem
           path: Meriem-→-infra/meriem
 
       - name: Copy Docker files from devops branch
