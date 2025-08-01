@@ -29,7 +29,6 @@ jobs:
           cp devops_branch/Dockerfile ./Dockerfile
           cp devops_branch/docker-compose.yml ./docker-compose.yml
           cp devops_branch/nginx.conf ./nginx.conf
-          cp -r devops_branch/kleerlogistics ./kleerlogistics
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
