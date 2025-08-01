@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - backend/romualdo
+      - Meriem-→-infra/meriem
   
 
 jobs:
