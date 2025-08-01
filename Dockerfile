@@ -26,10 +26,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copier le code de l'application (entier)
-COPY kleerlogistics/ /app/kleerlogistics/
-
-# Changer de répertoire de travail vers la racine Django
+COPY . /app/
 WORKDIR /app/kleerlogistics
+
 
 # Collecte des fichiers statiques
 #RUN python manage.py collectstatic --noinput
