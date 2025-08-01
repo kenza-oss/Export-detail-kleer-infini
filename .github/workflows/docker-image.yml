@@ -6,30 +6,30 @@ on:
     branches:
       - backend/romualdo
       - Meriem-→-infra/meriem
-  
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout backend branch (current)
+      - name: Checkout backend branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Checkout DevOps branch (to get Docker files)
+      - name: Checkout DevOps branch
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           ref: Meriem-→-infra/meriem
-          path: Meriem-→-infra/meriem
+          path: devops_branch
 
-      - name: Copy Docker files from devops branch
+      - name: Copy Docker files
         run: |
-          cp Meriem-→-infra/meriem/Dockerfile ./Dockerfile
-          cp Meriem-→-infra/meriem/docker-compose.yml ./docker-compose.yml
-          cp -r Meriem-→-infra/meriem/nginx.conf ./nginx.conf
+          cp devops_branch/Dockerfile ./Dockerfile
+          cp devops_branch/docker-compose.yml ./docker-compose.yml
+          cp devops_branch/nginx.conf ./nginx.conf
+          cp -r devops_branch/kleerlogistics ./kleerlogistics
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -45,5 +45,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: yourdockerhubusername/backend-app:latest
-
+          tags: kleerlogistics/backend-app:latest
