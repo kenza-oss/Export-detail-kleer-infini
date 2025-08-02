@@ -2,22 +2,19 @@
 
 **Backend Django API** pour connecter voyageurs et expéditeurs de colis avec matching intelligent et système de paiements.
 
-## 📊 **État du Projet - AUTHENTIFICATION COMPLÈTE** ✅
+## 🚀 **État du Projet**
 
-### ✅ **Système d'Authentification JWT + OTP - 100% FONCTIONNEL**
+### ✅ **Modules Fonctionnels**
+- **🔐 Authentication** : JWT + OTP + Rôles + Permissions
+- **👥 Users** : Profils, documents, vérification
+- **📦 Shipments** : Création, tracking, OTP, validation
+- **✈️ Trips** : Gestion trajets, capacité, documents
+- **🎯 Matching** : **Algorithme intelligent v2.0 avec géolocalisation**
+- **💰 Payments** : Portefeuilles, transactions, commissions
+- **💬 Chat** : Messagerie, conversations, fichiers
+- **⭐ Ratings** : Évaluations, commentaires, statistiques
 
-| Module | Statut | Fonctionnalités |
-|--------|--------|-----------------|
-| **🔐 Authentication** | ✅ **COMPLET** | JWT + OTP + Rôles + Permissions |
-| **👥 Users** | ✅ **COMPLET** | Profils, documents, vérification |
-| **📦 Shipments** | ✅ **COMPLET** | Création, tracking, OTP, validation |
-| **✈️ Trips** | ✅ **COMPLET** | Gestion trajets, capacité, documents |
-| **🎯 Matching** | ✅ **COMPLET** | Algorithme intelligent, scoring, préférences |
-| **💰 Payments** | ✅ **COMPLET** | Portefeuilles, transactions, commissions |
-| **💬 Chat** | ✅ **COMPLET** | Messagerie, conversations, fichiers |
-| **⭐ Ratings** | ✅ **COMPLET** | Évaluations, commentaires, statistiques |
-
-### 🏗️ **Architecture Technique**
+## 🏗️ **Architecture**
 
 ```
 kleerlogistics/
@@ -25,7 +22,7 @@ kleerlogistics/
 ├── users/                  # ✅ Authentification & rôles
 ├── shipments/              # ✅ Gestion des envois
 ├── trips/                  # ✅ Gestion des trajets
-├── matching/               # ✅ Algorithme de matching
+├── matching/               # ✅ **Algorithme de matching v2.0**
 ├── payments/               # ✅ Système de paiements
 ├── chat/                   # ✅ Messagerie
 ├── ratings/                # ✅ Système d'évaluations
@@ -37,251 +34,129 @@ kleerlogistics/
 └── internationalization/   # 🔄 Multilingue
 ```
 
-## 🔐 **Système d'Authentification Implémenté**
+## 🎯 **Matching Intelligent v2.0**
 
-### **✅ JWT Authentication**
-- **Login/Logout** avec tokens JWT (access + refresh)
-- **Refresh Token** automatique
-- **Claims personnalisés** dans les tokens (user_id, username, role, is_admin)
-- **Gestion des permissions** basée sur les rôles
+### **Algorithme Avancé**
+- **Score Géographique (40%)** : Distance origine/destination avec formule de Haversine
+- **Score de Capacité (25%)** : Compatibilité poids/volume/type de colis
+- **Score Temporel (20%)** : Timing ramassage/livraison + flexibilité
+- **Score Utilisateur (15%)** : Notes + correspondance préférences
 
-### **✅ OTP System (One-Time Password)**
-- **Envoi d'OTP** par SMS (simulation en développement)
-- **Vérification d'OTP** avec validation
-- **Expiration automatique** (10 minutes)
-- **Sécurité** : Empêche l'énumération des numéros de téléphone
-
-### **✅ Role-Based Access Control**
-- **Rôles multiples** : `sender`, `traveler`, `admin`, `both`
-- **Permissions granulaires** par rôle
-- **Middleware de sécurité** pour les endpoints admin
-- **Validation des rôles** dans les serializers
+### **Endpoints API**
+```http
+POST /api/v1/matching/find-matches/     # Matching intelligent
+GET  /api/v1/matching/advanced-matches/ # Liste avec analytics
+POST /api/v1/matching/optimize/         # Optimisation automatique
+GET  /api/v1/matching/analytics/        # Analytics détaillés
+```
 
 ## 🐳 **Installation avec Docker**
 
-### Prérequis
-- Docker & Docker Compose
-- Git
-
-### 🚀 **Démarrage Rapide**
-
-1. **Cloner le projet**
+### **Démarrage Rapide**
 ```bash
+# Cloner le projet
 git clone https://github.com/kenza-oss/Export-detail-kleer-infini.git
 cd Export-detail-kleer-infini
-```
 
-2. **Lancer avec Docker Compose**
-```bash
+# Lancer avec Docker Compose
 docker-compose up -d
-```
 
-3. **Vérifier les services**
-```bash
+# Vérifier les services
 docker-compose ps
 ```
 
-4. **Accéder à l'application**
+### **Accès**
 - **API**: http://localhost:8000
 - **Admin**: http://localhost:8000/admin
 - **Swagger**: http://localhost:8000/swagger/
 
-### 🔧 **Configuration Docker**
+## 🔐 **Authentification**
 
-```yaml
-# docker-compose.yml
-services:
-  kleerlogistics:
-    build: .
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-      - redis
-    environment:
-      - DEBUG=True
-      - DB_HOST=postgres
-      - REDIS_URL=redis://redis:6379
-
-  postgres:
-    image: postgres:15
-    environment:
-      - POSTGRES_DB=kleerlogistics
-      - POSTGRES_USER=kleerlogistics
-      - POSTGRES_PASSWORD=password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-```
-
-## 📋 **API Endpoints d'Authentification**
-
-### 🔐 **Authentification JWT**
+### **JWT + OTP**
 ```http
-POST /api/v1/users/auth/register/           # Inscription utilisateur
-POST /api/v1/users/auth/login/              # Connexion JWT
-POST /api/v1/users/auth/token/refresh/      # Refresh token
+POST /api/v1/users/auth/register/       # Inscription
+POST /api/v1/users/auth/login/          # Connexion JWT
+POST /api/v1/users/auth/otp/send/       # Envoyer OTP
+POST /api/v1/users/auth/otp/verify/     # Vérifier OTP
 ```
 
-### 📱 **Système OTP**
+### **Profils & Documents**
 ```http
-POST /api/v1/users/auth/otp/send/           # Envoyer OTP
-POST /api/v1/users/auth/otp/verify/         # Vérifier OTP
-GET  /api/v1/users/auth/phone/status/       # Statut vérification
+GET  /api/v1/users/profile/             # Récupérer profil
+PUT  /api/v1/users/profile/update/      # Mettre à jour profil
+GET  /api/v1/users/documents/           # Liste documents
+POST /api/v1/users/documents/upload/    # Upload document
 ```
 
-### 🔑 **Gestion des Mots de Passe**
+## 📦 **Shipments & Trips**
+
+### **Gestion des Envois**
 ```http
-POST /api/v1/users/auth/password/change/    # Changer mot de passe
-POST /api/v1/users/auth/password/reset/     # Demander réinitialisation
-POST /api/v1/users/auth/password/reset/confirm/ # Confirmer réinitialisation
+POST /api/v1/shipments/                 # Créer shipment
+GET  /api/v1/shipments/                 # Liste shipments
+GET  /api/v1/shipments/{id}/tracking/   # Tracking en temps réel
+POST /api/v1/shipments/{id}/validate/   # Validation OTP
 ```
 
-### 👤 **Profils Utilisateurs**
+### **Gestion des Trajets**
 ```http
-GET  /api/v1/users/profile/                 # Récupérer profil
-PUT  /api/v1/users/profile/update/          # Mettre à jour profil
-GET  /api/v1/users/permissions/             # Permissions utilisateur
+POST /api/v1/trips/                     # Créer trajet
+GET  /api/v1/trips/                     # Liste trajets
+GET  /api/v1/trips/{id}/documents/      # Documents trajet
 ```
 
-### 📄 **Documents Utilisateurs**
+## 💰 **Paiements & Chat**
+
+### **Portefeuilles & Transactions**
 ```http
-GET  /api/v1/users/documents/               # Liste documents
-POST /api/v1/users/documents/upload/        # Upload document
-GET  /api/v1/users/documents/{id}/          # Détail document
-DELETE /api/v1/users/documents/{id}/        # Supprimer document
+GET  /api/v1/payments/wallet/           # Solde portefeuille
+GET  /api/v1/payments/transactions/     # Historique transactions
+POST /api/v1/payments/transfer/         # Transfert
 ```
 
-### 🔍 **Recherche et Admin**
+### **Messagerie**
 ```http
-GET  /api/v1/users/search/?q=term           # Rechercher utilisateurs
-GET  /api/v1/users/admin/users/             # Liste tous utilisateurs (admin)
-GET  /api/v1/users/admin/users/{id}/        # Détail utilisateur (admin)
-PUT  /api/v1/users/admin/users/{id}/role/   # Modifier rôle (admin)
+GET  /api/v1/chat/conversations/        # Conversations
+POST /api/v1/chat/messages/             # Envoyer message
+GET  /api/v1/chat/messages/{id}/        # Détail message
 ```
 
-## 🚀 **Fonctionnalités Avancées Implémentées**
-
-### 🎯 **Matching Intelligent**
-- **Algorithme de scoring** (0-100%)
-- **Facteurs multiples** : géographique, poids, type, fragilité, dates
-- **Gestion de la flexibilité** des dates
-- **Préférences utilisateur** et blacklist
-- **Auto-acceptation** selon seuils
-
-### 📦 **Système de Tracking**
-- **Événements en temps réel** pour chaque shipment
-- **Statuts multiples** : draft, pending, matched, in_transit, delivered
-- **Historique complet** des événements
-- **Géolocalisation** des événements
-
-### 💰 **Gestion des Portefeuilles**
-- **Soldes disponibles** et en attente
-- **Transactions sécurisées** avec historique
-- **Mise en attente** de fonds pour transactions
-- **Support multi-devises** (DZD par défaut)
-- **Système de commissions** automatique
-
-### 🔐 **Système OTP**
-- **Génération automatique** de codes OTP à 6 chiffres
-- **Validation sécurisée** pour livraison
-- **Expiration automatique** des codes
-- **Sécurité renforcée** pour les livraisons
-
-### 💬 **Messagerie Intégrée**
-- **Conversations** entre expéditeurs et voyageurs
-- **Messages texte, images, fichiers, localisation**
-- **Statut de lecture** des messages
-- **Métadonnées** pour les fichiers
-- **Messages système** automatiques
-
-### ⭐ **Système d'Évaluations**
-- **Évaluations 1-5 étoiles** avec commentaires
-- **Validation des permissions** et relations
-- **Mise à jour automatique** des notes moyennes
-- **Statistiques détaillées** par utilisateur
-- **API REST complète** avec filtrage
+## ⭐ **Évaluations**
+```http
+POST /api/v1/ratings/                   # Créer évaluation
+GET  /api/v1/ratings/user/{id}/         # Évaluations utilisateur
+GET  /api/v1/ratings/stats/             # Statistiques
+```
 
 ## 🛠️ **Commandes Utiles**
 
-### Docker
+### **Docker**
 ```bash
-# Lancer les services
-docker-compose up -d
-
-# Voir les logs
-docker-compose logs -f kleerlogistics
-
-# Arrêter les services
-docker-compose down
-
-# Reconstruire l'image
-docker-compose build --no-cache
+docker-compose up -d                     # Lancer services
+docker-compose logs -f                   # Voir logs
+docker-compose down                      # Arrêter services
+docker-compose build --no-cache         # Reconstruire image
 ```
 
-### Développement
+### **Développement**
 ```bash
 # Accéder au container
 docker-compose exec kleerlogistics bash
 
-# Créer un superuser
+# Créer superuser
 docker-compose exec kleerlogistics python manage.py createsuperuser
 
-# Appliquer les migrations
+# Migrations
 docker-compose exec kleerlogistics python manage.py migrate
 
-# Collecter les fichiers statiques
-docker-compose exec kleerlogistics python manage.py collectstatic
-```
-
-### Tests d'Authentification
-```bash
-# Test d'inscription
-curl -X POST http://localhost:8000/api/v1/users/auth/register/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "email": "test@example.com",
-    "password": "TestPassword123!",
-    "password_confirm": "TestPassword123!",
-    "first_name": "Test",
-    "last_name": "User",
-    "phone_number": "+213123456789",
-    "role": "sender"
-  }'
-
-# Test de connexion
-curl -X POST http://localhost:8000/api/v1/users/auth/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "testuser",
-    "password": "TestPassword123!"
-  }'
-
-# Test d'envoi OTP
-curl -X POST http://localhost:8000/api/v1/users/auth/otp/send/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "phone_number": "+213123456789"
-  }'
-
-# Health check
-curl http://localhost:8000/health/
+# Tests
+curl http://localhost:8000/health/       # Health check
 ```
 
 ## 📊 **Base de Données**
 
-### **Modèles d'Authentification Implémentés**
-- ✅ `User` - Utilisateurs avec rôles et permissions
-- ✅ `UserProfile` - Profils utilisateurs détaillés
-- ✅ `UserDocument` - Documents d'identité
-- ✅ `OTPCode` - Codes OTP pour vérification
-
-### **Modèles Métier Implémentés**
+### **Modèles Principaux**
+- ✅ `User`, `UserProfile`, `UserDocument`, `OTPCode`
 - ✅ `Shipment`, `ShipmentTracking`
 - ✅ `Trip`, `TripDocument`
 - ✅ `Match`, `MatchingPreferences`
@@ -289,52 +164,22 @@ curl http://localhost:8000/health/
 - ✅ `Conversation`, `Message`
 - ✅ `Rating`
 
-### **Relations ER (100%)**
-- ✅ Toutes les relations du diagramme ER implémentées
-- ✅ Cardinalités respectées
-- ✅ Contraintes d'intégrité
-- ✅ Index optimisés
+## 🔒 **Sécurité**
 
-## 🔒 **Sécurité Implémentée**
-
-### **Authentification**
 - ✅ **JWT** avec refresh tokens
 - ✅ **OTP** pour livraisons sécurisées
 - ✅ **Permissions** basées sur les rôles
 - ✅ **Rate limiting** par endpoint
-
-### **Validation**
-- ✅ **Validation des données** métier
-- ✅ **Contraintes** de base de données
-- ✅ **Messages d'erreur** explicites
+- ✅ **Validation** des données métier
 - ✅ **Protection CSRF** et XSS
-
-### **Sécurité OTP**
-- ✅ **Expiration automatique** (10 minutes)
-- ✅ **Limitation des tentatives**
-- ✅ **Validation du format** (6 chiffres)
-- ✅ **Sécurité contre l'énumération**
 
 ## 📈 **Monitoring**
 
-### **Health Checks**
-```
+```http
 GET /health/              # Statut général
 GET /health/db/           # Connexion base de données
 GET /health/cache/        # Connexion Redis
 GET /health/celery/       # Statut Celery
-```
-
-### **Logs**
-```bash
-# Logs Django
-docker-compose logs kleerlogistics
-
-# Logs PostgreSQL
-docker-compose logs postgres
-
-# Logs Redis
-docker-compose logs redis
 ```
 
 ## 🎯 **Prochaines Étapes**
@@ -347,13 +192,6 @@ docker-compose logs redis
 5. **Analytics** : Métriques et rapports
 6. **Internationalization** : Support FR/EN/AR
 
-### **Phase 3 - Améliorations**
-1. **Tests unitaires** et d'intégration
-2. **Optimisation performances** et cache
-3. **Intégration Chargily Pay** pour paiements
-4. **Monitoring avancé** avec Sentry
-5. **Documentation API** complète
-
 ## 📞 **Support**
 
 ### **Accès Admin**
@@ -364,29 +202,6 @@ docker-compose logs redis
 ### **Documentation API**
 - **Swagger**: http://localhost:8000/swagger/
 - **ReDoc**: http://localhost:8000/redoc/
-
-### **Logs et Debugging**
-```bash
-# Voir les logs en temps réel
-docker-compose logs -f
-
-# Accéder à la base de données
-docker-compose exec postgres psql -U kleerlogistics -d kleerlogistics
-
-# Shell Django
-docker-compose exec kleerlogistics python manage.py shell
-```
-
-## 🎉 **État Actuel - AUTHENTIFICATION COMPLÈTE**
-
-✅ **Système d'authentification JWT + OTP 100% fonctionnel**  
-✅ **Gestion des rôles et permissions implémentée**  
-✅ **API REST complète avec documentation Swagger**  
-✅ **Sécurité renforcée avec validation et protection**  
-✅ **Base de données optimisée avec toutes les relations**  
-✅ **Docker ready avec configuration complète**  
-
-**Le backend est prêt pour la production ! 🚀**
 
 ---
 
