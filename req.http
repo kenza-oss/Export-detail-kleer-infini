@@ -1,137 +1,170 @@
-### Kleer Logistics API - HTTP Requests
+# ========================================
+# KleerLogistics API - Authentification
+# ========================================
+# Fichier de test pour toutes les requêtes d'authentification
+# Usage: Ouvrir dans VS Code avec l'extension REST Client
 
-# Base URL
+# Configuration de base
 @baseUrl = http://localhost:8000/api/v1
-
-# Variables
 @contentType = application/json
-@authToken = {{login.response.body.access}}
 
-### 1. User Registration
+# ========================================
+# 1. INSCRIPTION ET CRÉATION DE COMPTE
+# ========================================
+
+### 1.1 Inscription d'un nouvel utilisateur
 POST {{baseUrl}}/users/auth/register/
 Content-Type: {{contentType}}
 
 {
-    "username": "hash",
-    "email": "romualdo@kleer.com",
-    "password": "TestPassword123!",
-    "password_confirm": "TestPassword123!",
-    "first_name": "Test",
-    "last_name": "User",
-    "phone_number": "+261234567890",
+    "username": "testuser",
+    "email": "test@example.com",
+    "password": "SecurePass123!",
+    "password_confirm": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone_number": "+213123456789",
     "role": "sender"
 }
 
-### 2. User Login
-# @name login
-POST {{baseUrl}}/users/auth/login/
+### 1.2 Inscription d'un voyageur
+POST {{baseUrl}}/users/auth/register/
 Content-Type: {{contentType}}
 
 {
-    "username": "hash",
-    "password": "TestPassword123!"
+    "username": "traveler1",
+    "email": "traveler@example.com",
+    "password": "TravelerPass123!",
+    "password_confirm": "TravelerPass123!",
+    "first_name": "Alice",
+    "last_name": "Traveler",
+    "phone_number": "+213987654321",
+    "role": "traveler"
 }
 
-### 3. Refresh Token
-POST {{baseUrl}}/users/auth/token/refresh/
+### 1.3 Inscription utilisateur double rôle
+POST {{baseUrl}}/users/auth/register/
 Content-Type: {{contentType}}
 
 {
-    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA4OTEyLCJpYXQiOjE3NTM4MDUzMTIsImp0aSI6ImI2ZjE2NTRkOGMyZjQ5MmRiNTNmNjlkNGM1ZWI0NzI4IiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJoYXNoIiwicm9sZSI6InNlbmRlciIsImlzX2FkbWluIjpmYWxzZX0.9mMNV25B77GjFi99ugoMsRnxmnZ9BWHFayx01o_O6RI",
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1Mzg5MTcxMiwiaWF0IjoxNzUzODA1MzEyLCJqdGkiOiI4MGVlYWZlYTM2ZjE0YWNlOGFiNDc1M2M4NjQ4MjZhNyIsInVzZXJfaWQiOiIyIn0._TU13kv4eH27fjEOZn5rR609DEeFmgAW3d5xJRZRQGE"
-  
+    "username": "bothuser",
+    "email": "both@example.com",
+    "password": "BothPass123!",
+    "password_confirm": "BothPass123!",
+    "first_name": "Bob",
+    "last_name": "Both",
+    "phone_number": "+213555555555",
+    "role": "both"
 }
 
-### 4. Send OTP
+# ========================================
+# 2. SYSTÈME OTP (One-Time Password)
+# ========================================
+
+### 2.1 Envoyer un OTP pour vérification téléphone
 POST {{baseUrl}}/users/auth/otp/send/
 Content-Type: {{contentType}}
 
 {
-    "phone_number": "+261234567890"
+    "phone_number": "+213123456789"
 }
 
-### 5. Verify OTP
+### 2.2 Vérifier un OTP reçu
 POST {{baseUrl}}/users/auth/otp/verify/
 Content-Type: {{contentType}}
 
 {
-    "phone_number": "+261234567890",
+    "phone_number": "+213123456789",
     "code": "123456"
 }
 
-### 6. Check Phone Verification Status
-GET {{baseUrl}}/users/auth/phone/status/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+### 2.3 Vérifier le statut de vérification du téléphone
+GET {{baseUrl}}/users/auth/phone/status/?phone_number=+213123456789
 
-{
-    "phone_number": "+261234567890"
-}
-
-### 7. Get User Profile
-GET {{baseUrl}}/users/profile/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-{
-    "phone_number": "+261234567890"
-}
-
-### 8. Update User Profile (PUT - Complete Update)
-PUT {{baseUrl}}/users/profile/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+### 2.4 Vérifier le statut de vérification du téléphone (POST)
+POST {{baseUrl}}/users/auth/phone/status/
 Content-Type: {{contentType}}
 
 {
-    "first_name": "Updated",
-    "last_name": "User",
-    "phone_number": "+261234567890"
+    "phone_number": "+213123456789"
 }
 
-### 8.1. Update User Profile (PATCH - Partial Update)
-PATCH {{baseUrl}}/users/profile/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+# ========================================
+# 3. CONNEXION ET AUTHENTIFICATION JWT
+# ========================================
+
+### 3.1 Connexion utilisateur (email/password)
+POST {{baseUrl}}/users/auth/login/
 Content-Type: {{contentType}}
 
 {
-    "first_name": "John"
+    "email": "test@example.com",
+    "password": "SecurePass123!"
 }
 
-### 8.2. Update User Profile (Form Data)
-PUT {{baseUrl}}/users/profile/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: application/x-www-form-urlencoded
+### 3.2 Connexion utilisateur (username/password)
+POST {{baseUrl}}/users/auth/login/
+Content-Type: {{contentType}}
 
-first_name=John&last_name=Doe&phone_number=+261234567890
+{
+    "username": "testuser",
+    "password": "SecurePass123!"
+}
 
-### 8.3. Update User Profile (Multipart Form Data)
-PUT {{baseUrl}}/users/profile/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+### 3.3 Connexion avec téléphone
+POST {{baseUrl}}/users/auth/login/
+Content-Type: {{contentType}}
 
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="first_name"
+{
+    "phone_number": "+213123456789",
+    "password": "SecurePass123!"
+}
 
-John
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="last_name"
+# ========================================
+# 4. GESTION DES TOKENS JWT
+# ========================================
 
-Doe
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="phone_number"
+### 4.1 Rafraîchir un token JWT
+POST {{baseUrl}}/users/auth/token/refresh/
+Content-Type: {{contentType}}
 
-+261234567890
-------WebKitFormBoundary7MA4YWxkTrZu0gW--
+{
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjY0LCJpYXQiOjE3NTQxNjMwNjQsImp0aSI6IjMwYjU2MTJjNGNlYTRjNGE4ZTJkZWJhMzhiZmFlMzU3IiwidXNlcl9pZCI6NSwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.C878OZ-mexBpH16Hw89_77oNQh6AsTnFvMqy1aSyBkM",
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NDI0OTQ2NCwiaWF0IjoxNzU0MTYzMDY0LCJqdGkiOiJlYmVlZDQwYzAwZTE0YTc0OWQyNThkZTliY2MwZmI0NSIsInVzZXJfaWQiOiI1In0.F8sR8w5SvmVGGKjrjaYsncyGJWg8f7WaR8zgeGuj9N0"
+}
 
-### 9. Change Password
+### 4.2 Rafraîchir un token JWT (endpoint alternatif)
+POST {{baseUrl}}/users/auth/refresh/
+Content-Type: {{contentType}}
+
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjMzLCJpYXQiOjE3NTQxNjMwMzMsImp0aSI6IjBiZTU0ODdkODk3ZTQxYzdiNjU1YjgwNTJjYTY0Mjc2IiwidXNlcl9pZCI6NSwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.xToRQ5sk48GFNKvmprKDVjjdsdrkZVNQc_BXqbvEc1w"
+}
+
+### 4.3 Déconnexion (invalider le refresh token)
+POST {{baseUrl}}/users/auth/logout/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0"
+}
+
+# ========================================
+# 5. GESTION DES MOTS DE PASSE
+# ========================================
+
+### 5.1 Changer le mot de passe (authentifié)
 POST {{baseUrl}}/users/auth/password/change/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
 Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
 {
-    "old_password": "TestPassword123!",
-    "new_password": "NewPassword123!"
+    "old_password": "SecurePass123!",
+    "new_password": "NewSecurePass456!"
 }
 
-### 10. Reset Password Request
+### 5.2 Demander une réinitialisation de mot de passe
 POST {{baseUrl}}/users/auth/password/reset/
 Content-Type: {{contentType}}
 
@@ -139,69 +172,145 @@ Content-Type: {{contentType}}
     "email": "test@example.com"
 }
 
-### 11. Reset Password Confirm
+### 5.3 Confirmer la réinitialisation de mot de passe
 POST {{baseUrl}}/users/auth/password/reset/confirm/
 Content-Type: {{contentType}}
 
 {
-    "email": "testuser2@example.com",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8",
-    "new_password": "NewPassword123!",
-    "new_password_confirm": "NewPassword123!"
+    "token": "reset_token_here",
+    "new_password": "NewPassword123!"
 }
 
-### 12. Logout
-# Note: You need to use the refresh token from the login response, not the access token
-POST {{baseUrl}}/users/auth/logout/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+# ========================================
+# 6. PROFIL UTILISATEUR
+# ========================================
+
+### 6.1 Récupérer le profil utilisateur
+GET {{baseUrl}}/users/profile/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 6.2 Mettre à jour le profil utilisateur (PUT)
+PUT {{baseUrl}}/users/profile/
 Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
 {
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1Mzg5MTcxMiwiaWF0IjoxNzUzODA1MzEyLCJqdGkiOiI4MGVlYWZlYTM2ZjE0YWNlOGFiNDc1M2M4NjQ4MjZhNyIsInVzZXJfaWQiOiIyIn0._TU13kv4eH27fjEOZn5rR609DEeFmgAW3d5xJRZRQGE"
+    "first_name": "John",
+    "last_name": "Doe",
+    "phone_number": "+213123456789",
+    "preferred_language": "fr"
 }
 
-#----------------------------------------------------------------------------
-# NOUVEAUX ENDPOINTS AJOUTÉS
-#----------------------------------------------------------------------------
-
-### 13. Get User Verification Status
-GET {{baseUrl}}/users/verification/status/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 14. Get User Wallet
-GET {{baseUrl}}/users/wallet/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 15. Add Money to Wallet
-POST {{baseUrl}}/users/wallet/deposit/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+### 6.3 Mettre à jour partiellement le profil (PATCH)
+PATCH {{baseUrl}}/users/profile/update/
 Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
 {
-    "amount": 100.00,
-    "transaction_type": "deposit",
-    "description": "Recharge portefeuille"
+    "first_name": "John Updated",
+    "phone_number": "+213123456789"
 }
 
-### 16. Withdraw from Wallet
-POST {{baseUrl}}/users/wallet/withdraw/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+# ========================================
+# 7. STATUT ET VÉRIFICATION
+# ========================================
+
+### 7.1 Récupérer le statut complet de l'utilisateur
+GET {{baseUrl}}/users/status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 7.2 Récupérer le statut de vérification
+GET {{baseUrl}}/users/verification-status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 7.3 Demander une vérification de documents
+POST {{baseUrl}}/users/request-verification/
 Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
 {
-    "amount": 50.00,
-    "transaction_type": "withdrawal",
-    "description": "Retrait vers compte bancaire"
+    "document_type": "passport",
+    "reason": "Vérification d'identité requise"
 }
 
-### 17. Get Wallet Transactions
-GET {{baseUrl}}/users/wallet/transactions/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+# ========================================
+# 8. PREFERENCES UTILISATEUR
+# ========================================
 
-### 18. Upload User Document
+### 8.1 Mettre à jour la langue préférée
+PUT {{baseUrl}}/users/preferences/language/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "preferred_language": "en"
+}
+
+### 8.2 Mettre à jour le taux de commission
+PUT {{baseUrl}}/users/preferences/commission/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "commission_rate": 15.0
+}
+
+# ========================================
+# 9. ACTIVATION/DÉSACTIVATION DES RÔLES
+# ========================================
+
+### 9.1 Activer le mode expéditeur
+POST {{baseUrl}}/users/activate-sender/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 9.2 Activer le mode voyageur
+POST {{baseUrl}}/users/activate-traveler/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 9.3 Désactiver le mode expéditeur
+POST {{baseUrl}}/users/deactivate-sender/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 9.4 Désactiver le mode voyageur
+POST {{baseUrl}}/users/deactivate-traveler/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+# ========================================
+# 10. ANALYTICS ET STATISTIQUES
+# ========================================
+
+### 10.1 Récupérer les analytics de l'utilisateur
+GET {{baseUrl}}/users/analytics/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 10.2 Récupérer les performances de l'utilisateur
+GET {{baseUrl}}/users/performance/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 10.3 Récupérer les statistiques de l'utilisateur
+GET {{baseUrl}}/users/stats/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+# ========================================
+# 11. PERMISSIONS ET AUTORISATIONS
+# ========================================
+
+### 11.1 Récupérer les permissions de l'utilisateur
+GET {{baseUrl}}/users/permissions/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+# ========================================
+# 12. DOCUMENTS UTILISATEUR
+# ========================================
+
+### 12.1 Lister les documents de l'utilisateur
+GET {{baseUrl}}/users/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 12.2 Uploader un document
 POST {{baseUrl}}/users/documents/upload/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
 Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
 ------WebKitFormBoundary7MA4YWxkTrZu0gW
 Content-Disposition: form-data; name="document_type"
@@ -214,451 +323,196 @@ Content-Type: application/pdf
 < ./passport.pdf
 ------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
-### 19. Get User Documents
-GET {{baseUrl}}/users/documents/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 20. Get User Document Details
+### 12.3 Récupérer les détails d'un document
 GET {{baseUrl}}/users/documents/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
-### 21. Update User Role
-PUT {{baseUrl}}/users/role/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
+### 12.4 Supprimer un document
+DELETE {{baseUrl}}/users/documents/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
-{
-    "role": "both"
-}
+# ========================================
+# 13. RECHERCHE D'UTILISATEURS
+# ========================================
 
-### 22. Get User Statistics
-GET {{baseUrl}}/users/stats/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 23. Search Users
+### 13.1 Rechercher des utilisateurs
 GET {{baseUrl}}/users/search/?q=john&role=sender
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
 
-### 24. Update Commission Rate
-PUT {{baseUrl}}/users/commission/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
+# ========================================
+# 14. ENDPOINTS ADMIN (Nécessitent des droits admin)
+# ========================================
+
+### 14.1 Lister tous les utilisateurs (Admin)
+GET {{baseUrl}}/users/admin/users/
+Authorization: Bearer your_admin_access_token_here
+
+### 14.2 Récupérer les détails d'un utilisateur (Admin)
+GET {{baseUrl}}/users/admin/users/1/
+Authorization: Bearer your_admin_access_token_here
+
+### 14.3 Mettre à jour le rôle d'un utilisateur (Admin)
+PATCH {{baseUrl}}/users/admin/users/1/role/
 Content-Type: {{contentType}}
+Authorization: Bearer your_admin_access_token_here
 
 {
-    "commission_rate": 15.50
-}
-
-### 25. Activate/Deactivate User Status
-PUT {{baseUrl}}/users/status/update/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "is_active_traveler": true,
-    "is_active_sender": false
-}
-
-#----------------------------------------------------------------------------
-# ENDPOINTS ADMIN
-#----------------------------------------------------------------------------
-
-### 26. Admin - Get All Users (Updated)
-GET {{baseUrl}}/admin/users/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 27. Admin - Get User Details
-GET {{baseUrl}}/admin/users/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 28. Admin - Update User
-PUT {{baseUrl}}/admin/users/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "role": "admin",
-    "is_phone_verified": true,
-    "is_document_verified": true,
-    "wallet_balance": 500.00,
-    "commission_rate": 12.50
-}
-
-### 29. Admin - Approve User Document
-POST {{baseUrl}}/admin/documents/1/approve/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "verified_by": 1
-}
-
-### 30. Admin - Reject User Document
-POST {{baseUrl}}/admin/documents/1/reject/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "verified_by": 1,
-    "rejection_reason": "Document illisible ou incomplet"
-}
-
-### 31. Admin - Get Pending Documents
-GET {{baseUrl}}/admin/documents/pending/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 32. Admin - Get System Statistics
-GET {{baseUrl}}/admin/statistics/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 33. Admin - Get Wallet Statistics
-GET {{baseUrl}}/admin/wallet/statistics/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-#----------------------------------------------------------------------------
-# ENDPOINTS EXISTANTS (MIS À JOUR)
-#----------------------------------------------------------------------------
-
-### 34. Create Shipment
-POST {{baseUrl}}/shipments/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "pickup_address": "123 Pickup St, City",
-    "delivery_address": "456 Delivery Ave, City",
-    "pickup_date": "2024-01-15",
-    "delivery_date": "2024-01-20",
-    "weight": 50.5,
-    "dimensions": {
-        "length": 100,
-        "width": 50,
-        "height": 30
-    },
-    "description": "Fragile electronics",
-    "special_instructions": "Handle with care"
-}
-
-### 35. Get Shipments
-GET {{baseUrl}}/shipments/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 36. Get Shipment Details
-GET {{baseUrl}}/shipments/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 37. Update Shipment
-PUT {{baseUrl}}/shipments/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "pickup_address": "Updated Pickup Address",
-    "delivery_address": "Updated Delivery Address",
-    "status": "in_transit"
-}
-
-### 38. Delete Shipment
-DELETE {{baseUrl}}/shipments/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 39. Create Trip
-POST {{baseUrl}}/trips/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "origin": "City A",
-    "destination": "City B",
-    "departure_date": "2024-01-15T10:00:00Z",
-    "arrival_date": "2024-01-16T14:00:00Z",
-    "vehicle_type": "truck",
-    "available_space": 1000,
-    "price_per_kg": 2.5
-}
-
-### 40. Get Trips
-GET {{baseUrl}}/trips/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 41. Get Trip Details
-GET {{baseUrl}}/trips/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 42. Update Trip
-PUT {{baseUrl}}/trips/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "origin": "Updated Origin",
-    "destination": "Updated Destination",
-    "status": "in_progress"
-}
-
-### 43. Delete Trip
-DELETE {{baseUrl}}/trips/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 44. Create Matching
-POST {{baseUrl}}/matching/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "shipment_id": 1,
-    "trip_id": 1,
-    "status": "pending"
-}
-
-### 45. Get Matchings
-GET {{baseUrl}}/matching/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 46. Update Matching
-PUT {{baseUrl}}/matching/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "status": "accepted"
-}
-
-### 47. Create Payment
-POST {{baseUrl}}/payments/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "amount": 150.00,
-    "currency": "USD",
-    "payment_method": "card",
-    "description": "Payment for shipment #1"
-}
-
-### 48. Get Payments
-GET {{baseUrl}}/payments/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 49. Get Payment Details
-GET {{baseUrl}}/payments/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 50. Create Rating
-POST {{baseUrl}}/ratings/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "shipment_id": 1,
-    "rating": 5,
-    "comment": "Excellent service!"
-}
-
-### 51. Get Ratings
-GET {{baseUrl}}/ratings/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 52. Create Notification
-POST {{baseUrl}}/notifications/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "title": "Shipment Update",
-    "message": "Your shipment has been delivered",
-    "notification_type": "shipment_update"
-}
-
-### 53. Get Notifications
-GET {{baseUrl}}/notifications/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 54. Mark Notification as Read
-PUT {{baseUrl}}/notifications/1/read/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 55. Create Document
-POST {{baseUrl}}/documents/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
-
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="title"
-
-Invoice
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="document_type"
-
-invoice
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="file"; filename="invoice.pdf"
-Content-Type: application/pdf
-
-< ./invoice.pdf
-------WebKitFormBoundary7MA4YWxkTrZu0gW--
-
-### 56. Get Documents
-GET {{baseUrl}}/documents/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 57. Get Document Details
-GET {{baseUrl}}/documents/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 58. Delete Document
-DELETE {{baseUrl}}/documents/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 59. Get Analytics
-GET {{baseUrl}}/analytics/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 60. Get Analytics by Date Range
-GET {{baseUrl}}/analytics/?start_date=2024-01-01&end_date=2024-01-31
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 61. Get Chat Messages
-GET {{baseUrl}}/chat/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 62. Send Chat Message
-POST {{baseUrl}}/chat/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "message": "Hello, I have a question about my shipment",
-    "recipient_id": 2
-}
-
-### 63. Get Chat Conversation
-GET {{baseUrl}}/chat/conversation/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 64. Health Check
-GET {{baseUrl}}/health/
-
-### 65. API Documentation
-GET {{baseUrl}}/swagger/
-
-### 66. API Schema
-GET {{baseUrl}}/schema/
-
-### 67. Test Database Connection
-GET {{baseUrl}}/test-db/
-
-#----------------------------------------------------------------------------
-# NOUVEAUX ENDPOINTS POUR LES FONCTIONNALITÉS AVANCÉES
-#----------------------------------------------------------------------------
-
-### 68. Get User Dashboard Data
-GET {{baseUrl}}/users/dashboard/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 69. Get User Activity Log
-GET {{baseUrl}}/users/activity/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 70. Export User Data
-GET {{baseUrl}}/users/export/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 71. Bulk User Operations
-POST {{baseUrl}}/admin/users/bulk/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: {{contentType}}
-
-{
-    "action": "activate",
-    "user_ids": [1, 2, 3]
-}
-
-### 72. Get System Health
-GET {{baseUrl}}/system/health/
-
-### 73. Get API Metrics
-GET {{baseUrl}}/system/metrics/
-
-### 74. Clear User Cache
-POST {{baseUrl}}/admin/users/cache/clear/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 75. Get User Permissions
-GET {{baseUrl}}/users/permissions/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-
-### 9.1. Test User Registration (JSON)
-POST {{baseUrl}}/users/auth/register/
-Content-Type: {{contentType}}
-
-{
-    "username": "testuser2",
-    "email": "testuser2@example.com",
-    "password": "TestPassword123!",
-    "password_confirm": "TestPassword123!",
-    "first_name": "Test",
-    "last_name": "User2",
-    "phone_number": "+261234567891",
     "role": "traveler"
 }
 
-### 9.2. Test User Login (JSON)
+# ========================================
+# 15. PORTEFEUILLE (Redirection vers payments)
+# ========================================
+
+### 15.1 Récupérer le portefeuille
+GET {{baseUrl}}/users/wallet/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+### 15.2 Effectuer un dépôt
+POST {{baseUrl}}/users/wallet/deposit/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "amount": 500.00,
+    "payment_method": "card"
+}
+
+### 15.3 Effectuer un retrait
+POST {{baseUrl}}/users/wallet/withdraw/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "amount": 200.00,
+    "payment_method": "bank_transfer",
+    "bank_account": "1234567890"
+}
+
+### 15.4 Effectuer un transfert
+POST {{baseUrl}}/users/wallet/transfer/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+{
+    "recipient_email": "recipient@example.com",
+    "amount": 100.00,
+    "description": "Paiement pour service"
+}
+
+### 15.5 Lister les transactions
+GET {{baseUrl}}/users/wallet/transactions/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+
+# ========================================
+# 16. TESTS D'ERREURS ET CAS LIMITES
+# ========================================
+
+### 16.1 Test de connexion avec mauvais mot de passe
 POST {{baseUrl}}/users/auth/login/
 Content-Type: {{contentType}}
 
 {
-    "username": "testuser2",
-    "password": "TestPassword123!"
+    "email": "test@example.com",
+    "password": "WrongPassword123!"
 }
 
-### 9.3. Test Send OTP (JSON)
+### 16.2 Test d'envoi OTP avec numéro invalide
 POST {{baseUrl}}/users/auth/otp/send/
 Content-Type: {{contentType}}
 
 {
-    "phone_number": "+261234567891"
+    "phone_number": "invalid_number"
 }
 
-### 9.4. Test Verify OTP (JSON)
+### 16.3 Test de vérification OTP avec code invalide
 POST {{baseUrl}}/users/auth/otp/verify/
 Content-Type: {{contentType}}
 
 {
-    "phone_number": "+261234567891",
-    "code": "123456"
+    "phone_number": "+213123456789",
+    "code": "000000"
 }
 
-### 9.5. Test Reset Password (JSON)
-POST {{baseUrl}}/users/auth/password/reset/
+### 16.4 Test d'accès sans authentification
+GET {{baseUrl}}/users/profile/
+
+### 16.5 Test d'accès avec token invalide
+GET {{baseUrl}}/users/profile/
+Authorization: Bearer invalid_token_here
+
+# ========================================
+# 17. VARIABLES POUR LES TESTS
+# ========================================
+
+# Sauvegarder le token d'accès après connexion
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0
+@refreshToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjMzLCJpYXQiOjE3NTQxNjMwMzMsImp0aSI6IjBiZTU0ODdkODk3ZTQxYzdiNjU1YjgwNTJjYTY0Mjc2IiwidXNlcl9pZCI6NSwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.xToRQ5sk48GFNKvmprKDVjjdsdrkZVNQc_BXqbvEc1w
+
+### 17.1 Connexion et sauvegarde du token
+# @name login
+POST {{baseUrl}}/users/auth/login/
 Content-Type: {{contentType}}
 
 {
-    "email": "testuser2@example.com"
+    "email": "test@example.com",
+    "password": "SecurePass123!"
 }
 
-### 9.6. Test Reset Password Confirm (JSON)
-POST {{baseUrl}}/users/auth/password/reset/confirm/
-Content-Type: {{contentType}}
+### 17.2 Utiliser le token sauvegardé
+GET {{baseUrl}}/users/profile/
+Authorization: Bearer {{login.response.body.tokens.access}}
 
-{
-    "email": "testuser2@example.com",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8",
-    "new_password": "NewPassword123!",
-    "new_password_confirm": "NewPassword123!"
-}
+# ========================================
+# NOTES D'UTILISATION
+# ========================================
 
-### 9.7. Test Upload Document (Multipart)
-POST {{baseUrl}}/users/documents/upload/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzUzODA5MDAzLCJpYXQiOjE3NTM4MDU0MDMsImp0aSI6ImJlOGIyY2M5NzU1ODRkYzU5NTY0MmQ1MmYyMDY4OGM3IiwidXNlcl9pZCI6IjIifQ.0xK6Or9faVUDd_HvIYOSL16Wh272SHSj7QeHQlpq6R8
-Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+# 1. Remplacez "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjgwLCJpYXQiOjE3NTQxNjMwODAsImp0aSI6IjAyMzY3ZjMxZWU0NTRlMjBhYjQ4YmY3ZDI2Mzc0NDg0IiwidXNlcl9pZCI6IjUifQ.7ekSN1X62HW1vaU2dIMIresu-Wlm8t_qzWjquL54Bi0" par le vrai token JWT
+# 2. Remplacez "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0MTY2NjMzLCJpYXQiOjE3NTQxNjMwMzMsImp0aSI6IjBiZTU0ODdkODk3ZTQxYzdiNjU1YjgwNTJjYTY0Mjc2IiwidXNlcl9pZCI6NSwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.xToRQ5sk48GFNKvmprKDVjjdsdrkZVNQc_BXqbvEc1w" par le vrai refresh token
+# 3. Remplacez "your_admin_access_token_here" par un token admin
+# 4. Ajustez les données selon vos besoins de test
+# 5. Utilisez l'extension REST Client dans VS Code pour exécuter ces requêtes
+# 6. Les requêtes sont organisées par fonctionnalité pour faciliter les tests
 
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="document_type"
+# ========================================
+# EXEMPLES DE RÉPONSES ATTENDUES
+# ========================================
 
-passport
-------WebKitFormBoundary7MA4YWxkTrZu0gW
-Content-Disposition: form-data; name="document_file"; filename="test.pdf"
-Content-Type: application/pdf
+# Connexion réussie :
+# {
+#   "success": true,
+#   "message": "Connexion réussie",
+#   "tokens": {
+#     "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+#     "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+#   },
+#   "user": {
+#     "id": 1,
+#     "username": "testuser",
+#     "email": "test@example.com",
+#     "role": "sender"
+#   }
+# }
 
-< ./test.pdf
-------WebKitFormBoundary7MA4YWxkTrZu0gW--
+# OTP envoyé :
+# {
+#   "success": true,
+#   "message": "OTP envoyé au +213123456789",
+#   "expires_in": "10 minutes"
+# }
+
+# Profil utilisateur :
+# {
+#   "success": true,
+#   "profile": {
+#     "id": 1,
+#     "first_name": "John",
+#     "last_name": "Doe",
+#     "phone_number": "+213123456789",
+#     "user": {
+#       "id": 1,
+#       "username": "testuser",
+#       "email": "test@example.com"
+#     }
+#   }
+# }

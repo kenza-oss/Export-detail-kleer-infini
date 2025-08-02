@@ -446,6 +446,7 @@ class PhoneVerificationView(APIView):
     """Vue pour la vérification du téléphone."""
     
     permission_classes = [permissions.AllowAny]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     
     @phone_verification_schema()
     def get(self, request):
@@ -462,6 +463,63 @@ class PhoneVerificationView(APIView):
             'phone_verified': user.is_phone_verified,
             'phone_number': user.phone_number
         })
+
+    @swagger_auto_schema(
+        operation_description="Vérifier le statut de vérification d'un numéro de téléphone",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'phone_number': openapi.Schema(type=openapi.TYPE_STRING, description="Numéro de téléphone à vérifier")
+            },
+            required=['phone_number']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statut de vérification du téléphone",
+                examples={"application/json": {
+                    "success": True,
+                    "phone_verified": True,
+                    "phone_number": "+261234567890"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Numéro de téléphone invalide",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Numéro de téléphone invalide"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Utilisateur non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Aucun utilisateur trouvé avec ce numéro de téléphone"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Vérifier le statut de vérification d'un numéro de téléphone."""
+        phone_number = request.data.get('phone_number')
+        
+        if not phone_number:
+            return Response({
+                'success': False,
+                'message': 'Numéro de téléphone requis'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(phone_number=phone_number)
+            return Response({
+                'success': True,
+                'phone_verified': user.is_phone_verified,
+                'phone_number': user.phone_number
+            })
+        except User.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Aucun utilisateur trouvé avec ce numéro de téléphone'
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
 class ChangePasswordView(APIView):
@@ -1067,23 +1125,1202 @@ class UserSearchView(APIView):
     @user_search_schema()
     def get(self, request):
         """Rechercher des utilisateurs."""
-        query = request.query_params.get('q', '')
-        
+        query = request.GET.get('q', '')
         if not query:
             return Response({
                 'success': False,
-                'message': 'Terme de recherche requis'
+                'message': 'Paramètre de recherche requis'
             }, status=status.HTTP_400_BAD_REQUEST)
         
         users = User.objects.filter(
+            Q(username__icontains=query) |
+            Q(email__icontains=query) |
             Q(first_name__icontains=query) |
             Q(last_name__icontains=query) |
-            Q(email__icontains=query)
-        )[:20]
+            Q(phone_number__icontains=query)
+        ).exclude(id=request.user.id)[:10]
         
         serializer = UserSerializer(users, many=True)
         return Response({
             'success': True,
             'users': serializer.data,
-            'count': users.count()
+            'count': len(serializer.data)
         })
+
+
+class UserStatusView(APIView):
+    """Vue pour récupérer le statut complet de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer le statut complet de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statut de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "user": {
+                        "id": 1,
+                        "username": "testuser",
+                        "email": "user@example.com",
+                        "role": "sender",
+                        "is_phone_verified": True,
+                        "is_document_verified": False,
+                        "rating": "4.50",
+                        "total_trips": 5,
+                        "total_shipments": 12,
+                        "is_active_traveler": True,
+                        "is_active_sender": False,
+                        "wallet_balance": "150.00",
+                        "commission_rate": "10.00",
+                        "preferred_language": "fr",
+                        "created_at": "2024-01-15T10:30:00Z"
+                    },
+                    "verification_status": {
+                        "phone_verified": True,
+                        "document_verified": False,
+                        "fully_verified": False
+                    },
+                    "activity_status": {
+                        "has_active_trips": True,
+                        "has_active_shipments": False,
+                        "last_activity": "2024-01-20T15:45:00Z"
+                    }
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer le statut complet de l'utilisateur connecté."""
+        user = request.user
+        
+        # Récupérer les informations de base de l'utilisateur
+        user_data = {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': user.role,
+            'is_phone_verified': user.is_phone_verified,
+            'is_document_verified': user.is_document_verified,
+            'rating': str(user.rating),
+            'total_trips': user.total_trips,
+            'total_shipments': user.total_shipments,
+            'is_active_traveler': user.is_active_traveler,
+            'is_active_sender': user.is_active_sender,
+            'wallet_balance': str(user.wallet_balance),
+            'commission_rate': str(user.commission_rate),
+            'preferred_language': user.preferred_language,
+            'created_at': user.created_at.isoformat() if user.created_at else None
+        }
+        
+        # Statut de vérification
+        verification_status = user.get_verification_status()
+        
+        # Statut d'activité (à implémenter selon les besoins)
+        activity_status = {
+            'has_active_trips': user.is_active_traveler,
+            'has_active_shipments': user.is_active_sender,
+            'last_activity': user.updated_at.isoformat() if user.updated_at else None
+        }
+        
+        return Response({
+            'success': True,
+            'user': user_data,
+            'verification_status': verification_status,
+            'activity_status': activity_status
+        })
+
+
+class UserVerificationStatusView(APIView):
+    """Vue pour récupérer le statut de vérification de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer le statut de vérification de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statut de vérification",
+                examples={"application/json": {
+                    "success": True,
+                    "verification_status": {
+                        "phone_verified": True,
+                        "document_verified": False,
+                        "fully_verified": False,
+                        "verification_completion": 50
+                    },
+                    "verification_details": {
+                        "phone_number": "+261234567890",
+                        "phone_verified": True,
+                        "document_uploaded": False,
+                        "document_verified": False,
+                        "pending_verifications": ["document"]
+                    }
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer le statut de vérification de l'utilisateur connecté."""
+        user = request.user
+        
+        # Récupérer le statut de vérification
+        verification_status = user.get_verification_status()
+        
+        # Calculer le pourcentage de completion
+        completion_percentage = self._calculate_verification_completion(user)
+        
+        # Détails de vérification
+        verification_details = {
+            'phone_number': user.phone_number,
+            'phone_verified': user.is_phone_verified,
+            'document_uploaded': user.documents.exists(),
+            'document_verified': user.is_document_verified,
+            'pending_verifications': []
+        }
+        
+        # Déterminer les vérifications en attente
+        if not user.is_phone_verified:
+            verification_details['pending_verifications'].append('phone')
+        if not user.is_document_verified:
+            verification_details['pending_verifications'].append('document')
+        
+        return Response({
+            'success': True,
+            'verification_status': {
+                **verification_status,
+                'verification_completion': completion_percentage
+            },
+            'verification_details': verification_details
+        })
+    
+    def _calculate_verification_completion(self, user):
+        """Calculer le pourcentage de completion de la vérification."""
+        total_verifications = 2  # phone + document
+        completed_verifications = 0
+        
+        if user.is_phone_verified:
+            completed_verifications += 1
+        if user.is_document_verified:
+            completed_verifications += 1
+        
+        return int((completed_verifications / total_verifications) * 100)
+
+
+class UserRequestVerificationView(APIView):
+    """Vue pour demander la vérification d'un document."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Demander la vérification d'un document",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['document_id'],
+            properties={
+                'document_id': openapi.Schema(
+                    type=openapi.TYPE_INTEGER,
+                    description="ID du document à vérifier"
+                )
+            }
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Demande de vérification soumise avec succès",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Demande de vérification soumise avec succès",
+                    "document_id": 1,
+                    "status": "pending"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Document introuvable ou déjà vérifié"
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Demander la vérification d'un document."""
+        document_id = request.data.get('document_id')
+        
+        if not document_id:
+            return Response({
+                'success': False,
+                'message': 'document_id est requis'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Vérifier que le document appartient à l'utilisateur connecté
+            document = request.user.documents.get(id=document_id)
+            
+            # Vérifier que le document n'est pas déjà vérifié
+            if document.status == 'approved':
+                return Response({
+                    'success': False,
+                    'message': 'Ce document est déjà vérifié'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if document.status == 'rejected':
+                return Response({
+                    'success': False,
+                    'message': 'Ce document a été rejeté. Veuillez télécharger un nouveau document.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Si le document est déjà en attente, on renvoie un message de confirmation
+            if document.status == 'pending':
+                return Response({
+                    'success': True,
+                    'message': 'Demande de vérification déjà en cours',
+                    'document_id': document_id,
+                    'status': 'pending'
+                })
+            
+            # Mettre le statut en attente (normalement déjà le cas par défaut)
+            document.status = 'pending'
+            document.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Demande de vérification soumise avec succès',
+                'document_id': document_id,
+                'status': 'pending'
+            })
+            
+        except UserDocument.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Document introuvable'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la demande de vérification: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserLanguagePreferenceView(APIView):
+    """Vue pour mettre à jour la préférence de langue de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Mettre à jour la préférence de langue de l'utilisateur",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['preferred_language'],
+            properties={
+                'preferred_language': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    description="Code de langue préférée (ex: 'en', 'fr', 'ar')",
+                    enum=['en', 'fr', 'ar']
+                )
+            }
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Préférence de langue mise à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Préférence de langue mise à jour avec succès",
+                    "preferred_language": "en"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Code de langue invalide"
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def put(self, request):
+        """Mettre à jour la préférence de langue de l'utilisateur."""
+        preferred_language = request.data.get('preferred_language')
+        
+        if not preferred_language:
+            return Response({
+                'success': False,
+                'message': 'preferred_language est requis'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Valider le code de langue
+        valid_languages = ['en', 'fr', 'ar']
+        if preferred_language not in valid_languages:
+            return Response({
+                'success': False,
+                'message': f'Code de langue invalide. Valeurs acceptées: {", ".join(valid_languages)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Mettre à jour la préférence de langue
+            request.user.preferred_language = preferred_language
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Préférence de langue mise à jour avec succès',
+                'preferred_language': preferred_language
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la mise à jour: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserCommissionPreferenceView(APIView):
+    """Vue pour mettre à jour le taux de commission de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Mettre à jour le taux de commission de l'utilisateur",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['commission_rate'],
+            properties={
+                'commission_rate': openapi.Schema(
+                    type=openapi.TYPE_NUMBER,
+                    description="Taux de commission en pourcentage (ex: 15.0 pour 15%)",
+                    minimum=0,
+                    maximum=100
+                )
+            }
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Taux de commission mis à jour",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Taux de commission mis à jour avec succès",
+                    "commission_rate": 15.0
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Données invalides",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Taux de commission invalide"
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def put(self, request):
+        """Mettre à jour le taux de commission de l'utilisateur."""
+        commission_rate = request.data.get('commission_rate')
+        
+        if commission_rate is None:
+            return Response({
+                'success': False,
+                'message': 'commission_rate est requis'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            commission_rate = float(commission_rate)
+        except (ValueError, TypeError):
+            return Response({
+                'success': False,
+                'message': 'commission_rate doit être un nombre valide'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Valider le taux de commission
+        if commission_rate < 0 or commission_rate > 100:
+            return Response({
+                'success': False,
+                'message': 'Le taux de commission doit être entre 0 et 100'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Mettre à jour le taux de commission
+            request.user.commission_rate = commission_rate
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Taux de commission mis à jour avec succès',
+                'commission_rate': commission_rate
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la mise à jour: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserActivateSenderView(APIView):
+    """Vue pour activer le mode expéditeur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Activer le mode expéditeur pour l'utilisateur",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Mode expéditeur activé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mode expéditeur activé avec succès",
+                    "is_active_sender": True
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Activer le mode expéditeur."""
+        try:
+            request.user.is_active_sender = True
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Mode expéditeur activé avec succès',
+                'is_active_sender': True
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de l\'activation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserActivateTravelerView(APIView):
+    """Vue pour activer le mode voyageur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Activer le mode voyageur pour l'utilisateur",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Mode voyageur activé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mode voyageur activé avec succès",
+                    "is_active_traveler": True
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Activer le mode voyageur."""
+        try:
+            request.user.is_active_traveler = True
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Mode voyageur activé avec succès',
+                'is_active_traveler': True
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de l\'activation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserDeactivateSenderView(APIView):
+    """Vue pour désactiver le mode expéditeur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Désactiver le mode expéditeur pour l'utilisateur",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Mode expéditeur désactivé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mode expéditeur désactivé avec succès",
+                    "is_active_sender": False
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Désactiver le mode expéditeur."""
+        try:
+            request.user.is_active_sender = False
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Mode expéditeur désactivé avec succès',
+                'is_active_sender': False
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la désactivation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserDeactivateTravelerView(APIView):
+    """Vue pour désactiver le mode voyageur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+    
+    @swagger_auto_schema(
+        operation_description="Désactiver le mode voyageur pour l'utilisateur",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Mode voyageur désactivé",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Mode voyageur désactivé avec succès",
+                    "is_active_traveler": False
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Désactiver le mode voyageur."""
+        try:
+            request.user.is_active_traveler = False
+            request.user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Mode voyageur désactivé avec succès',
+                'is_active_traveler': False
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la désactivation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserAnalyticsView(APIView):
+    """Vue pour récupérer les analytics de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer les analytics de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Analytics de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "analytics": {
+                        "total_trips": 15,
+                        "total_shipments": 28,
+                        "completed_trips": 12,
+                        "completed_shipments": 25,
+                        "pending_trips": 3,
+                        "pending_shipments": 3,
+                        "total_earnings": "2500.00",
+                        "total_spent": "800.00",
+                        "average_rating": "4.75",
+                        "total_ratings": 20,
+                        "monthly_stats": {
+                            "current_month": {
+                                "trips": 5,
+                                "shipments": 8,
+                                "earnings": "450.00"
+                            },
+                            "previous_month": {
+                                "trips": 4,
+                                "shipments": 6,
+                                "earnings": "380.00"
+                            }
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer les analytics de l'utilisateur."""
+        user = request.user
+        
+        # Calculer les statistiques de base
+        analytics = {
+            'total_trips': user.total_trips,
+            'total_shipments': user.total_shipments,
+            'completed_trips': 0,  # À calculer depuis les modèles
+            'completed_shipments': 0,  # À calculer depuis les modèles
+            'pending_trips': 0,  # À calculer depuis les modèles
+            'pending_shipments': 0,  # À calculer depuis les modèles
+            'total_earnings': "0.00",  # À calculer depuis les transactions
+            'total_spent': "0.00",  # À calculer depuis les transactions
+            'average_rating': str(user.rating),
+            'total_ratings': 0,  # À calculer depuis les ratings
+            'monthly_stats': {
+                'current_month': {
+                    'trips': 0,
+                    'shipments': 0,
+                    'earnings': "0.00"
+                },
+                'previous_month': {
+                    'trips': 0,
+                    'shipments': 0,
+                    'earnings': "0.00"
+                }
+            }
+        }
+        
+        return Response({
+            'success': True,
+            'analytics': analytics
+        })
+
+
+class UserPerformanceView(APIView):
+    """Vue pour récupérer les performances de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer les performances de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Performances de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "performance": {
+                        "completion_rate": 85.5,
+                        "average_delivery_time": "2.5 days",
+                        "customer_satisfaction": 4.8,
+                        "on_time_delivery_rate": 92.0,
+                        "total_distance_traveled": "1500 km",
+                        "total_packages_delivered": 45,
+                        "performance_score": 88.5,
+                        "monthly_trends": {
+                            "delivery_speed": "improving",
+                            "customer_rating": "stable",
+                            "completion_rate": "improving"
+                        }
+                    }
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer les performances de l'utilisateur."""
+        user = request.user
+        
+        # Calculer les performances de base
+        performance = {
+            'completion_rate': 85.5,  # À calculer depuis les données
+            'average_delivery_time': "2.5 days",  # À calculer depuis les données
+            'customer_satisfaction': float(user.rating),
+            'on_time_delivery_rate': 92.0,  # À calculer depuis les données
+            'total_distance_traveled': "0 km",  # À calculer depuis les données
+            'total_packages_delivered': 0,  # À calculer depuis les données
+            'performance_score': 88.5,  # À calculer depuis les données
+            'monthly_trends': {
+                'delivery_speed': 'stable',
+                'customer_rating': 'stable',
+                'completion_rate': 'stable'
+            }
+        }
+        
+        return Response({
+            'success': True,
+            'performance': performance
+        })
+
+
+class UserStatsView(APIView):
+    """Vue pour récupérer les statistiques de l'utilisateur."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer les statistiques de l'utilisateur connecté",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statistiques de l'utilisateur",
+                examples={"application/json": {
+                    "success": True,
+                    "stats": {
+                        "total_trips": 5,
+                        "total_shipments": 12,
+                        "completed_trips": 4,
+                        "completed_shipments": 10,
+                        "pending_trips": 1,
+                        "pending_shipments": 2,
+                        "total_earnings": "500.00",
+                        "total_spent": "150.00",
+                        "average_rating": "4.50",
+                        "total_ratings": 8,
+                        "verification_completion": 75,
+                        "account_age_days": 45,
+                        "last_activity": "2024-01-20T15:45:00Z"
+                    },
+                    "recent_activity": [
+                        {
+                            "type": "shipment_created",
+                            "description": "Nouvel envoi créé",
+                            "date": "2024-01-20T10:30:00Z"
+                        },
+                        {
+                            "type": "trip_completed",
+                            "description": "Trajet terminé avec succès",
+                            "date": "2024-01-19T14:20:00Z"
+                        }
+                    ]
+                }}
+            ),
+            status.HTTP_401_UNAUTHORIZED: openapi.Response(
+                description="Non authentifié",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Authentification requise"
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer les statistiques de l'utilisateur connecté."""
+        user = request.user
+        
+        # Calculer les statistiques de base
+        stats = {
+            'total_trips': user.total_trips,
+            'total_shipments': user.total_shipments,
+            'completed_trips': user.total_trips,  # À remplacer par la logique métier
+            'completed_shipments': user.total_shipments,  # À remplacer par la logique métier
+            'pending_trips': 0,  # À calculer depuis les modèles Trip
+            'pending_shipments': 0,  # À calculer depuis les modèles Shipment
+            'total_earnings': str(user.wallet_balance),  # À calculer depuis les transactions
+            'total_spent': "0.00",  # À calculer depuis les transactions
+            'average_rating': str(user.rating),
+            'total_ratings': 0,  # À calculer depuis les modèles Rating
+            'verification_completion': self._calculate_verification_completion(user),
+            'account_age_days': self._calculate_account_age_days(user),
+            'last_activity': user.updated_at.isoformat() if user.updated_at else None
+        }
+        
+        # Activité récente (placeholder - à implémenter selon les besoins)
+        recent_activity = [
+            {
+                'type': 'account_created',
+                'description': 'Compte créé',
+                'date': user.created_at.isoformat() if user.created_at else None
+            }
+        ]
+        
+        return Response({
+            'success': True,
+            'stats': stats,
+            'recent_activity': recent_activity
+        })
+    
+    def _calculate_verification_completion(self, user):
+        """Calculer le pourcentage de vérification du compte."""
+        completion = 0
+        if user.is_phone_verified:
+            completion += 50
+        if user.is_document_verified:
+            completion += 50
+        return completion
+    
+    def _calculate_account_age_days(self, user):
+        """Calculer l'âge du compte en jours."""
+        if user.created_at:
+            from django.utils import timezone
+            now = timezone.now()
+            age = now - user.created_at
+            return age.days
+        return 0
+
+class UserWalletView(APIView):
+    """Vue pour la gestion du portefeuille - Redirection vers payments app."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer le portefeuille de l'utilisateur",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Portefeuille récupéré",
+                examples={"application/json": {
+                    "success": True,
+                    "wallet": {
+                        "id": 1,
+                        "user": 1,
+                        "balance": 1500.00,
+                        "currency": "DZD",
+                        "is_active": True,
+                        "created_at": "2024-01-15T10:30:00Z",
+                        "updated_at": "2024-01-15T10:30:00Z"
+                    }
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer le portefeuille de l'utilisateur."""
+        # Import the WalletView from payments app
+        from payments.views import WalletView
+        
+        # Create an instance of WalletView and call its get method
+        wallet_view = WalletView()
+        wallet_view.request = request
+        wallet_view.format_kwarg = None
+        
+        return wallet_view.get(request)
+
+
+class UserDepositView(APIView):
+    """Vue pour les dépôts - Redirection vers payments app."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Effectuer un dépôt",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'payment_method': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['card', 'bank_transfer', 'chargily']
+                )
+            },
+            required=['amount']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Dépôt effectué",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Dépôt effectué avec succès",
+                    "transaction": {
+                        "id": 1,
+                        "transaction_type": "deposit",
+                        "amount": 500.00,
+                        "currency": "DZD",
+                        "payment_method": "card",
+                        "status": "completed",
+                        "reference": "DEP123456"
+                    },
+                    "new_balance": 2000.00
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Montant invalide"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Portefeuille non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Portefeuille non trouvé"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Effectuer un dépôt."""
+        # Import the DepositView from payments app
+        from payments.views import DepositView
+        
+        # Create an instance of DepositView and call its post method
+        deposit_view = DepositView()
+        deposit_view.request = request
+        deposit_view.format_kwarg = None
+        
+        return deposit_view.post(request)
+
+
+class UserWithdrawView(APIView):
+    """Vue pour les retraits - Redirection vers payments app."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Effectuer un retrait",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'payment_method': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['bank_transfer', 'mobile_money']
+                ),
+                'bank_account': openapi.Schema(type=openapi.TYPE_STRING)
+            },
+            required=['amount']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Retrait effectué",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Retrait effectué avec succès",
+                    "transaction": {
+                        "id": 1,
+                        "transaction_type": "withdrawal",
+                        "amount": 500.00,
+                        "currency": "DZD",
+                        "payment_method": "bank_transfer",
+                        "status": "completed",
+                        "reference": "WIT123456"
+                    },
+                    "new_balance": 1000.00
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Montant invalide ou solde insuffisant"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Portefeuille non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Portefeuille non trouvé"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Effectuer un retrait."""
+        # Import the WithdrawView from payments app
+        from payments.views import WithdrawView
+        
+        # Create an instance of WithdrawView and call its post method
+        withdraw_view = WithdrawView()
+        withdraw_view.request = request
+        withdraw_view.format_kwarg = None
+        
+        return withdraw_view.post(request)
+
+
+class UserTransferView(APIView):
+    """Vue pour les transferts - Redirection vers payments app."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Effectuer un transfert",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'recipient_email': openapi.Schema(type=openapi.TYPE_STRING),
+                'amount': openapi.Schema(type=openapi.TYPE_NUMBER),
+                'description': openapi.Schema(type=openapi.TYPE_STRING)
+            },
+            required=['recipient_email', 'amount']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Transfert effectué",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Transfert effectué avec succès",
+                    "transaction": {
+                        "id": 1,
+                        "transaction_type": "transfer",
+                        "amount": 500.00,
+                        "currency": "DZD",
+                        "payment_method": "wallet_transfer",
+                        "status": "completed",
+                        "reference": "TRF123456"
+                    },
+                    "new_balance": 1000.00
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur de validation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Montant invalide ou destinataire non trouvé"
+                }}
+            ),
+            status.HTTP_404_NOT_FOUND: openapi.Response(
+                description="Portefeuille non trouvé",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Portefeuille non trouvé"
+                }}
+            )
+        }
+    )
+    def post(self, request):
+        """Effectuer un transfert."""
+        # Import the TransferView from payments app
+        from payments.views import TransferView
+        
+        # Create an instance of TransferView and call its post method
+        transfer_view = TransferView()
+        transfer_view.request = request
+        transfer_view.format_kwarg = None
+        
+        return transfer_view.post(request)
+
+
+class UserTransactionListView(APIView):
+    """Vue pour la liste des transactions - Redirection vers payments app."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupérer l'historique des transactions",
+        manual_parameters=[
+            openapi.Parameter(
+                'transaction_type',
+                openapi.IN_QUERY,
+                description="Type de transaction",
+                type=openapi.TYPE_STRING,
+                enum=['deposit', 'withdrawal', 'transfer', 'payment', 'refund']
+            ),
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                description="Statut de la transaction",
+                type=openapi.TYPE_STRING,
+                enum=['pending', 'completed', 'failed', 'cancelled']
+            ),
+            openapi.Parameter(
+                'date_from',
+                openapi.IN_QUERY,
+                description="Date de début (YYYY-MM-DD)",
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'date_to',
+                openapi.IN_QUERY,
+                description="Date de fin (YYYY-MM-DD)",
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE
+            )
+        ],
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Liste des transactions",
+                examples={"application/json": {
+                    "success": True,
+                    "transactions": [
+                        {
+                            "id": 1,
+                            "transaction_type": "deposit",
+                            "amount": 500.00,
+                            "currency": "DZD",
+                            "payment_method": "card",
+                            "status": "completed",
+                            "transaction_id": "TXN123456",
+                            "created_at": "2024-01-15T10:30:00Z"
+                        }
+                    ],
+                    "count": 1
+                }}
+            )
+        }
+    )
+    def get(self, request):
+        """Récupérer l'historique des transactions."""
+        # Import the TransactionListView from payments app
+        from payments.views import TransactionListView
+        
+        # Create an instance of TransactionListView and call its get method
+        transaction_view = TransactionListView()
+        transaction_view.request = request
+        transaction_view.format_kwarg = None
+        
+        return transaction_view.get(request)
