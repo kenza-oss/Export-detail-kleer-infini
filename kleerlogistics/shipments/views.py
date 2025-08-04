@@ -13,10 +13,12 @@ import string
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import Shipment, ShipmentTracking
+from .models import Shipment, ShipmentTracking, Package, ShipmentDocument, ShipmentRating
 from .serializers import (
     ShipmentSerializer, ShipmentCreateSerializer, ShipmentDetailSerializer,
-    ShipmentTrackingSerializer, ShipmentStatusSerializer
+    ShipmentTrackingSerializer, ShipmentStatusSerializer, PackageSerializer,
+    PackageCreateSerializer, ShipmentDocumentSerializer, ShipmentDocumentCreateSerializer,
+    ShipmentRatingSerializer, ShipmentRatingCreateSerializer, ShipmentWithDetailsSerializer
 )
 from config.swagger_examples import (
     SHIPMENT_CREATE_EXAMPLE, SHIPMENT_LIST_EXAMPLE, SHIPMENT_UPDATE_EXAMPLE,
@@ -81,7 +83,7 @@ class ShipmentListView(APIView):
     )
     def get(self, request):
         """Liste des envois de l'utilisateur connecté."""
-        shipments = Shipment.objects.filter(user=request.user).order_by('-created_at')
+        shipments = Shipment.objects.filter(sender=request.user).order_by('-created_at')
         serializer = ShipmentSerializer(shipments, many=True)
         
         return Response({
@@ -149,7 +151,7 @@ class ShipmentCreateView(APIView):
                 tracking_number = self.generate_tracking_number()
                 
                 shipment = serializer.save(
-                    user=request.user,
+                    sender=request.user,
                     tracking_number=tracking_number,
                     status='pending'
                 )
@@ -157,7 +159,7 @@ class ShipmentCreateView(APIView):
                 # Créer un événement de suivi initial
                 ShipmentTracking.objects.create(
                     shipment=shipment,
-                    event_type='created',
+                    status='created',
                     description='Envoi créé',
                     location='Origine'
                 )
@@ -239,7 +241,7 @@ class ShipmentDetailView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             serializer = ShipmentDetailSerializer(shipment)
             
@@ -258,7 +260,7 @@ class ShipmentDetailView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             serializer = ShipmentCreateSerializer(shipment, data=request.data, partial=True)
             
@@ -285,7 +287,7 @@ class ShipmentDetailView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user,
+                sender=request.user,
                 status='pending'  # Seulement les envois en attente peuvent être supprimés
             )
             shipment.delete()
@@ -293,7 +295,7 @@ class ShipmentDetailView(APIView):
             return Response({
                 'success': True,
                 'message': 'Envoi supprimé avec succès'
-            })
+            }, status=status.HTTP_204_NO_CONTENT)
         except Shipment.DoesNotExist:
             return Response({
                 'success': False,
@@ -311,7 +313,7 @@ class ShipmentStatusView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             serializer = ShipmentStatusSerializer(shipment)
             
@@ -336,7 +338,7 @@ class ShipmentTrackingView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             tracking_events = ShipmentTracking.objects.filter(shipment=shipment).order_by('-timestamp')
             serializer = ShipmentTrackingSerializer(tracking_events, many=True)
@@ -363,7 +365,7 @@ class AddTrackingEventView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             serializer = ShipmentTrackingSerializer(data=request.data)
@@ -407,7 +409,7 @@ class ShipmentMatchesView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             # Simuler des matches (en production, utiliser l'algorithme de matching)
@@ -458,7 +460,7 @@ class AcceptMatchView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             # En production, vérifier que le match existe et est valide
@@ -489,7 +491,7 @@ class ShipmentPaymentView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             return Response({
@@ -520,13 +522,14 @@ class ProcessPaymentView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             payment_method = request.data.get('payment_method', 'card')
             
             # Simuler le traitement du paiement
             shipment.payment_status = 'paid'
+            shipment.is_paid = True
             shipment.payment_method = payment_method
             shipment.payment_date = timezone.now()
             shipment.save()
@@ -554,7 +557,7 @@ class GenerateDeliveryOTPView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             # Générer un OTP à 6 chiffres
@@ -584,7 +587,7 @@ class VerifyDeliveryOTPView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             provided_otp = request.data.get('otp')
@@ -616,7 +619,7 @@ class ConfirmDeliveryView(APIView):
         try:
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
-                user=request.user
+                sender=request.user
             )
             
             shipment.status = 'delivered'
@@ -651,7 +654,7 @@ class AdminShipmentListView(APIView):
     
     def get(self, request):
         """Liste de tous les envois."""
-        shipments = Shipment.objects.all().select_related('user')
+        shipments = Shipment.objects.all().select_related('sender')
         serializer = ShipmentSerializer(shipments, many=True)
         
         return Response({
@@ -680,3 +683,370 @@ class AdminShipmentDetailView(APIView):
                 'success': False,
                 'message': 'Envoi non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+# Nouvelles vues pour Package
+class PackageDetailView(APIView):
+    """Vue pour les détails d'un colis."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, shipment_id):
+        """Récupérer les détails d'un colis."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            package = Package.objects.get(shipment=shipment)
+            serializer = PackageSerializer(package)
+            
+            return Response({
+                'success': True,
+                'package': serializer.data
+            })
+        except (Shipment.DoesNotExist, Package.DoesNotExist):
+            return Response({
+                'success': False,
+                'message': 'Colis non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, shipment_id):
+        """Créer les détails d'un colis."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            
+            # Vérifier si les détails existent déjà
+            if Package.objects.filter(shipment=shipment).exists():
+                return Response({
+                    'success': False,
+                    'message': 'Les détails du colis existent déjà'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = PackageCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                package = serializer.save(shipment=shipment)
+                response_serializer = PackageSerializer(package)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Détails du colis créés avec succès',
+                    'package': response_serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def put(self, request, shipment_id):
+        """Mettre à jour les détails d'un colis."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            package = Package.objects.get(shipment=shipment)
+            
+            serializer = PackageCreateSerializer(package, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                response_serializer = PackageSerializer(package)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Détails du colis mis à jour avec succès',
+                    'package': response_serializer.data
+                })
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except (Shipment.DoesNotExist, Package.DoesNotExist):
+            return Response({
+                'success': False,
+                'message': 'Colis non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+# Nouvelles vues pour ShipmentDocument
+class ShipmentDocumentListView(APIView):
+    """Vue pour la liste des documents d'un envoi."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, shipment_id):
+        """Récupérer la liste des documents d'un envoi."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            documents = ShipmentDocument.objects.filter(shipment=shipment)
+            serializer = ShipmentDocumentSerializer(documents, many=True)
+            
+            return Response({
+                'success': True,
+                'documents': serializer.data,
+                'count': documents.count()
+            })
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, shipment_id):
+        """Ajouter un document à un envoi."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            
+            serializer = ShipmentDocumentCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                document = serializer.save(shipment=shipment)
+                response_serializer = ShipmentDocumentSerializer(document)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Document ajouté avec succès',
+                    'document': response_serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class ShipmentDocumentDetailView(APIView):
+    """Vue pour les détails d'un document d'envoi."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, shipment_id, document_id):
+        """Récupérer les détails d'un document."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            document = ShipmentDocument.objects.get(
+                id=document_id,
+                shipment=shipment
+            )
+            serializer = ShipmentDocumentSerializer(document)
+            
+            return Response({
+                'success': True,
+                'document': serializer.data
+            })
+        except (Shipment.DoesNotExist, ShipmentDocument.DoesNotExist):
+            return Response({
+                'success': False,
+                'message': 'Document non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def delete(self, request, shipment_id, document_id):
+        """Supprimer un document."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            document = ShipmentDocument.objects.get(
+                id=document_id,
+                shipment=shipment
+            )
+            document.delete()
+            
+            return Response({
+                'success': True,
+                'message': 'Document supprimé avec succès'
+            }, status=status.HTTP_204_NO_CONTENT)
+        except (Shipment.DoesNotExist, ShipmentDocument.DoesNotExist):
+            return Response({
+                'success': False,
+                'message': 'Document non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+# Nouvelles vues pour ShipmentRating
+class ShipmentRatingView(APIView):
+    """Vue pour les évaluations d'envois."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, shipment_id):
+        """Récupérer l'évaluation d'un envoi."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            
+            # Vérifier si l'envoi est livré
+            if shipment.status != 'delivered':
+                return Response({
+                    'success': False,
+                    'message': 'Seuls les envois livrés peuvent être évalués'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            try:
+                rating = ShipmentRating.objects.get(shipment=shipment)
+                serializer = ShipmentRatingSerializer(rating)
+                
+                return Response({
+                    'success': True,
+                    'rating': serializer.data
+                })
+            except ShipmentRating.DoesNotExist:
+                return Response({
+                    'success': True,
+                    'rating': None,
+                    'message': 'Aucune évaluation trouvée'
+                })
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def post(self, request, shipment_id):
+        """Créer une évaluation pour un envoi."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            
+            # Vérifier si l'envoi est livré
+            if shipment.status != 'delivered':
+                return Response({
+                    'success': False,
+                    'message': 'Seuls les envois livrés peuvent être évalués'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Vérifier si l'utilisateur a déjà évalué cet envoi
+            if ShipmentRating.objects.filter(shipment=shipment, rater=request.user).exists():
+                return Response({
+                    'success': False,
+                    'message': 'Vous avez déjà évalué cet envoi'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = ShipmentRatingCreateSerializer(
+                data=request.data,
+                context={'request': request, 'shipment_id': shipment_id}
+            )
+            if serializer.is_valid():
+                rating = serializer.save(shipment=shipment, rater=request.user)
+                response_serializer = ShipmentRatingSerializer(rating)
+                
+                return Response({
+                    'success': True,
+                    'message': 'Évaluation créée avec succès',
+                    'rating': response_serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class ShipmentWithAllDetailsView(APIView):
+    """Vue pour récupérer un envoi avec tous ses détails."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request, shipment_id):
+        """Récupérer un envoi avec tous ses détails."""
+        try:
+            shipment = Shipment.objects.get(
+                id=shipment_id,
+                sender=request.user
+            )
+            serializer = ShipmentWithDetailsSerializer(shipment)
+            
+            return Response({
+                'success': True,
+                'shipment': serializer.data
+            })
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+# Vues d'administration pour les nouveaux modèles
+class AdminPackageListView(APIView):
+    """Vue admin pour la liste de tous les colis."""
+    
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        """Liste de tous les colis."""
+        packages = Package.objects.all().select_related('shipment')
+        serializer = PackageSerializer(packages, many=True)
+        
+        return Response({
+            'success': True,
+            'packages': serializer.data,
+            'count': packages.count()
+        })
+
+
+class AdminDocumentListView(APIView):
+    """Vue admin pour la liste de tous les documents."""
+    
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        """Liste de tous les documents."""
+        documents = ShipmentDocument.objects.all().select_related('shipment')
+        serializer = ShipmentDocumentSerializer(documents, many=True)
+        
+        return Response({
+            'success': True,
+            'documents': serializer.data,
+            'count': documents.count()
+        })
+
+
+class AdminRatingListView(APIView):
+    """Vue admin pour la liste de toutes les évaluations."""
+    
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        """Liste de toutes les évaluations."""
+        ratings = ShipmentRating.objects.all().select_related('shipment', 'rater')
+        serializer = ShipmentRatingSerializer(ratings, many=True)
+        
+        return Response({
+            'success': True,
+            'ratings': serializer.data,
+            'count': ratings.count()
+        })
