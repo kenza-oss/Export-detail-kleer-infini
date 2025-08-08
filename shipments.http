@@ -1,0 +1,404 @@
+### KleerLogistics Shipments API - All Endpoints
+
+# Base URL: http://localhost:8000/api/v1/shipments/
+# Authentication: Bearer Token required for most endpoints
+
+### Variables d'environnement
+@baseUrl = http://localhost:8000/api/v1/users
+@contentType = application/json
+@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+
+
+### ========================================
+### AUTHENTICATION
+### ========================================
+
+### 0. Connexion utilisateur
+# @name login
+POST {{baseUrl}}/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "password": "TestPass123!"
+}
+
+### ========================================
+### SHIPMENT CRUD OPERATIONS
+### ========================================
+
+### 1. List all shipments for authenticated user
+GET http://localhost:8000/api/v1/shipments/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 1.1 List shipments with filters
+GET http://localhost:8000/api/v1/shipments/?status=pending&date_from=2024-01-01&date_to=2024-12-31
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 2. Create new shipment
+POST http://localhost:8000/api/v1/shipments/create/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "origin_city": "Alger",
+    "destination_city": "Oran",
+    "weight": 2.5,
+    "dimensions": "30x20x15",
+    "description": "Documents importants",
+    "package_type": "document",
+    "price": 1500.00,
+    "value": 5000.00,
+    "is_fragile": false,
+    "origin_address": "123 Rue de la Paix, Alger",
+    "destination_country": "Algérie",
+    "destination_address": "456 Avenue de la Liberté, Oran",
+    "recipient_name": "Ahmed Benali",
+    "recipient_phone": "+213123456789",
+    "recipient_email": "ahmed@example.com",
+    "preferred_pickup_date": "2024-02-15",
+    "max_delivery_date": "2024-02-20",
+    "urgency": "medium",
+    "special_instructions": "Livrer entre 9h et 17h",
+    "insurance_requested": true,
+    "payment_method": "card"
+}
+
+### 3. Get shipment details by tracking number
+GET http://localhost:8000/api/v1/shipments/KL177711228/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 4. Update shipment
+PUT http://localhost:8000/api/v1/shipments/KL177711228/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "description": "Documents très importants - mise à jour",
+    "special_instructions": "Livrer uniquement au destinataire",
+    "urgency": "urgent"
+}
+
+### 5. Delete shipment (only if status is pending)
+DELETE http://localhost:8000/api/v1/shipments/KL177711228/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### ========================================
+### SHIPMENT STATUS
+### ========================================
+
+### 6. Get shipment status
+GET http://localhost:8000/api/v1/shipments/KL177711228/status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### ========================================
+### SHIPMENT TRACKING
+### ========================================
+
+### 7. Get tracking events for shipment
+GET http://localhost:8000/api/v1/shipments/KL177711228/tracking/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 8. Add tracking event
+POST http://localhost:8000/api/v1/shipments/KL177711228/tracking/add/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "status": "in_transit",
+    "event_type": "picked_up",
+    "description": "Colis récupéré par le transporteur",
+    "location": "Alger, Centre de tri"
+}
+
+### ========================================
+### SHIPMENT PAYMENT
+### ========================================
+
+### 9. Get payment information
+GET http://localhost:8000/api/v1/shipments/KL177711228/payment/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 10. Process payment
+POST http://localhost:8000/api/v1/shipments/KL177711228/payment/process/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "payment_method": "card",
+    "card_token": "tok_visa",
+    "amount": 1500.00
+}
+
+### ========================================
+### SHIPMENT DELIVERY
+### ========================================
+
+### 11. Generate delivery OTP
+POST http://localhost:8000/api/v1/shipments/KL177711228/delivery/otp/generate/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 12. Verify delivery OTP
+POST http://localhost:8000/api/v1/shipments/KL177711228/delivery/otp/verify/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "otp": "123456"
+}
+
+### 13. Confirm delivery
+POST http://localhost:8000/api/v1/shipments/KL177711228/delivery/confirm/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "delivery_notes": "Livré en bon état",
+    "recipient_signature": "Ahmed Benali"
+}
+
+### ========================================
+### PACKAGE DETAILS
+### ========================================
+
+### 14. Get package details
+GET http://localhost:8000/api/v1/shipments/1/package/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 15. Create package details
+POST http://localhost:8000/api/v1/shipments/1/package/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "category": "electronics",
+    "length": 30,
+    "width": 20,
+    "height": 15,
+    "requires_special_handling": false,
+    "is_hazardous": false,
+    "temperature_sensitive": false,
+    "handling_instructions": "Manipuler avec précaution",
+    "storage_requirements": "Température ambiante"
+}
+
+### 16. Update package details
+PUT http://localhost:8000/api/v1/shipments/1/package/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "handling_instructions": "Manipuler avec précaution - Fragile",
+    "requires_special_handling": true
+}
+
+### ========================================
+### SHIPMENT RATINGS
+### ========================================
+
+### 17. Get shipment rating
+GET http://localhost:8000/api/v1/shipments/1/rating/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 18. Create shipment rating
+POST http://localhost:8000/api/v1/shipments/1/rating/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "overall_rating": 5,
+    "delivery_speed": 5,
+    "package_condition": 5,
+    "communication": 4,
+    "comment": "Excellent service, livraison rapide et colis en parfait état",
+    "is_public": true
+}
+
+### ========================================
+### SHIPMENT DOCUMENTS
+### ========================================
+
+### 19. List shipment documents
+GET http://localhost:8000/api/v1/shipments/1/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 20. Upload shipment document
+POST http://localhost:8000/api/v1/shipments/1/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+invoice
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="title"
+
+Facture d'achat
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Facture pour les documents envoyés
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="invoice.pdf"
+Content-Type: application/pdf
+
+< ./invoice.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 21. Get document details
+GET http://localhost:8000/api/v1/shipments/1/documents/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 22. Delete document
+DELETE http://localhost:8000/api/v1/shipments/1/documents/1/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### ========================================
+### SHIPMENT MATCHING (if implemented)
+### ========================================
+
+### 23. Get shipment matches
+GET http://localhost:8000/api/v1/shipments/KL177711228/matches/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### 24. Accept match
+POST http://localhost:8000/api/v1/shipments/KL177711228/matches/1/accept/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+{
+    "accepted": true,
+    "notes": "Match accepté"
+}
+
+### ========================================
+### ADMIN ENDPOINTS (Admin users only)
+### ========================================
+
+### 25. Admin: List all shipments
+GET http://localhost:8000/api/v1/shipments/admin/all/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
+Content-Type: application/json
+
+### 26. Admin: Get shipment details
+GET http://localhost:8000/api/v1/shipments/admin/KL177711228/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
+Content-Type: application/json
+
+### 27. Admin: List all packages
+GET http://localhost:8000/api/v1/shipments/admin/packages/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
+Content-Type: application/json
+
+### 28. Admin: List all documents
+GET http://localhost:8000/api/v1/shipments/admin/documents/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
+Content-Type: application/json
+
+### 29. Admin: List all ratings
+GET http://localhost:8000/api/v1/shipments/admin/ratings/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
+Content-Type: application/json
+
+### ========================================
+### SHIPMENT WITH ALL DETAILS
+### ========================================
+
+### 30. Get shipment with all details (package, documents, rating)
+GET http://localhost:8000/api/v1/shipments/1/details/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NzY2LCJpYXQiOjE3NTQ2ODYxNjYsImp0aSI6Ijc5NmQ3YTdlZjI5OTRiYTc5ZWUxNzc1NTBlNjI4MjZkIiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jgw_79fMB2xdG_KGabmkX3mdKUs5jyuSAEHsM2CRbw8
+Content-Type: application/json
+
+### ========================================
+### VARIABLES FOR TESTING
+### ========================================
+
+# Set these variables in your environment or at the top of the file
+# @auth_token = your_user_jwt_token_here
+# @admin_token = your_admin_jwt_token_here
+
+### ========================================
+### EXAMPLE RESPONSES
+### ========================================
+
+# Example successful shipment creation response:
+# {
+#     "success": true,
+#     "message": "Envoi créé avec succès",
+#     "shipment": {
+#         "tracking_number": "KL177711228",
+#         "status": "pending",
+#         "id": 1
+#     }
+# }
+
+# Example shipment list response:
+# {
+#     "success": true,
+#     "shipments": [
+#         {
+#             "id": 1,
+#             "tracking_number": "KL177711228",
+#             "origin_city": "Alger",
+#             "destination_city": "Oran",
+#             "weight": 2.5,
+#             "status": "pending",
+#             "price": 1500.00,
+#             "created_at": "2024-01-15T10:30:00Z"
+#         }
+#     ],
+#     "count": 1
+# }
+
+# Example tracking events response:
+# {
+#     "success": true,
+#     "tracking_events": [
+#         {
+#             "id": 1,
+#             "status": "created",
+#             "event_type": "created",
+#             "description": "Envoi créé",
+#             "location": "Origine",
+#             "timestamp": "2024-01-15T10:30:00Z"
+#         }
+#     ],
+#     "current_status": "pending"
+# }
+
+### ========================================
+### ERROR HANDLING
+### ========================================
+
+# Common error responses:
+# 400 Bad Request: Validation errors
+# 401 Unauthorized: Invalid or missing token
+# 403 Forbidden: Insufficient permissions
+# 404 Not Found: Shipment not found
+# 500 Internal Server Error: Server error
+
+# Example error response:
+# {
+#     "success": false,
+#     "errors": {
+#         "origin_city": ["Ce champ est requis."],
+#         "weight": ["Ce champ doit être un nombre positif."]
+#     }
+# }
+

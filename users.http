@@ -4,7 +4,7 @@
 ### Variables d'environnement
 @baseUrl = http://localhost:8000/api/v1/users
 @contentType = application/json
-@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@adminToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
 @userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NjgzMzg1LCJpYXQiOjE3NTQ2Nzk3ODUsImp0aSI6IjVhNzdjNzZiZTdlMDRhYmE5NDU5ZDZjMjU2YWIyYTJjIiwidXNlcl9pZCI6IjIifQ.dYxzuavyuqF9io13wMP0sK_uwTw2txTFkeSudDMBY7Y
 
 ### ========================================
@@ -16,14 +16,14 @@ POST {{baseUrl}}/auth/register/
 Content-Type: {{contentType}}
 
 {
-    "username": "testuser",
-    "email": "test@example.com",
+    "username": "admin",
+    "email": "admin@example.com",
     "password": "TestPass123!",
     "password_confirm": "TestPass123!",
-    "first_name": "John",
+    "first_name": "Romualdo",
     "last_name": "Doe",
-    "phone_number": "+213123456789",
-    "role": "sender"
+    "phone_number": "+21375846985",
+    "role": "admin"
 }
 
 ### 2. Connexion utilisateur
@@ -32,7 +32,7 @@ POST {{baseUrl}}/auth/login/
 Content-Type: {{contentType}}
 
 {
-    "username": "testuser",
+    "username": "admin",
     "password": "TestPass123!"
 }
 
@@ -50,8 +50,8 @@ POST {{baseUrl}}/auth/token/refresh/
 Content-Type: {{contentType}}
 
 {
-    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NjgzMzY2LCJpYXQiOjE3NTQ2Nzk3NjcsImp0aSI6ImYyNGVmZTQ1MmZiNjQ4MTJhYmU4ZTVjZWUxYzU0Y2E4IiwidXNlcl9pZCI6MiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.afgiOb1vlkRPVu-7KAauhuWkKbJmuZdKSf3Rg09OYHk",
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NDc2NjE2NiwiaWF0IjoxNzU0Njc5NzY2LCJqdGkiOiI3NzdhYjVlNzM3YTc0ZDhlYTllZjRiNDExYThkMzUzOCIsInVzZXJfaWQiOiIyIn0.m2u8k2XJQGxBA6n3j9KAYfxZN13U0Rm4n1qItfKMjl4"
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5NjYwLCJpYXQiOjE3NTQ2ODYwNjAsImp0aSI6IjU1NmEyZWY4ZGM1ZTQ2NWQ5YWRlYjQ2ZjMyMjk0ZWMzIiwidXNlcl9pZCI6MywidXNlcm5hbWUiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImlzX2FkbWluIjp0cnVlfQ.CK7yzQJXRpO8c6qEPpN921U8nmpqxAG3M2iIzUuNMp0",
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NDc3MjQ2MCwiaWF0IjoxNzU0Njg2MDYwLCJqdGkiOiI3ZmU2ZWQyYjNlOTA0OTA3YTdjNDRhYjQ3NGE4OTcyMyIsInVzZXJfaWQiOiIzIn0.Lbngu31q7MCsm4xoefmsb-tJJl3m6Ab57xtEP-3OQ3A"
 }
 
 ### ========================================
@@ -267,16 +267,16 @@ Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNz
 
 ### 32. Lister tous les utilisateurs (Admin)
 GET {{baseUrl}}/admin/users/
-Authorization: {{adminToken}}
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
 
 ### 33. Récupérer les détails d'un utilisateur (Admin)
 GET {{baseUrl}}/admin/users/1/
-Authorization: {{adminToken}}
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
 
 ### 34. Mettre à jour un utilisateur (Admin)
 PATCH {{baseUrl}}/admin/users/1/
 Content-Type: {{contentType}}
-Authorization: {{adminToken}}
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
 
 {
     "is_active": true,
@@ -286,7 +286,7 @@ Authorization: {{adminToken}}
 ### 35. Mettre à jour le rôle d'un utilisateur (Admin)
 PATCH {{baseUrl}}/admin/users/1/role/
 Content-Type: {{contentType}}
-Authorization: {{adminToken}}
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc
 
 {
     "role": "both"
@@ -373,7 +373,7 @@ Authorization: Bearer invalid_token
 
 ### 1. Remplacez les tokens :
 ###    - eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0NjgzMzg1LCJpYXQiOjE3NTQ2Nzk3ODUsImp0aSI6IjVhNzdjNzZiZTdlMDRhYmE5NDU5ZDZjMjU2YWIyYTJjIiwidXNlcl9pZCI6IjIifQ.dYxzuavyuqF9io13wMP0sK_uwTw2txTFkeSudDMBY7Y : Token obtenu après connexion
-###    - {{adminToken}} : Token d'un utilisateur admin
+###    - eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc : Token d'un utilisateur admin
 
 ### 2. Ordre recommandé pour les tests :
 ###    a) Inscription (1)
@@ -384,7 +384,7 @@ Authorization: Bearer invalid_token
 ### 3. Pour les tests admin :
 ###    a) Créer un utilisateur admin
 ###    b) Se connecter avec l'admin
-###    c) Remplacer {{adminToken}} par le token admin
+###    c) Remplacer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Njg5Njg1LCJpYXQiOjE3NTQ2ODYwODUsImp0aSI6ImU0ODRjOTQ1NDU5NTRhMDhiNmUzNTA3NzNiNTQzYTkxIiwidXNlcl9pZCI6IjMifQ.VCQ8gDkNF8wOsbGk1Wq_01KCS8avevDKFbGXPUv7zAc par le token admin
 
 ### 4. Variables utiles à définir :
 ###    @userId = 1
