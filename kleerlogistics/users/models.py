@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models.signals import post_save
@@ -24,7 +24,15 @@ class User(AbstractUser):
     )
     is_phone_verified = models.BooleanField(default=False)
     is_document_verified = models.BooleanField(default=False)
-    rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
+    rating = models.DecimalField(
+        max_digits=3, 
+        decimal_places=2, 
+        default=0.00,
+        validators=[
+            MinValueValidator(0.00, message="La note ne peut pas être négative"),
+            MaxValueValidator(9.99, message="La note ne peut pas dépasser 9.99")
+        ]
+    )
     total_trips = models.PositiveIntegerField(default=0)
     total_shipments = models.PositiveIntegerField(default=0)
     preferred_language = models.CharField(max_length=5, default='fr')
