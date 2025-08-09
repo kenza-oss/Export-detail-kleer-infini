@@ -30,8 +30,7 @@ COPY . /app/
 WORKDIR /app/kleerlogistics
 
 
-# Collecte des fichiers statiques
-#RUN python manage.py collectstatic --noinput
+
 
 # Créer un utilisateur non-root et donner la propriété du code
 RUN adduser --disabled-password --gecos '' appuser 
