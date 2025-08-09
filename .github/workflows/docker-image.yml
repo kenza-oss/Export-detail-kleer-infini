@@ -1,7 +1,6 @@
 name: Deploy backend to Docker Hub
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - backend/romualdo
