@@ -30,15 +30,18 @@ services:
       - kleerlogistics_network
     restart: unless-stopped
 
-  # Application Django (optionnel pour le développement)
+  # Application Django served via Gunicorn
   web:
     build: .
     container_name: kleerlogistics_web
-    command: python manage.py runserver 0.0.0.0:8000
+    # Lancer les migrations et la collecte des statiques avant Gunicorn
     volumes:
-      - ./kleerlogistics:/app
-    ports:
-      - "8000:8000"
+      #- ./kleerlogistics/Export-detail-kleer-infini:/app
+      # ADDED: shared volume for static files
+      - static_volume:/app/static
+    # CHANGED: expose instead of ports (Nginx will handle incoming requests)
+    expose:
+      - "8000"
     environment:
       - DEBUG=True
       - DB_HOST=postgres
@@ -50,12 +53,28 @@ services:
       - kleerlogistics_network
     restart: unless-stopped
 
+  # Nginx reverse proxy service
+  nginx:
+    image: nginx:alpine
+    container_name: kleerlogistics_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_volume:/app/kleerlogistics/staticfiles:ro
+    depends_on:
+      - web
+    networks:
+      - kleerlogistics_network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
     driver: local
+  static_volume:
 
 networks:
   kleerlogistics_network:
-    driver: bridge 
+    driver: bridge

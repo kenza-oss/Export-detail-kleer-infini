@@ -261,4 +261,8 @@ Authorization: Bearer invalid_token
 ### 1. Inscription
 ### 2. Connexion (récupérer token)
 ### 3. Tester les endpoints protégés
+<<<<<<< HEAD
 ### 4. Pour les tests admin, utiliser un token admin valide
+=======
+### 4. Pour les tests admin, utiliser un token admin valide
+>>>>>>> refs/remotes/origin/backend/romualdo
