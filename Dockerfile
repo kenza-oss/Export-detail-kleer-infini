@@ -29,9 +29,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . /app/
 WORKDIR /app/kleerlogistics
 
-
-
-
 # Créer un utilisateur non-root et donner la propriété du code
 RUN adduser --disabled-password --gecos '' appuser 
 RUN chown -R appuser:appuser /app
