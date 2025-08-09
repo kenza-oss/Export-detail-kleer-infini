@@ -14,7 +14,6 @@ urlpatterns = [
     path('auth/register/', views.UserRegistrationView.as_view(), name='user_registration'),
     path('auth/logout/', views.UserLogoutView.as_view(), name='user_logout'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='auth_refresh'),
     
     # OTP Verification
     path('auth/otp/send/', views.SendOTPView.as_view(), name='send_otp'),

@@ -13,6 +13,7 @@ from django.contrib.auth import authenticate
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
+from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
@@ -29,7 +30,7 @@ from .serializers import (
     OTPSendSerializer, OTPVerifySerializer, RoleUpdateSerializer,
     AdminUserSerializer
 )
-from .permissions import IsAdminUser, IsSender, IsTraveler, IsOwnerOrAdmin, IsPhoneVerified
+from .permissions import IsAdminUser, IsSender, IsTraveler, IsOwnerOrAdmin, IsPhoneVerified, IsVerifiedForTransactions
 from .services import OTPService, AuthService
 from config.swagger_examples import (
     USER_REGISTRATION_EXAMPLE, USER_PROFILE_EXAMPLE, PHONE_VERIFICATION_EXAMPLE,
@@ -322,7 +323,7 @@ class SendOTPView(APIView):
     def post(self, request):
         """Envoyer un OTP par SMS."""
         try:
-            serializer = OTPSendSerializer(data=request.data)
+            serializer = OTPSendSerializer(data=request.data, context={'default_region': getattr(settings, 'PHONENUMBER_DEFAULT_REGION', 'DZ')})
             if serializer.is_valid():
                 phone_number = serializer.validated_data['phone_number']
                 
@@ -330,7 +331,7 @@ class SendOTPView(APIView):
                 user = request.user if request.user.is_authenticated else None
                 
                 # Créer l'OTP
-                otp, error_message = OTPService.create_otp(user, phone_number)
+                otp, plain_code, error_message = OTPService.create_otp(user, phone_number)
                 
                 if error_message:
                     return Response({
@@ -344,14 +345,27 @@ class SendOTPView(APIView):
                         'message': 'Erreur lors de la création de l\'OTP'
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
-                # Envoyer par SMS (simulation en développement)
-                OTPService.send_otp_sms(phone_number, otp.code)
+                # Envoyer par SMS via le provider configuré
+                sms_success, sms_message = OTPService.send_otp_sms(phone_number, plain_code)
                 
-                return Response({
+                if not sms_success:
+                    # En cas d'échec d'envoi SMS, supprimer l'OTP créé
+                    otp.delete()
+                    return Response({
+                        'success': False,
+                        'message': f'Erreur lors de l\'envoi SMS: {sms_message}'
+                    }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                resp = {
                     'success': True,
                     'message': f'OTP envoyé au {phone_number}',
-                    'expires_in': '10 minutes'
-                })
+                    'sms_status': sms_message,
+                    'expires_in': '10 minutes',
+                    'provider': getattr(settings, 'SMS_PROVIDER', 'console')
+                }
+                if getattr(settings, 'DEBUG', False):
+                    resp['dev_code'] = plain_code
+                return Response(resp)
             else:
                 return Response({
                     'success': False,
@@ -404,17 +418,13 @@ class VerifyOTPView(APIView):
     def post(self, request):
         """Vérifier l'OTP reçu."""
         try:
-            # Debug: Log the request content type and data
-            print(f"Content-Type: {request.content_type}")
-            print(f"Request data: {request.data}")
-            
-            serializer = OTPVerifySerializer(data=request.data)
+            serializer = OTPVerifySerializer(data=request.data, context={'default_region': getattr(settings, 'PHONENUMBER_DEFAULT_REGION', 'DZ')})
             if serializer.is_valid():
                 phone_number = serializer.validated_data['phone_number']
                 code = serializer.validated_data['code']
                 
                 # Vérifier l'OTP
-                is_valid, user = OTPService.verify_otp(phone_number, code)
+                is_valid, user = OTPService.verify_otp(phone_number, code, request.user if request.user.is_authenticated else None)
                 
                 if is_valid:
                     return Response({
@@ -435,7 +445,6 @@ class VerifyOTPView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(f"Error in OTP verification: {e}")
             return Response({
                 'success': False,
                 'message': f'Erreur lors du traitement de la requête: {str(e)}'
@@ -978,11 +987,21 @@ class ResetPasswordView(APIView):
         
         try:
             user = User.objects.get(email=email)
-            # En production, envoyer un email avec un lien de réinitialisation
-            return Response({
+            # Générer un token sécurisé de reset
+            from django.contrib.auth.tokens import PasswordResetTokenGenerator
+            from django.utils.http import urlsafe_base64_encode
+            from django.utils.encoding import force_bytes
+            token_gen = PasswordResetTokenGenerator()
+            token = token_gen.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            # TODO: envoyer par email en production (ici, renvoi du token en dev / sandbox)
+            payload = {
                 'success': True,
-                'message': 'Email de réinitialisation envoyé'
-            })
+                'message': 'Email de réinitialisation envoyé',
+            }
+            if getattr(settings, 'DEBUG', False):
+                payload.update({'uid': uid, 'token': token})
+            return Response(payload)
         except User.DoesNotExist:
             # Pour des raisons de sécurité, toujours retourner 200 même si l'utilisateur n'existe pas
             return Response({
@@ -1004,26 +1023,27 @@ class ResetPasswordConfirmView(APIView):
         if serializer.is_valid():
             email = serializer.validated_data['email']
             new_password = serializer.validated_data['new_password']
-            token = serializer.validated_data['token']
+            token = serializer.validated_data.get('token')
+            uidb64 = serializer.validated_data.get('uid')
             
             try:
                 user = User.objects.get(email=email)
-                
-                # En production, vérifier le token de réinitialisation
-                # Pour l'instant, on accepte n'importe quel token en développement
-                if token and len(token) > 0:  # Validation basique du token
-                    user.set_password(new_password)
-                    user.save()
-                    
-                    return Response({
-                        'success': True,
-                        'message': 'Mot de passe réinitialisé avec succès'
-                    })
-                else:
-                    return Response({
-                        'success': False,
-                        'message': 'Token de réinitialisation invalide'
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                from django.contrib.auth.tokens import PasswordResetTokenGenerator
+                from django.utils.http import urlsafe_base64_decode
+                token_gen = PasswordResetTokenGenerator()
+                # Si uid est fourni, l'utiliser pour plus de sécurité
+                if uidb64:
+                    try:
+                        uid = int(urlsafe_base64_decode(uidb64).decode())
+                        if uid != user.pk:
+                            return Response({'success': False, 'message': 'Jeton invalide'}, status=status.HTTP_400_BAD_REQUEST)
+                    except Exception:
+                        return Response({'success': False, 'message': 'Jeton invalide'}, status=status.HTTP_400_BAD_REQUEST)
+                if not token or not token_gen.check_token(user, token):
+                    return Response({'success': False, 'message': 'Token de réinitialisation invalide'}, status=status.HTTP_400_BAD_REQUEST)
+                user.set_password(new_password)
+                user.save()
+                return Response({'success': True, 'message': 'Mot de passe réinitialisé avec succès'})
                     
             except User.DoesNotExist:
                 # Pour des raisons de sécurité, toujours retourner 200 même si l'utilisateur n'existe pas
@@ -2025,7 +2045,7 @@ class UserStatsView(APIView):
 class UserWalletView(APIView):
     """Vue pour la gestion du portefeuille - Redirection vers payments app."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsVerifiedForTransactions]
     
     @swagger_auto_schema(
         operation_description="Récupérer le portefeuille de l'utilisateur",
@@ -2063,7 +2083,7 @@ class UserWalletView(APIView):
 class UserDepositView(APIView):
     """Vue pour les dépôts - Redirection vers payments app."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsVerifiedForTransactions]
     
     @swagger_auto_schema(
         operation_description="Effectuer un dépôt",
@@ -2128,7 +2148,7 @@ class UserDepositView(APIView):
 class UserWithdrawView(APIView):
     """Vue pour les retraits - Redirection vers payments app."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsVerifiedForTransactions]
     
     @swagger_auto_schema(
         operation_description="Effectuer un retrait",
@@ -2194,7 +2214,7 @@ class UserWithdrawView(APIView):
 class UserTransferView(APIView):
     """Vue pour les transferts - Redirection vers payments app."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsVerifiedForTransactions]
     
     @swagger_auto_schema(
         operation_description="Effectuer un transfert",
@@ -2257,7 +2277,7 @@ class UserTransferView(APIView):
 class UserTransactionListView(APIView):
     """Vue pour la liste des transactions - Redirection vers payments app."""
     
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsVerifiedForTransactions]
     
     @swagger_auto_schema(
         operation_description="Récupérer l'historique des transactions",

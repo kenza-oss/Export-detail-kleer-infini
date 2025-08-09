@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from phonenumber_field.serializerfields import PhoneNumberField
 
 from .models import User, UserProfile, UserDocument, OTPCode
+import phonenumbers
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -92,7 +93,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserLoginSerializer(serializers.Serializer):
     """Serializer pour la connexion des utilisateurs."""
     
-    username = serializers.CharField()
+    username = serializers.CharField(required=False)
+    identifier = serializers.CharField(required=False, help_text="Email ou numéro de téléphone")
     password = serializers.CharField()
     
     def __init__(self, *args, **kwargs):
@@ -101,7 +103,7 @@ class UserLoginSerializer(serializers.Serializer):
     
     def validate(self, attrs):
         """Valider les identifiants de connexion."""
-        username = attrs.get('username')
+        username = attrs.get('identifier') or attrs.get('username')
         password = attrs.get('password')
         
         if username and password:
@@ -141,10 +143,15 @@ class PhoneVerificationSerializer(serializers.Serializer):
     
     def validate_phone_number(self, value):
         """Valider le format du numéro de téléphone."""
-        # Validation basique du format du numéro de téléphone
-        if not value.startswith('+'):
-            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
-        return value
+        try:
+            default_region = self.context.get('default_region', 'DZ')
+            parsed = phonenumbers.parse(str(value), default_region)
+            if not phonenumbers.is_valid_number(parsed):
+                raise serializers.ValidationError('Numéro de téléphone invalide')
+            # Retourner E.164
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            raise serializers.ValidationError('Numéro de téléphone invalide')
 
 
 class OTPSendSerializer(serializers.Serializer):
@@ -154,9 +161,14 @@ class OTPSendSerializer(serializers.Serializer):
     
     def validate_phone_number(self, value):
         """Valider le format du numéro de téléphone pour l'envoi d'OTP."""
-        if not value.startswith('+'):
-            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
-        return value
+        try:
+            default_region = self.context.get('default_region', 'DZ')
+            parsed = phonenumbers.parse(str(value), default_region)
+            if not phonenumbers.is_valid_number(parsed):
+                raise serializers.ValidationError('Numéro de téléphone invalide')
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            raise serializers.ValidationError('Numéro de téléphone invalide')
 
 
 class OTPVerifySerializer(serializers.Serializer):
@@ -167,9 +179,14 @@ class OTPVerifySerializer(serializers.Serializer):
     
     def validate_phone_number(self, value):
         """Valider le format du numéro de téléphone pour la vérification d'OTP."""
-        if not value.startswith('+'):
-            raise serializers.ValidationError('Le numéro de téléphone doit commencer par +')
-        return value
+        try:
+            default_region = self.context.get('default_region', 'DZ')
+            parsed = phonenumbers.parse(str(value), default_region)
+            if not phonenumbers.is_valid_number(parsed):
+                raise serializers.ValidationError('Numéro de téléphone invalide')
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except Exception:
+            raise serializers.ValidationError('Numéro de téléphone invalide')
     
     def validate(self, attrs):
         """Valider le format de l'OTP."""
@@ -205,7 +222,8 @@ class ResetPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
     new_password = serializers.CharField(min_length=8)
     new_password_confirm = serializers.CharField()
-    token = serializers.CharField()  # Token de réinitialisation
+    token = serializers.CharField(required=False)  # Token de réinitialisation (ancien comportement)
+    uid = serializers.CharField(required=False)    # UID base64 du user
     
     def validate(self, attrs):
         """Valider la réinitialisation de mot de passe."""

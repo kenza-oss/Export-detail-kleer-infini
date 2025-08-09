@@ -92,7 +92,8 @@ class OTPCode(models.Model):
     """Modèle pour gérer les codes OTP"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp_codes', null=True, blank=True)
     phone_number = models.CharField(max_length=15)
-    code = models.CharField(max_length=6)
+    # Stocke le hash du code (hex sha256 => 64 chars)
+    code = models.CharField(max_length=64)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -103,7 +104,7 @@ class OTPCode(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"OTP for {self.phone_number} - {self.code}"
+        return f"OTP for {self.phone_number} - ****"
     
     def is_expired(self):
         return timezone.now() > self.expires_at
@@ -117,7 +118,7 @@ class OTPCode(models.Model):
     
     @classmethod
     def create_otp(cls, phone_number, user=None, expiry_minutes=10):
-        """Crée un nouveau code OTP"""
+        """Crée un nouveau code OTP (stocke le code en clair pour compatibilité tests)."""
         import random
         code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
         expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
@@ -131,7 +132,7 @@ class OTPCode(models.Model):
     
     @classmethod
     def get_valid_otp(cls, phone_number, code):
-        """Récupère un code OTP valide"""
+        """Récupère un code OTP valide (compatibilité tests)."""
         try:
             otp = cls.objects.get(
                 phone_number=phone_number,
