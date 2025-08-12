@@ -155,7 +155,7 @@ class UserModelTests(TestCase):
 
 
 class OTPCodeModelTests(TestCase):
-    """Tests unitaires pour le modèle OTPCode."""
+    """Tests unitaires pour le modèle OTPCode sécurisé."""
     
     def setUp(self):
         """Configuration initiale."""
@@ -165,43 +165,49 @@ class OTPCodeModelTests(TestCase):
             password='TestPass123!'
         )
     
-    def test_otp_creation(self):
-        """Test de création d'un code OTP."""
-        otp = OTPCode.create_otp(
-            phone_number='+213123456789',
-            user=self.user,
-            expiry_minutes=10
-        )
+    def test_otp_model_creation(self):
+        """Test de création d'un code OTP via le service sécurisé."""
+        from .services import OTPService
         
+        # Créer un OTP via le service (pas directement via le modèle)
+        otp, plain_code, error = OTPService.create_otp(self.user, '+213123456789')
+        
+        self.assertIsNotNone(otp)
+        self.assertIsNotNone(plain_code)
+        self.assertIsNone(error)
         self.assertEqual(otp.phone_number, '+213123456789')
         self.assertEqual(otp.user, self.user)
-        self.assertEqual(len(otp.code), 6)
-        self.assertTrue(otp.code.isdigit())
         self.assertFalse(otp.is_used)
         self.assertFalse(otp.is_expired())
+        
+        # Vérifier que le code stocké est haché (pas en clair)
+        self.assertEqual(len(otp.code), 65)  # hash:salt format
+        self.assertIn(':', otp.code)
     
-    def test_otp_validation(self):
-        """Test de validation d'un code OTP."""
-        otp = OTPCode.create_otp(
-            phone_number='+213123456789',
-            user=self.user
-        )
+    def test_otp_validation_via_service(self):
+        """Test de validation d'un code OTP via le service sécurisé."""
+        from .services import OTPService
         
-        # Test OTP valide
-        valid_otp = OTPCode.get_valid_otp('+213123456789', otp.code)
-        self.assertEqual(valid_otp, otp)
+        # Créer un OTP
+        otp, plain_code, error = OTPService.create_otp(self.user, '+213123456789')
         
-        # Test OTP utilisé
-        otp.mark_as_used()
-        valid_otp = OTPCode.get_valid_otp('+213123456789', otp.code)
-        self.assertIsNone(valid_otp)
+        # Vérifier l'OTP via le service
+        is_valid, user = OTPService.verify_otp('+213123456789', plain_code, self.user)
+        
+        self.assertTrue(is_valid)
+        self.assertEqual(user, self.user)
+        
+        # Vérifier que l'OTP est marqué comme utilisé
+        otp.refresh_from_db()
+        self.assertTrue(otp.is_used)
     
     def test_otp_expiration(self):
         """Test d'expiration d'un code OTP."""
+        # Créer un OTP expiré directement (pour les tests)
         otp = OTPCode.objects.create(
             user=self.user,
             phone_number='+213123456789',
-            code='123456',
+            code='test_hash:test_salt',  # Hash factice pour les tests
             expires_at=timezone.now() - timedelta(minutes=1)  # Expiré
         )
         
@@ -210,14 +216,51 @@ class OTPCodeModelTests(TestCase):
     
     def test_otp_mark_as_used(self):
         """Test de marquage d'un OTP comme utilisé."""
-        otp = OTPCode.create_otp(
-            phone_number='+213123456789',
-            user=self.user
-        )
+        from .services import OTPService
+        
+        # Créer un OTP via le service
+        otp, plain_code, error = OTPService.create_otp(self.user, '+213123456789')
         
         self.assertFalse(otp.is_used)
         otp.mark_as_used()
         self.assertTrue(otp.is_used)
+    
+    def test_otp_cleanup_methods(self):
+        """Test des méthodes de nettoyage des OTP."""
+        # Créer quelques OTP expirés
+        OTPCode.objects.create(
+            user=self.user,
+            phone_number='+213123456789',
+            code='expired_hash:expired_salt',
+            expires_at=timezone.now() - timedelta(minutes=1)
+        )
+        
+        # Tester le nettoyage
+        expired_count = OTPCode.cleanup_expired_otps()
+        self.assertGreaterEqual(expired_count, 1)
+        
+        # Tester le comptage des OTP actifs
+        active_count = OTPCode.get_active_otp_count('+213123456789')
+        self.assertEqual(active_count, 0)
+    
+    def test_otp_security_features(self):
+        """Test des fonctionnalités de sécurité des OTP."""
+        from .services import OTPService, OTPSecurityService
+        
+        # Créer un OTP
+        otp, plain_code, error = OTPService.create_otp(self.user, '+213123456789')
+        
+        # Vérifier que le code est haché
+        self.assertNotEqual(otp.code, plain_code)
+        self.assertIn(':', otp.code)
+        
+        # Vérifier que le hash est valide
+        is_valid = OTPSecurityService.verify_otp_hash(plain_code, otp.code)
+        self.assertTrue(is_valid)
+        
+        # Vérifier qu'un code incorrect est rejeté
+        is_valid = OTPSecurityService.verify_otp_hash('000000', otp.code)
+        self.assertFalse(is_valid)
 
 
 class UserDocumentModelTests(TestCase):

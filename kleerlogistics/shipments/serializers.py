@@ -7,6 +7,7 @@ from django.utils import timezone
 from users.serializers import UserSerializer
 
 from .models import Shipment, ShipmentTracking, Package, ShipmentDocument, ShipmentRating
+from .models import DeliveryOTP
 
 
 class ShipmentSerializer(serializers.ModelSerializer):
@@ -512,3 +513,86 @@ class ShipmentWithDetailsSerializer(ShipmentDetailSerializer):
         fields = ShipmentDetailSerializer.Meta.fields + [
             'package_details', 'documents', 'rating'
         ] 
+
+
+class DeliveryOTPSerializer(serializers.ModelSerializer):
+    """Sérialiseur pour les OTP de livraison."""
+    
+    time_remaining_minutes = serializers.SerializerMethodField()
+    is_valid = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = DeliveryOTP
+        fields = [
+            'id', 'shipment', 'otp_code', 'recipient_phone', 'recipient_name',
+            'generated_by', 'created_at', 'expires_at', 'is_used', 'verified_at',
+            'verified_by', 'sms_sent', 'sms_sent_at', 'sms_delivery_status',
+            'time_remaining_minutes', 'is_valid'
+        ]
+        read_only_fields = [
+            'id', 'shipment', 'otp_code', 'recipient_phone', 'recipient_name',
+            'generated_by', 'created_at', 'expires_at', 'verified_at', 'verified_by',
+            'sms_sent', 'sms_sent_at', 'sms_delivery_status', 'time_remaining_minutes', 'is_valid'
+        ]
+    
+    def get_time_remaining_minutes(self, obj):
+        """Retourne le temps restant en minutes."""
+        return obj.time_remaining
+    
+    def get_is_valid(self, obj):
+        """Retourne si l'OTP est valide."""
+        return obj.is_valid
+
+
+class DeliveryOTPStatusSerializer(serializers.Serializer):
+    """Sérialiseur pour le statut de l'OTP de livraison."""
+    
+    has_active_otp = serializers.BooleanField()
+    has_used_otp = serializers.BooleanField()
+    otp_generated_at = serializers.DateTimeField(allow_null=True)
+    otp_expires_at = serializers.DateTimeField(allow_null=True)
+    otp_verified_at = serializers.DateTimeField(allow_null=True)
+    time_remaining_minutes = serializers.IntegerField(allow_null=True)
+    recipient_name = serializers.CharField()
+    recipient_phone = serializers.CharField()
+
+
+class DeliveryOTPVerifySerializer(serializers.Serializer):
+    """Sérialiseur pour la vérification de l'OTP de livraison."""
+    
+    otp_code = serializers.CharField(
+        max_length=6,
+        min_length=6,
+        help_text="Code OTP à 6 chiffres fourni par le destinataire"
+    )
+    
+    def validate_otp_code(self, value):
+        """Valider le format de l'OTP."""
+        if not value.isdigit():
+            raise serializers.ValidationError("Le code OTP doit contenir uniquement des chiffres.")
+        if len(value) != 6:
+            raise serializers.ValidationError("Le code OTP doit contenir exactement 6 chiffres.")
+        return value
+
+
+class DeliveryInfoSerializer(serializers.Serializer):
+    """Sérialiseur pour les informations de livraison."""
+    
+    delivery_date = serializers.DateTimeField()
+    recipient_name = serializers.CharField()
+    payment_released = serializers.BooleanField()
+    amount_released = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class InitiateDeliverySerializer(serializers.Serializer):
+    """Sérialiseur pour l'initiation du processus de livraison."""
+    
+    # Aucun champ requis, juste une confirmation
+    pass
+
+
+class ResendDeliveryOTPSerializer(serializers.Serializer):
+    """Sérialiseur pour le renvoi de l'OTP de livraison."""
+    
+    # Aucun champ requis, juste une demande de renvoi
+    pass 

@@ -1,0 +1,220 @@
+### ========================================
+### DELIVERY OTP SYSTEM TESTS
+### Système OTP de livraison selon le cahier des charges
+### ========================================
+
+### Configuration
+@baseUrl = http://localhost:8000/api/v1
+@authToken = Bearer YOUR_JWT_TOKEN_HERE
+
+### ========================================
+### 1. INITIER LE PROCESSUS DE LIVRAISON
+### ========================================
+
+### Initier le processus de livraison (voyageur prend le colis)
+POST {{baseUrl}}/shipments/KL177711228/delivery/initiate/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+# Cette action :
+# - Met l'envoi en statut "in_transit"
+# - Génère automatiquement l'OTP de livraison
+# - Envoie le SMS au destinataire
+
+### ========================================
+### 2. GÉNÉRER OTP DE LIVRAISON
+### ========================================
+
+### Générer un OTP de livraison manuellement
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/generate/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+# Réponse attendue :
+# {
+#   "success": true,
+#   "message": "OTP de livraison généré et envoyé au destinataire",
+#   "otp_info": {
+#     "recipient_name": "Ahmed Benali",
+#     "recipient_phone": "+213XXXXXXXXX",
+#     "expires_at": "2024-01-15T14:30:00Z",
+#     "time_remaining_minutes": 1440
+#   }
+# }
+
+### ========================================
+### 3. VÉRIFIER LE STATUT DE L'OTP
+### ========================================
+
+### Récupérer le statut de l'OTP de livraison
+GET {{baseUrl}}/shipments/KL177711228/delivery/otp/status/
+Authorization: {{authToken}}
+
+# Réponse attendue :
+# {
+#   "success": true,
+#   "otp_status": {
+#     "has_active_otp": true,
+#     "has_used_otp": false,
+#     "otp_generated_at": "2024-01-15T10:30:00Z",
+#     "otp_expires_at": "2024-01-16T10:30:00Z",
+#     "time_remaining_minutes": 1200,
+#     "recipient_name": "Ahmed Benali",
+#     "recipient_phone": "+213XXXXXXXXX"
+#   }
+# }
+
+### ========================================
+### 4. RENVOYER L'OTP AU DESTINATAIRE
+### ========================================
+
+### Renvoyer l'OTP de livraison (si le destinataire ne l'a pas reçu)
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/resend/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+# Réponse attendue :
+# {
+#   "success": true,
+#   "message": "OTP de livraison renvoyé avec succès"
+# }
+
+### ========================================
+### 5. VÉRIFIER L'OTP ET CONFIRMER LA LIVRAISON
+### ========================================
+
+### Vérifier l'OTP fourni par le destinataire
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+    "otp_code": "123456"
+}
+
+# Réponse attendue :
+# {
+#   "success": true,
+#   "message": "Livraison confirmée avec succès. Paiement de 3000 DA libéré au voyageur",
+#   "delivery_info": {
+#     "delivery_date": "2024-01-15T14:30:00Z",
+#     "recipient_name": "Ahmed Benali",
+#     "payment_released": true,
+#     "amount_released": 3000.00
+#   }
+# }
+
+### ========================================
+### 6. CAS D'ERREUR - OTP INVALIDE
+### ========================================
+
+### Tenter de vérifier un OTP incorrect
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+    "otp_code": "000000"
+}
+
+# Réponse attendue :
+# {
+#   "success": false,
+#   "message": "Code OTP invalide ou expiré"
+# }
+
+### ========================================
+### 7. CAS D'ERREUR - OTP EXPIRÉ
+### ========================================
+
+### Tenter de vérifier un OTP expiré
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+    "otp_code": "999999"
+}
+
+# Réponse attendue :
+# {
+#   "success": false,
+#   "message": "Code OTP invalide ou expiré"
+# }
+
+### ========================================
+### 8. CAS D'ERREUR - NON AUTORISÉ
+### ========================================
+
+### Tenter de générer un OTP sans être le voyageur associé
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/generate/
+Authorization: Bearer OTHER_USER_TOKEN
+Content-Type: application/json
+
+# Réponse attendue :
+# {
+#   "success": false,
+#   "message": "Vous n'êtes pas autorisé à générer l'OTP pour cet envoi"
+# }
+
+### ========================================
+### 9. CAS D'ERREUR - ENVOI NON EN TRANSIT
+### ========================================
+
+### Tenter de générer un OTP pour un envoi non en transit
+POST {{baseUrl}}/shipments/KL177711229/delivery/otp/generate/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+# Réponse attendue :
+# {
+#   "success": false,
+#   "message": "L'envoi doit être en transit pour générer un OTP de livraison"
+# }
+
+### ========================================
+### 10. FLUX COMPLET DE LIVRAISON
+### ========================================
+
+### Étape 1: Voyageur prend le colis et initie la livraison
+POST {{baseUrl}}/shipments/KL177711228/delivery/initiate/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+### Étape 2: Vérifier le statut de l'OTP
+GET {{baseUrl}}/shipments/KL177711228/delivery/otp/status/
+Authorization: {{authToken}}
+
+### Étape 3: Destinataire reçoit le SMS avec l'OTP
+# Le destinataire reçoit un SMS comme :
+# "Bonjour Ahmed Benali, votre colis KL177711228 arrive bientôt. 
+# Code de livraison: 123456. Remettez ce code au livreur pour confirmer la réception. 
+# Ce code expire dans 24h. - KleerLogistics"
+
+### Étape 4: Voyageur vérifie l'OTP fourni par le destinataire
+POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
+Authorization: {{authToken}}
+Content-Type: application/json
+
+{
+    "otp_code": "123456"
+}
+
+### Étape 5: Livraison confirmée et paiement libéré
+# Le système :
+# - Confirme la livraison
+# - Libère le paiement au voyageur
+# - Met à jour les statistiques
+
+### ========================================
+### NOTES IMPORTANTES
+### ========================================
+
+# 1. L'OTP est généré automatiquement quand le voyageur initie la livraison
+# 2. Le SMS est envoyé au destinataire avec le code à 6 chiffres
+# 3. Le destinataire remet le code au voyageur
+# 4. Le voyageur saisit le code dans l'application
+# 5. La livraison est confirmée et le paiement libéré
+# 6. L'OTP expire après 24h
+# 7. Maximum 3 renvois d'OTP autorisés
+# 8. Seul le voyageur associé peut vérifier l'OTP

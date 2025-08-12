@@ -89,7 +89,7 @@ def save_user_profile(sender, instance, **kwargs):
         UserProfile.objects.create(user=instance)
 
 class OTPCode(models.Model):
-    """Modèle pour gérer les codes OTP"""
+    """Modèle pour gérer les codes OTP de manière sécurisée"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp_codes', null=True, blank=True)
     phone_number = models.CharField(max_length=15)
     # Stocke le hash du code (hex sha256 => 64 chars)
@@ -102,6 +102,10 @@ class OTPCode(models.Model):
         verbose_name = 'Code OTP'
         verbose_name_plural = 'Codes OTP'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['phone_number', 'is_used', 'expires_at']),
+            models.Index(fields=['created_at']),
+        ]
     
     def __str__(self):
         return f"OTP for {self.phone_number} - ****"
@@ -117,33 +121,21 @@ class OTPCode(models.Model):
         self.save()
     
     @classmethod
-    def create_otp(cls, phone_number, user=None, expiry_minutes=10):
-        """Crée un nouveau code OTP (stocke le code en clair pour compatibilité tests)."""
-        import random
-        code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-        expires_at = timezone.now() + timedelta(minutes=expiry_minutes)
-        
-        return cls.objects.create(
-            user=user,
-            phone_number=phone_number,
-            code=code,
-            expires_at=expires_at
-        )
+    def cleanup_expired_otps(cls):
+        """Nettoie tous les OTP expirés pour libérer l'espace"""
+        expired_count = cls.objects.filter(
+            expires_at__lt=timezone.now()
+        ).delete()[0]
+        return expired_count
     
     @classmethod
-    def get_valid_otp(cls, phone_number, code):
-        """Récupère un code OTP valide (compatibilité tests)."""
-        try:
-            otp = cls.objects.get(
-                phone_number=phone_number,
-                code=code,
-                is_used=False
-            )
-            if not otp.is_expired():
-                return otp
-        except cls.DoesNotExist:
-            pass
-        return None
+    def get_active_otp_count(cls, phone_number):
+        """Retourne le nombre d'OTP actifs pour un numéro de téléphone"""
+        return cls.objects.filter(
+            phone_number=phone_number,
+            is_used=False,
+            expires_at__gt=timezone.now()
+        ).count()
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')

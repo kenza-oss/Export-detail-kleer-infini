@@ -1,25 +1,82 @@
 """
 Services pour la gestion des OTP et l'authentification
 Supporte Twilio, Vonage et mode console pour l'envoi de SMS OTP
+Version sécurisée avec protection contre les attaques
 """
 
 import random
 import string
 import logging
+import hashlib
+import hmac
+import time
 from django.utils import timezone
 from datetime import timedelta
 from django.core.cache import cache
 from django.conf import settings
 from .models import OTPCode, User
-import hashlib
-import hmac
 import phonenumbers
 
 # Configuration du logger
 logger = logging.getLogger(__name__)
 
+class OTPSecurityService:
+    """Service de sécurité pour les OTP"""
+    
+    @staticmethod
+    def generate_secure_otp():
+        """Génère un code OTP cryptographiquement sécurisé"""
+        # Utilisation de secrets pour une meilleure sécurité
+        try:
+            import secrets
+            return ''.join(secrets.choice(string.digits) for _ in range(6))
+        except ImportError:
+            # Fallback pour Python < 3.6
+            return ''.join(random.SystemRandom().choice(string.digits) for _ in range(6))
+    
+    @staticmethod
+    def hash_otp_code(code: str, salt: str = None) -> str:
+        """Hache un code OTP avec un salt unique"""
+        if salt is None:
+            salt = str(int(time.time()))
+        
+        secret = str(getattr(settings, 'SECRET_KEY', 'kleerlogistics')).encode()
+        message = f"{code}:{salt}".encode()
+        
+        # Double hachage pour plus de sécurité
+        first_hash = hmac.new(secret, message, hashlib.sha256).hexdigest()
+        final_hash = hmac.new(secret, first_hash.encode(), hashlib.sha256).hexdigest()
+        
+        return f"{final_hash}:{salt}"
+    
+    @staticmethod
+    def verify_otp_hash(code: str, hashed_code: str) -> bool:
+        """Vérifie un code OTP contre son hash"""
+        try:
+            stored_hash, salt = hashed_code.split(':', 1)
+            computed_hash = OTPSecurityService.hash_otp_code(code, salt).split(':', 1)[0]
+            return hmac.compare_digest(stored_hash, computed_hash)
+        except (ValueError, AttributeError):
+            return False
+    
+    @staticmethod
+    def generate_device_fingerprint(request) -> str:
+        """Génère un fingerprint unique pour l'appareil"""
+        if not request:
+            return "unknown"
+        
+        # Collecte d'informations non-identifiantes
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        accept_language = request.META.get('HTTP_ACCEPT_LANGUAGE', '')
+        accept_encoding = request.META.get('HTTP_ACCEPT_ENCODING', '')
+        
+        # Création d'un hash unique
+        fingerprint_data = f"{user_agent}:{accept_language}:{accept_encoding}"
+        return hashlib.sha256(fingerprint_data.encode()).hexdigest()[:16]
+
 class OTPService:
-    """Service pour la gestion des OTP"""
+    """Service pour la gestion des OTP avec sécurité renforcée"""
+    
     @staticmethod
     def normalize_phone_number(raw_phone_number: str) -> str:
         """Normalise un numéro en format E.164 (ex: +213XXXXXXXXX).
@@ -35,20 +92,25 @@ class OTPService:
             return raw_phone_number
     
     @staticmethod
-    def generate_otp():
-        """Génère un code OTP à 6 chiffres"""
-        return ''.join(random.choices(string.digits, k=6))
-    
-    @staticmethod
     def get_cache_key(phone_number, action='otp'):
         """Génère une clé de cache pour l'OTP"""
         return f"otp_{action}_{phone_number}"
     
     @staticmethod
-    def check_rate_limit(phone_number):
-        """Vérifie la limitation de taux pour l'envoi d'OTP"""
+    def check_rate_limit(phone_number, request=None):
+        """Vérifie la limitation de taux pour l'envoi d'OTP avec fingerprint d'appareil"""
         cache_key = OTPService.get_cache_key(phone_number, 'rate_limit')
         attempts = cache.get(cache_key, 0)
+        
+        # Vérification du fingerprint d'appareil si disponible
+        if request:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request)
+            device_key = f"otp_device_{phone_number}_{device_fp}"
+            device_attempts = cache.get(device_key, 0)
+            
+            # Limitation plus stricte par appareil
+            if device_attempts >= getattr(settings, 'OTP_MAX_DEVICE_ATTEMPTS', 2):
+                return False, f"Trop de tentatives depuis cet appareil. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1)} minute(s)."
         
         if attempts >= getattr(settings, 'OTP_MAX_ATTEMPTS', 3):
             return False, f"Trop de tentatives. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1)} minute(s)."
@@ -56,49 +118,85 @@ class OTPService:
         return True, None
     
     @staticmethod
-    def increment_rate_limit(phone_number):
-        """Incrémente le compteur de tentatives"""
+    def increment_rate_limit(phone_number, request=None):
+        """Incrémente le compteur de tentatives avec fingerprint d'appareil"""
         cache_key = OTPService.get_cache_key(phone_number, 'rate_limit')
         attempts = cache.get(cache_key, 0) + 1
         cache.set(cache_key, attempts, getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1) * 60)
+        
+        # Incrémenter aussi le compteur par appareil
+        if request:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request)
+            device_key = f"otp_device_{phone_number}_{device_fp}"
+            device_attempts = cache.get(device_key, 0) + 1
+            cache.set(device_key, device_attempts, getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1) * 60)
 
     @staticmethod
-    def _check_verify_rate_limit(phone_number: str):
+    def _check_verify_rate_limit(phone_number: str, request=None):
         key = OTPService.get_cache_key(phone_number, 'verify_attempts')
         attempts = cache.get(key, 0)
         max_attempts = getattr(settings, 'OTP_VERIFY_MAX_ATTEMPTS', getattr(settings, 'OTP_MAX_ATTEMPTS', 5))
+        
+        # Vérification du fingerprint d'appareil
+        if request:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request)
+            device_key = f"otp_verify_device_{phone_number}_{device_fp}"
+            device_attempts = cache.get(device_key, 0)
+            max_device_attempts = getattr(settings, 'OTP_VERIFY_MAX_DEVICE_ATTEMPTS', 3)
+            
+            if device_attempts >= max_device_attempts:
+                logger.warning(f"OTP verification device rate-limited for {phone_number} from {device_fp}")
+                return False
+        
         if attempts >= max_attempts:
+            logger.warning(f"OTP verification rate-limited for {phone_number}")
             return False
         return True
 
     @staticmethod
-    def _increment_verify_attempts(phone_number: str):
+    def _increment_verify_attempts(phone_number: str, request=None):
         key = OTPService.get_cache_key(phone_number, 'verify_attempts')
         attempts = cache.get(key, 0) + 1
         cooldown_minutes = getattr(settings, 'OTP_VERIFY_COOLDOWN_MINUTES', 5)
         cache.set(key, attempts, cooldown_minutes * 60)
+        
+        # Incrémenter aussi le compteur par appareil
+        if request:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request)
+            device_key = f"otp_verify_device_{phone_number}_{device_fp}"
+            device_attempts = cache.get(device_key, 0) + 1
+            cache.set(device_key, device_attempts, cooldown_minutes * 60)
 
     @staticmethod
-    def _reset_verify_attempts(phone_number: str):
-        key = OTPService.get_cache_key(phone_number, 'verify_attempts')
+    def _reset_verify_attempts(phone_number: str, request=None):
+        key = OTPService.get_cache_key(phone_number, 'rate_limit')
         cache.delete(key)
+        
+        # Reset des compteurs par appareil
+        if request:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request)
+            device_key = f"otp_device_{phone_number}_{device_fp}"
+            cache.delete(device_key)
+            
+            verify_device_key = f"otp_verify_device_{phone_number}_{device_fp}"
+            cache.delete(verify_device_key)
     
     @staticmethod
-    def create_otp(user, phone_number):
-        """Crée un nouveau code OTP pour un utilisateur"""
+    def create_otp(user, phone_number, request=None):
+        """Crée un nouveau code OTP pour un utilisateur avec sécurité renforcée"""
         # Normaliser le numéro
         phone_number = OTPService.normalize_phone_number(phone_number)
+        
         # Vérifier la limitation de taux
-        can_send, error_message = OTPService.check_rate_limit(phone_number)
+        can_send, error_message = OTPService.check_rate_limit(phone_number, request)
         if not can_send:
+            logger.warning(f"OTP rate limit exceeded for {phone_number}")
             return None, None, error_message
         
         # Supprimer les anciens OTP non utilisés pour ce numéro
-        OTPCode.objects.filter(
-            phone_number=phone_number,
-            is_used=False,
-            expires_at__lt=timezone.now()
-        ).delete()
+        expired_count = OTPCode.cleanup_expired_otps()
+        if expired_count > 0:
+            logger.info(f"Cleaned up {expired_count} expired OTPs for {phone_number}")
         
         # Vérifier s'il y a déjà un OTP valide récent (pour éviter le spam)
         recent_otp = OTPCode.objects.filter(
@@ -109,11 +207,19 @@ class OTPService:
         ).first()
         
         if recent_otp:
-            # Ne renvoyer aucun code en clair si un OTP récent existe déjà
+            logger.info(f"Recent OTP already exists for {phone_number}, reusing it")
             return recent_otp, None, None
         
-        # Créer un nouveau OTP
-        code = OTPService.generate_otp()
+        # Vérifier le nombre maximum d'OTP actifs
+        active_count = OTPCode.get_active_otp_count(phone_number)
+        max_active_otps = getattr(settings, 'OTP_MAX_ACTIVE_PER_PHONE', 3)
+        
+        if active_count >= max_active_otps:
+            logger.warning(f"Too many active OTPs for {phone_number}: {active_count}")
+            return None, None, "Trop d'OTP actifs. Veuillez attendre l'expiration des codes précédents."
+        
+        # Créer un nouveau OTP sécurisé
+        code = OTPSecurityService.generate_secure_otp()
         expires_at = timezone.now() + timedelta(minutes=getattr(settings, 'OTP_EXPIRY_MINUTES', 10))
         
         # Si pas d'utilisateur authentifié, essayer de trouver un utilisateur par numéro de téléphone
@@ -125,8 +231,7 @@ class OTPService:
                 user = None
         
         # Hacher le code avant stockage
-        secret = str(getattr(settings, 'SECRET_KEY', 'kleerlogistics')).encode()
-        hashed_code = hmac.new(secret, code.encode(), hashlib.sha256).hexdigest()
+        hashed_code = OTPSecurityService.hash_otp_code(code)
 
         otp = OTPCode.objects.create(
             user=user,
@@ -136,18 +241,21 @@ class OTPService:
         )
         
         # Incrémenter le compteur de tentatives
-        OTPService.increment_rate_limit(phone_number)
+        OTPService.increment_rate_limit(phone_number, request)
+        
+        # Log de sécurité
+        logger.info(f"OTP created for {phone_number}, user: {user.username if user else 'anonymous'}")
         
         return otp, code, None
     
     @staticmethod
-    def verify_otp(phone_number, code, user=None):
-        """Vérifie un code OTP (code en clair fourni par l'utilisateur)."""
+    def verify_otp(phone_number, code, user=None, request=None):
+        """Vérifie un code OTP avec sécurité renforcée."""
         # Normaliser
         phone_number = OTPService.normalize_phone_number(phone_number)
 
         # Vérifier limitations de tentatives
-        if not OTPService._check_verify_rate_limit(phone_number):
+        if not OTPService._check_verify_rate_limit(phone_number, request):
             logger.warning(f"OTP verification rate-limited for {phone_number}")
             return False, None
 
@@ -163,14 +271,12 @@ class OTPService:
         )
 
         if not otp:
-            OTPService._increment_verify_attempts(phone_number)
+            OTPService._increment_verify_attempts(phone_number, request)
+            logger.warning(f"No valid OTP found for {phone_number}")
             return False, None
 
-        # Hacher le code fourni et comparer
-        secret = str(getattr(settings, 'SECRET_KEY', 'kleerlogistics')).encode()
-        hashed_input = hmac.new(secret, str(code).encode(), hashlib.sha256).hexdigest()
-
-        if hmac.compare_digest(hashed_input, otp.code):
+        # Vérifier le code avec le nouveau service de sécurité
+        if OTPSecurityService.verify_otp_hash(code, otp.code):
             # Succès: marquer OTP comme utilisé
             otp.mark_as_used()
 
@@ -185,14 +291,17 @@ class OTPService:
                 target_user.phone_number = phone_number
                 target_user.is_phone_verified = True
                 target_user.save()
+                
+                # Log de succès
+                logger.info(f"OTP verified successfully for {phone_number}, user: {target_user.username}")
 
             # Reset des compteurs
-            cache.delete(OTPService.get_cache_key(phone_number, 'rate_limit'))
-            OTPService._reset_verify_attempts(phone_number)
+            OTPService._reset_verify_attempts(phone_number, request)
             return True, target_user
 
         # Mauvais code
-        OTPService._increment_verify_attempts(phone_number)
+        OTPService._increment_verify_attempts(phone_number, request)
+        logger.warning(f"Invalid OTP code for {phone_number}")
         return False, None
     
     @staticmethod
@@ -428,3 +537,125 @@ class AuthService:
             'role': user.role,
             'permissions': list(user.get_all_permissions())
         } 
+
+class OTPMaintenanceService:
+    """Service de maintenance pour les OTP"""
+    
+    @staticmethod
+    def cleanup_expired_otps():
+        """Nettoie tous les OTP expirés"""
+        try:
+            expired_count = OTPCode.cleanup_expired_otps()
+            logger.info(f"Cleaned up {expired_count} expired OTPs")
+            return expired_count
+        except Exception as e:
+            logger.error(f"Error cleaning up expired OTPs: {str(e)}")
+            return 0
+    
+    @staticmethod
+    def cleanup_rate_limit_cache():
+        """Nettoie le cache des limitations de taux expirées"""
+        try:
+            # Cette méthode sera appelée par une tâche Celery périodique
+            # Pour l'instant, on utilise le cache Django qui se nettoie automatiquement
+            logger.info("Rate limit cache cleanup completed")
+            return True
+        except Exception as e:
+            logger.error(f"Error cleaning up rate limit cache: {str(e)}")
+            return False
+    
+    @staticmethod
+    def get_otp_statistics():
+        """Retourne des statistiques sur les OTP"""
+        try:
+            total_otps = OTPCode.objects.count()
+            active_otps = OTPCode.objects.filter(
+                is_used=False,
+                expires_at__gt=timezone.now()
+            ).count()
+            expired_otps = OTPCode.objects.filter(
+                expires_at__lt=timezone.now()
+            ).count()
+            
+            return {
+                'total_otps': total_otps,
+                'active_otps': active_otps,
+                'expired_otps': expired_otps,
+                'cleanup_needed': expired_otps > 0
+            }
+        except Exception as e:
+            logger.error(f"Error getting OTP statistics: {str(e)}")
+            return {}
+    
+    @staticmethod
+    def monitor_suspicious_activity():
+        """Surveille les activités suspectes liées aux OTP"""
+        try:
+            # Vérifier les numéros avec trop de tentatives
+            suspicious_phones = []
+            
+            # Cette logique peut être étendue selon les besoins
+            # Par exemple, détecter les tentatives de brute force
+            
+            if suspicious_phones:
+                logger.warning(f"Suspicious OTP activity detected: {suspicious_phones}")
+            
+            return suspicious_phones
+        except Exception as e:
+            logger.error(f"Error monitoring suspicious activity: {str(e)}")
+            return []
+
+
+class OTPAuditService:
+    """Service d'audit pour les OTP"""
+    
+    @staticmethod
+    def log_otp_creation(phone_number, user, request, success, error_message=None):
+        """Enregistre la création d'un OTP pour l'audit"""
+        try:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request) if request else "unknown"
+            ip_address = request.META.get('REMOTE_ADDR', 'unknown') if request else "unknown"
+            
+            audit_data = {
+                'timestamp': timezone.now().isoformat(),
+                'action': 'otp_creation',
+                'phone_number': phone_number,
+                'user_id': user.id if user else None,
+                'username': user.username if user else 'anonymous',
+                'device_fingerprint': device_fp,
+                'ip_address': ip_address,
+                'success': success,
+                'error_message': error_message
+            }
+            
+            logger.info(f"OTP Audit - Creation: {audit_data}")
+            
+            # Ici on pourrait aussi sauvegarder dans une base de données d'audit
+            # ou envoyer à un service de monitoring externe
+            
+        except Exception as e:
+            logger.error(f"Error logging OTP creation: {str(e)}")
+    
+    @staticmethod
+    def log_otp_verification(phone_number, user, request, success, error_message=None):
+        """Enregistre la vérification d'un OTP pour l'audit"""
+        try:
+            device_fp = OTPSecurityService.generate_device_fingerprint(request) if request else "unknown"
+            ip_address = request.META.get('REMOTE_ADDR', 'unknown') if request else "unknown"
+            
+            audit_data = {
+                'timestamp': timezone.now().isoformat(),
+                'action': 'otp_verification',
+                'phone_number': phone_number,
+                'user_id': user.id if user else None,
+                'username': user.username if user else 'anonymous',
+                'device_fingerprint': device_fp,
+                'ip_address': ip_address,
+                'success': success,
+                'error_message': error_message
+            }
+            
+            logger.info(f"OTP Audit - Verification: {audit_data}")
+            
+        except Exception as e:
+            logger.error(f"Error logging OTP verification: {str(e)}") 

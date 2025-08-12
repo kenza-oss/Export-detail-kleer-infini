@@ -12,6 +12,7 @@ import random
 import string
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import logging
 
 from .models import Shipment, ShipmentTracking, Package, ShipmentDocument, ShipmentRating
 from .serializers import (
@@ -27,6 +28,8 @@ from config.swagger_examples import (
 from config.swagger_config import (
     shipment_create_schema, shipment_list_schema
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ShipmentListView(APIView):
@@ -548,102 +551,381 @@ class ProcessPaymentView(APIView):
 
 
 class GenerateDeliveryOTPView(APIView):
-    """Vue pour générer un OTP de livraison."""
+    """Vue pour générer un OTP de livraison selon le cahier des charges."""
     
     permission_classes = [permissions.IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Génère un OTP de livraison et l'envoie au destinataire",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={},
+            required=[]
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="OTP de livraison généré avec succès",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "OTP de livraison généré et envoyé au destinataire",
+                    "otp_info": {
+                        "recipient_name": "Ahmed Benali",
+                        "recipient_phone": "+213XXXXXXXXX",
+                        "expires_at": "2024-01-15T14:30:00Z",
+                        "time_remaining_minutes": 1440
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur lors de la génération",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "L'envoi doit être en transit pour générer un OTP de livraison"
+                }}
+            )
+        }
+    )
     def post(self, request, tracking_number):
-        """Générer un OTP pour la livraison."""
+        """Génère un OTP de livraison et l'envoie au destinataire."""
         try:
+            # Récupérer l'envoi
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
                 sender=request.user
             )
             
-            # Générer un OTP à 6 chiffres
-            otp = ''.join(random.choices(string.digits, k=6))
-            shipment.delivery_otp = otp
-            shipment.save()
+            # Vérifier que l'utilisateur est le voyageur associé
+            if shipment.matched_trip and shipment.matched_trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à générer l\'OTP pour cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
             
-            return Response({
-                'success': True,
-                'message': 'OTP de livraison généré',
-                'otp': otp  # En production, envoyer par SMS
-            })
-        except Shipment.DoesNotExist:
-            return Response({
-                'success': False,
-                'message': 'Envoi non trouvé'
-            }, status=status.HTTP_404_NOT_FOUND)
-
-
-class VerifyDeliveryOTPView(APIView):
-    """Vue pour vérifier l'OTP de livraison."""
-    
-    permission_classes = [permissions.IsAuthenticated]
-    
-    def post(self, request, tracking_number):
-        """Vérifier l'OTP de livraison."""
-        try:
-            shipment = Shipment.objects.get(
-                tracking_number=tracking_number,
-                sender=request.user
-            )
+            # Générer l'OTP de livraison
+            from .services import DeliveryOTPService
+            success, otp_code, message = DeliveryOTPService.generate_delivery_otp(shipment, request)
             
-            provided_otp = request.data.get('otp')
-            
-            if shipment.delivery_otp == provided_otp:
+            if success:
+                # Récupérer les informations de l'OTP
+                otp_status = DeliveryOTPService.get_delivery_otp_status(shipment)
+                
                 return Response({
                     'success': True,
-                    'message': 'OTP vérifié avec succès'
+                    'message': message,
+                    'otp_info': {
+                        'recipient_name': otp_status.get('recipient_name'),
+                        'recipient_phone': otp_status.get('recipient_phone'),
+                        'expires_at': otp_status.get('otp_expires_at'),
+                        'time_remaining_minutes': otp_status.get('time_remaining_minutes', 0)
+                    }
                 })
             else:
                 return Response({
                     'success': False,
-                    'message': 'OTP incorrect'
+                    'message': message
                 }, status=status.HTTP_400_BAD_REQUEST)
+                
         except Shipment.DoesNotExist:
             return Response({
                 'success': False,
                 'message': 'Envoi non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error generating delivery OTP: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de la génération de l\'OTP'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class ConfirmDeliveryView(APIView):
-    """Vue pour confirmer la livraison."""
+class VerifyDeliveryOTPView(APIView):
+    """Vue pour vérifier l'OTP de livraison fourni par le destinataire."""
     
     permission_classes = [permissions.IsAuthenticated]
     
+    @swagger_auto_schema(
+        operation_description="Vérifie l'OTP de livraison et confirme la livraison",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'otp_code': openapi.Schema(type=openapi.TYPE_STRING, description="Code OTP à 6 chiffres fourni par le destinataire")
+            },
+            required=['otp_code']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Livraison confirmée avec succès",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Livraison confirmée avec succès. Paiement de 3000 DA libéré au voyageur",
+                    "delivery_info": {
+                        "delivery_date": "2024-01-15T14:30:00Z",
+                        "recipient_name": "Ahmed Benali",
+                        "payment_released": True,
+                        "amount_released": 3000.00
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="OTP invalide ou erreur",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Code OTP invalide ou expiré"
+                }}
+            )
+        }
+    )
     def post(self, request, tracking_number):
-        """Confirmer la livraison d'un envoi."""
+        """Vérifie l'OTP de livraison et confirme la livraison."""
         try:
+            # Récupérer l'envoi
             shipment = Shipment.objects.get(
                 tracking_number=tracking_number,
                 sender=request.user
             )
             
-            shipment.status = 'delivered'
-            shipment.delivery_date = timezone.now()
-            shipment.save()
+            # Vérifier que l'utilisateur est le voyageur associé
+            if shipment.matched_trip and shipment.matched_trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à vérifier l\'OTP pour cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
             
-            # Ajouter un événement de suivi
-            ShipmentTracking.objects.create(
-                shipment=shipment,
-                event_type='delivered',
-                description='Livraison confirmée',
-                location=shipment.destination
+            # Récupérer le code OTP
+            otp_code = request.data.get('otp_code')
+            if not otp_code:
+                return Response({
+                    'success': False,
+                    'message': 'Code OTP requis'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Vérifier l'OTP et compléter la livraison
+            from .services import ShipmentDeliveryService
+            success, message = ShipmentDeliveryService.complete_delivery(
+                shipment, otp_code, request.user
             )
             
-            return Response({
-                'success': True,
-                'message': 'Livraison confirmée avec succès',
-                'delivery_date': shipment.delivery_date
-            })
+            if success:
+                # Récupérer les informations de livraison
+                delivery_info = {
+                    'delivery_date': shipment.delivery_date,
+                    'recipient_name': shipment.recipient_name,
+                    'payment_released': True,
+                    'amount_released': shipment.price if shipment.price else 0
+                }
+                
+                return Response({
+                    'success': True,
+                    'message': message,
+                    'delivery_info': delivery_info
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'message': message
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
         except Shipment.DoesNotExist:
             return Response({
                 'success': False,
                 'message': 'Envoi non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error verifying delivery OTP: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de la vérification de l\'OTP'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ResendDeliveryOTPView(APIView):
+    """Vue pour renvoyer l'OTP de livraison au destinataire."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Renvoie l'OTP de livraison au destinataire",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={},
+            required=[]
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="OTP renvoyé avec succès",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "OTP de livraison renvoyé avec succès"
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur lors du renvoi",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "Aucun OTP de livraison valide trouvé"
+                }}
+            )
+        }
+    )
+    def post(self, request, tracking_number):
+        """Renvoie l'OTP de livraison au destinataire."""
+        try:
+            # Récupérer l'envoi
+            shipment = Shipment.objects.get(
+                tracking_number=tracking_number,
+                sender=request.user
+            )
+            
+            # Vérifier que l'utilisateur est le voyageur associé
+            if shipment.matched_trip and shipment.matched_trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à renvoyer l\'OTP pour cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Renvoyer l'OTP
+            from .services import DeliveryOTPService
+            success, message = DeliveryOTPService.resend_delivery_otp(shipment, request)
+            
+            return Response({
+                'success': success,
+                'message': message
+            }, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
+                
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error resending delivery OTP: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors du renvoi de l\'OTP'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DeliveryOTPStatusView(APIView):
+    """Vue pour récupérer le statut de l'OTP de livraison."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Récupère le statut de l'OTP de livraison",
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Statut de l'OTP de livraison",
+                examples={"application/json": {
+                    "success": True,
+                    "otp_status": {
+                        "has_active_otp": True,
+                        "has_used_otp": False,
+                        "otp_generated_at": "2024-01-15T10:30:00Z",
+                        "otp_expires_at": "2024-01-16T10:30:00Z",
+                        "time_remaining_minutes": 1200,
+                        "recipient_name": "Ahmed Benali",
+                        "recipient_phone": "+213XXXXXXXXX"
+                    }
+                }}
+            )
+        }
+    )
+    def get(self, request, tracking_number):
+        """Récupère le statut de l'OTP de livraison."""
+        try:
+            # Récupérer l'envoi
+            shipment = Shipment.objects.get(
+                tracking_number=tracking_number,
+                sender=request.user
+            )
+            
+            # Récupérer le statut de l'OTP
+            from .services import DeliveryOTPService
+            otp_status = DeliveryOTPService.get_delivery_otp_status(shipment)
+            
+            return Response({
+                'success': True,
+                'otp_status': otp_status
+            })
+                
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error getting delivery OTP status: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de la récupération du statut'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class InitiateDeliveryProcessView(APIView):
+    """Vue pour initier le processus de livraison quand le voyageur prend le colis."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Initie le processus de livraison et génère automatiquement l'OTP",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={},
+            required=[]
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Processus de livraison initié",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Processus de livraison initié. OTP de livraison généré et envoyé au destinataire."
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur lors de l'initiation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "L'envoi ne peut pas être mis en transit"
+                }}
+            )
+        }
+    )
+    def post(self, request, tracking_number):
+        """Initie le processus de livraison."""
+        try:
+            # Récupérer l'envoi
+            shipment = Shipment.objects.get(
+                tracking_number=tracking_number,
+                sender=request.user
+            )
+            
+            # Vérifier que l'utilisateur est le voyageur associé
+            if shipment.matched_trip and shipment.matched_trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à initier la livraison pour cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Initier le processus de livraison
+            from .services import ShipmentDeliveryService
+            success, message = ShipmentDeliveryService.initiate_delivery_process(shipment, request.user)
+            
+            return Response({
+                'success': success,
+                'message': message
+            }, status=status.HTTP_200_OK if success else status.HTTP_400_BAD_REQUEST)
+                
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error initiating delivery process: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de l\'initiation du processus'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # Views pour l'administration

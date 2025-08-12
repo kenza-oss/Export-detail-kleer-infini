@@ -19,6 +19,23 @@ OTP_EXPIRY_MINUTES = 10
 OTP_MAX_ATTEMPTS = 3
 OTP_RESEND_COOLDOWN_MINUTES = 1
 
+# Nouvelles configurations de sécurité OTP
+OTP_MAX_DEVICE_ATTEMPTS = 2  # Tentatives max par appareil
+OTP_VERIFY_MAX_ATTEMPTS = 5  # Tentatives max de vérification
+OTP_VERIFY_MAX_DEVICE_ATTEMPTS = 3  # Tentatives max de vérification par appareil
+OTP_VERIFY_COOLDOWN_MINUTES = 5  # Cooldown après échec de vérification
+OTP_MAX_ACTIVE_PER_PHONE = 3  # Nombre max d'OTP actifs par téléphone
+
+# Configuration de sécurité avancée
+OTP_USE_DEVICE_FINGERPRINTING = True  # Activer le fingerprinting d'appareil
+OTP_DOUBLE_HASHING = True  # Utiliser le double hachage
+OTP_SALT_GENERATION = True  # Générer des salts uniques
+OTP_AUDIT_LOGGING = True  # Activer l'audit des OTP
+
+# Configuration du nettoyage automatique
+OTP_AUTO_CLEANUP = True  # Nettoyage automatique des OTP expirés
+OTP_CLEANUP_INTERVAL_HOURS = 24  # Intervalle de nettoyage en heures
+
 # SMS Configuration (pour production)
 SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'console')  # console, twilio, vonage
 SMS_API_KEY = os.environ.get('SMS_API_KEY', '')

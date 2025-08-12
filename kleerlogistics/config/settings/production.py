@@ -55,7 +55,7 @@ CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 # Cache Configuration for Production
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f"{REDIS_URL}/1",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -68,7 +68,7 @@ CACHES = {
         'TIMEOUT': 300,  # 5 minutes default timeout
     },
     'session': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f"{REDIS_URL}/2",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -76,7 +76,7 @@ CACHES = {
         'TIMEOUT': 3600,  # 1 hour for sessions
     },
     'api': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f"{REDIS_URL}/3",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',

@@ -12,11 +12,11 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# PostgreSQL Database Configuration for Development
+# PostgreSQL Database Configuration for Development (recommandé)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'kleerlogistics'),
+        'NAME': os.environ.get('DB_NAME', 'kleerlogistics_dev'),
         'USER': os.environ.get('DB_USER', 'romualdo'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'supersecure'),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
@@ -31,6 +31,16 @@ DATABASES = {
     }
 }
 
+# Force PostgreSQL usage - no fallback to SQLite
+# if not os.environ.get('DB_NAME'):
+#     print("⚠️  PostgreSQL not configured. Using SQLite fallback.")
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+
 # Redis Configuration for Development
 REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379')
 
@@ -41,7 +51,7 @@ CELERY_RESULT_BACKEND = f"{REDIS_URL}/0"
 # Cache Configuration for Development - Use Redis for consistency with production
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f"{REDIS_URL}/1",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
@@ -49,7 +59,7 @@ CACHES = {
         'TIMEOUT': 300,  # 5 minutes
     },
     'session': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
         'LOCATION': f"{REDIS_URL}/2",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',

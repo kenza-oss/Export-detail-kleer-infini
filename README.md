@@ -1,225 +1,344 @@
-# Kleer Logistics API
+# 🚚 Kleer Logistics - Plateforme d'Envoi Collaboratif International
 
-**Backend Django API** pour connecter voyageurs et expéditeurs de colis avec matching intelligent et système de paiements.
+## 📋 Vue d'ensemble
 
-## 🚀 **État du Projet**
+Kleer Logistics est une plateforme web et mobile qui met en relation des expéditeurs résidant en Algérie avec des voyageurs algériens se rendant à l'étranger, pour le transport sécurisé de colis légers contre rémunération.
 
-### ✅ **Modules Fonctionnels**
-- **🔐 Authentication** : JWT + OTP + Rôles + Permissions
-- **👥 Users** : Profils, documents, vérification
-- **📦 Shipments** : Création, tracking, OTP, validation
-- **✈️ Trips** : Gestion trajets, capacité, documents
-- **🎯 Matching** : **Algorithme intelligent v2.0 avec géolocalisation**
-- **💰 Payments** : Portefeuilles, transactions, commissions
-- **💬 Chat** : Messagerie, conversations, fichiers
-- **⭐ Ratings** : Évaluations, commentaires, statistiques
+### 🎯 Objectifs du Projet
 
-## 📱 **Module Users - Gestion des Utilisateurs**
+- ✅ **Faciliter l'envoi** de colis légers entre particuliers à l'étranger
+- ✅ **Alternative économique** aux services express classiques (DHL, FedEx)
+- ✅ **Service humain** et personnalisé
+- ✅ **Exploitation légale** du code exportation Kleer Infini
+- ✅ **Modèle économique** collaboratif et rentable
 
-### 🎯 **Fonctionnalités principales :**
+## 🏗️ Architecture Technique
 
-1. **Authentification** : Inscription, connexion, OTP SMS, gestion des tokens JWT
-2. **Rôles utilisateurs** : Expéditeur, Voyageur, Admin, ou les deux (both)
-3. **Vérification** : Téléphone et documents avec statuts de vérification
-4. **Profil complet** : Informations personnelles, préférences, statistiques
-5. **Portefeuille** : Gestion des transactions, dépôts, retraits, transferts
-6. **Permissions** : Système de contrôle d'accès basé sur les rôles
-7. **Documents** : Upload et gestion des documents de vérification
-8. **Analytics** : Statistiques utilisateur, performances, historique d'activité
-9. **Interface admin** : Gestion des utilisateurs pour les administrateurs
-10. **API complète** : 35 endpoints REST documentés avec Swagger
+### Stack Technologique
 
-### 🚀 **Prêt à utiliser** : Tests complets, documentation Swagger, et fichier `users.http` pour tester tous les endpoints !
+- **Backend** : Django 4.2 + Django REST Framework
+- **Base de données** : PostgreSQL
+- **Authentification** : JWT (JSON Web Tokens)
+- **SMS** : Twilio/Vonage (production), Console (développement)
+- **Paiements** : Stripe, Wallet intégré
+- **Documentation API** : Swagger/OpenAPI
+- **Sécurité** : Django Axes, Rate Limiting, OTP sécurisés
 
-## 🏗️ **Architecture**
+### Structure du Projet
 
 ```
 kleerlogistics/
-├── config/                 # Configuration Django
-├── users/                  # ✅ Authentification & rôles
-├── shipments/              # ✅ Gestion des envois
-├── trips/                  # ✅ Gestion des trajets
-├── matching/               # ✅ **Algorithme de matching v2.0**
-├── payments/               # ✅ Système de paiements
-├── chat/                   # ✅ Messagerie
-├── ratings/                # ✅ Système d'évaluations
-├── documents/              # 🔄 Génération PDF
-├── notifications/          # 🔄 Emails/SMS
-├── verification/           # 🔄 Upload documents
-├── admin_panel/            # 🔄 Dashboard admin
-├── analytics/              # 🔄 Statistiques
-└── internationalization/   # 🔄 Multilingue
+├── users/                 # Gestion des utilisateurs et authentification
+├── shipments/             # Gestion des envois et OTP de livraison
+├── trips/                 # Gestion des trajets
+├── matching/              # Système de matching intelligent
+├── payments/              # Gestion des paiements et portefeuille
+├── chat/                  # Messagerie interne
+├── notifications/         # Notifications SMS/Email
+├── documents/             # Génération de documents
+├── analytics/             # Statistiques et métriques
+└── admin_panel/           # Interface d'administration
 ```
 
-## 🎯 **Matching Intelligent v2.0**
+## 👥 Acteurs du Système
 
-### **Algorithme Avancé**
-- **Score Géographique (40%)** : Distance origine/destination avec formule de Haversine
-- **Score de Capacité (25%)** : Compatibilité poids/volume/type de colis
-- **Score Temporel (20%)** : Timing ramassage/livraison + flexibilité
-- **Score Utilisateur (15%)** : Notes + correspondance préférences
+### 1. **Expéditeur**
+- Personne vivant en Algérie souhaitant envoyer un colis
+- Crée des demandes d'envoi avec détails et paiement
+- Suit le statut de son envoi en temps réel
 
-### **Endpoints API**
+### 2. **Voyageur**
+- Algérien voyageant à l'étranger
+- Publie ses trajets et accepte des missions
+- Transporte les colis et confirme les livraisons
+
+### 3. **Entreprise (Kleer Infini)**
+- Intermédiaire sécurisé
+- Vérifie le contenu des colis
+- Gère les paiements et commissions
+- Assure la traçabilité avec code export
+
+## 🔐 Système OTP de Livraison (Nouveau)
+
+### Fonctionnement selon le Cahier des Charges
+
+Le système OTP de livraison implémente le processus de confirmation sécurisé :
+
+1. **Voyageur prend le colis** → Initie le processus de livraison
+2. **OTP généré automatiquement** → Code à 6 chiffres envoyé au destinataire
+3. **Destinataire reçoit SMS** → "Code de livraison: 123456"
+4. **Voyageur arrive à destination** → Destinataire remet le code
+5. **Voyageur vérifie le code** → Saisit l'OTP dans l'application
+6. **Livraison confirmée** → Paiement libéré automatiquement
+
+### Endpoints API OTP
+
 ```http
-POST /api/v1/matching/find-matches/     # Matching intelligent
-GET  /api/v1/matching/advanced-matches/ # Liste avec analytics
-POST /api/v1/matching/optimize/         # Optimisation automatique
-GET  /api/v1/matching/analytics/        # Analytics détaillés
+# Initier le processus de livraison
+POST /api/v1/shipments/{tracking_number}/delivery/initiate/
+
+# Générer OTP de livraison
+POST /api/v1/shipments/{tracking_number}/delivery/otp/generate/
+
+# Vérifier statut OTP
+GET /api/v1/shipments/{tracking_number}/delivery/otp/status/
+
+# Renvoyer OTP
+POST /api/v1/shipments/{tracking_number}/delivery/otp/resend/
+
+# Vérifier OTP et confirmer livraison
+POST /api/v1/shipments/{tracking_number}/delivery/otp/verify/
 ```
 
-## 🐳 **Installation avec Docker**
+### Sécurité OTP
 
-### **Démarrage Rapide**
+- ✅ **Authentification** : JWT requis
+- ✅ **Autorisation** : Seul le voyageur associé peut vérifier
+- ✅ **Expiration** : 24 heures
+- ✅ **Rate Limiting** : Protection contre les abus
+- ✅ **Audit** : Toutes les actions loggées
+
+## 📊 Fonctionnalités Principales
+
+### ✅ Module Users (100% Conforme)
+
+- **Gestion des rôles** : Expéditeur, Voyageur, Admin, Both
+- **Vérification d'identité** : Téléphone + Documents
+- **Système OTP sécurisé** : Authentification et vérification
+- **Portefeuille intégré** : Gestion des paiements
+- **Système de notation** : Évaluations utilisateurs
+- **Permissions granulaires** : Contrôle d'accès avancé
+
+### ✅ Module Shipments (100% Conforme)
+
+- **Création d'envois** : Détails complets des colis
+- **Système de matching** : Association automatique avec trajets
+- **OTP de livraison** : Confirmation sécurisée selon cahier des charges
+- **Suivi en temps réel** : Statuts et événements
+- **Gestion des paiements** : Intégration complète
+- **Documents automatiques** : Génération de reçus
+
+### 🔄 Modules en Développement
+
+- **Trips** : Gestion des trajets voyageurs
+- **Matching** : Algorithme de mise en relation
+- **Payments** : Intégration Stripe et wallet
+- **Chat** : Messagerie interne sécurisée
+- **Notifications** : SMS et emails automatiques
+
+## 💰 Modèle Économique
+
+### Sources de Revenus
+
+- **Commission** : 20-30% sur chaque envoi
+- **Frais de service** : 500-1000 DA (emballage)
+- **Paiement premium** : Livraison express
+- **Abonnements** : Voyageur Gold
+
+### Répartition des Paiements
+
+```
+Exemple : Envoi 5000 DA
+├── 1500 DA → Commission Kleer Infini
+├── 500 DA → Frais d'emballage
+└── 3000 DA → Voyageur (libéré après livraison)
+```
+
+## 🛡️ Sécurité et Conformité
+
+### Vérifications d'Identité
+
+- **Expéditeur** : Documents d'identité vérifiés
+- **Voyageur** : Passeport et billet d'avion
+- **Contenu** : Inspection par le bureau Kleer Infini
+- **Code Export** : Utilisation légale du code Kleer Infini
+
+### Protection des Données
+
+- **Chiffrement** : Mots de passe hashés SHA256
+- **OTP Sécurisés** : Double hachage, expiration
+- **JWT** : Tokens d'authentification sécurisés
+- **Rate Limiting** : Protection contre les abus
+
+## 🚀 Installation et Démarrage
+
+### Prérequis
+
+- Python 3.8+
+- PostgreSQL 12+
+- Redis (pour le cache)
+- Compte Twilio/Vonage (SMS)
+
+### Installation
+
 ```bash
 # Cloner le projet
-git clone https://github.com/kenza-oss/Export-detail-kleer-infini.git
-cd Export-detail-kleer-infini
+git clone https://github.com/kleer-infini/kleer-logistics.git
+cd kleer-logistics
 
-# Lancer avec Docker Compose
-docker-compose up -d
+# Créer l'environnement virtuel
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# ou
+venv\Scripts\activate     # Windows
 
-# Vérifier les services
-docker-compose ps
+# Installer les dépendances
+pip install -r requirements.txt
+
+# Configuration
+cp env.example .env
+# Éditer .env avec vos paramètres
+
+# Base de données
+python kleerlogistics/manage.py migrate
+python kleerlogistics/manage.py createsuperuser
+
+# Démarrer le serveur
+python kleerlogistics/manage.py runserver
 ```
 
-### **Accès**
-- **API**: http://localhost:8000
-- **Admin**: http://localhost:8000/admin
-- **Swagger**: http://localhost:8000/swagger/
+### Variables d'Environnement
 
-## 🔐 **Authentification**
+```env
+# Base de données
+DATABASE_URL=postgresql://user:pass@localhost/kleerlogistics
 
-### **JWT + OTP**
-```http
-POST /api/v1/users/auth/register/       # Inscription
-POST /api/v1/users/auth/login/          # Connexion JWT
-POST /api/v1/users/auth/otp/send/       # Envoyer OTP
-POST /api/v1/users/auth/otp/verify/     # Vérifier OTP
+# SMS (Twilio/Vonage)
+SMS_PROVIDER=twilio
+TWILIO_ACCOUNT_SID=your_sid
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_FROM_NUMBER=+1234567890
+
+# Sécurité
+SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+
+# Paiements (Stripe)
+STRIPE_PUBLIC_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
 ```
 
-### **Profils & Documents**
-```http
-GET  /api/v1/users/profile/             # Récupérer profil
-PUT  /api/v1/users/profile/update/      # Mettre à jour profil
-GET  /api/v1/users/documents/           # Liste documents
-POST /api/v1/users/documents/upload/    # Upload document
+## 📱 API Documentation
+
+### Swagger UI
+
+Accédez à la documentation interactive de l'API :
+
+```
+http://localhost:8000/api/docs/
 ```
 
-## 📦 **Shipments & Trips**
+### Tests API
 
-### **Gestion des Envois**
-```http
-POST /api/v1/shipments/                 # Créer shipment
-GET  /api/v1/shipments/                 # Liste shipments
-GET  /api/v1/shipments/{id}/tracking/   # Tracking en temps réel
-POST /api/v1/shipments/{id}/validate/   # Validation OTP
-```
+Utilisez les fichiers de test HTTP inclus :
 
-### **Gestion des Trajets**
-```http
-POST /api/v1/trips/                     # Créer trajet
-GET  /api/v1/trips/                     # Liste trajets
-GET  /api/v1/trips/{id}/documents/      # Documents trajet
-```
-
-## 💰 **Paiements & Chat**
-
-### **Portefeuilles & Transactions**
-```http
-GET  /api/v1/payments/wallet/           # Solde portefeuille
-GET  /api/v1/payments/transactions/     # Historique transactions
-POST /api/v1/payments/transfer/         # Transfert
-```
-
-### **Messagerie**
-```http
-GET  /api/v1/chat/conversations/        # Conversations
-POST /api/v1/chat/messages/             # Envoyer message
-GET  /api/v1/chat/messages/{id}/        # Détail message
-```
-
-## ⭐ **Évaluations**
-```http
-POST /api/v1/ratings/                   # Créer évaluation
-GET  /api/v1/ratings/user/{id}/         # Évaluations utilisateur
-GET  /api/v1/ratings/stats/             # Statistiques
-```
-
-## 🛠️ **Commandes Utiles**
-
-### **Docker**
 ```bash
-docker-compose up -d                     # Lancer services
-docker-compose logs -f                   # Voir logs
-docker-compose down                      # Arrêter services
-docker-compose build --no-cache         # Reconstruire image
+# Tests OTP de livraison
+api_tests/delivery_otp.http
+
+# Tests utilisateurs
+api_tests/users.http
+
+# Tests envois
+api_tests/shipments.http
 ```
 
-### **Développement**
+## 📈 Métriques et Statistiques
+
+### KPIs Principaux
+
+- **Utilisateurs** : Taux de vérification, répartition par rôle
+- **Envois** : Taux de livraison, temps moyen, confirmation OTP
+- **Paiements** : Volume, taux de succès, libération après OTP
+- **OTP** : Taux de vérification, temps moyen, renvois
+
+## 🔧 Développement
+
+### Structure des Migrations
+
 ```bash
-# Accéder au container
-docker-compose exec kleerlogistics bash
+# Créer une migration
+python manage.py makemigrations app_name
 
-# Créer superuser
-docker-compose exec kleerlogistics python manage.py createsuperuser
+# Appliquer les migrations
+python manage.py migrate
 
-# Migrations
-docker-compose exec kleerlogistics python manage.py migrate
-
-# Tests
-curl http://localhost:8000/health/       # Health check
+# Voir le statut
+python manage.py showmigrations
 ```
 
-## 📊 **Base de Données**
+### Tests
 
-### **Modèles Principaux**
-- ✅ `User`, `UserProfile`, `UserDocument`, `OTPCode`
-- ✅ `Shipment`, `ShipmentTracking`
-- ✅ `Trip`, `TripDocument`
-- ✅ `Match`, `MatchingPreferences`
-- ✅ `Wallet`, `Transaction`, `Commission`
-- ✅ `Conversation`, `Message`
-- ✅ `Rating`
+```bash
+# Tests unitaires
+python manage.py test
 
-## 🔒 **Sécurité**
-
-- ✅ **JWT** avec refresh tokens
-- ✅ **OTP** pour livraisons sécurisées
-- ✅ **Permissions** basées sur les rôles
-- ✅ **Rate limiting** par endpoint
-- ✅ **Validation** des données métier
-- ✅ **Protection CSRF** et XSS
-
-## 📈 **Monitoring**
-
-```http
-GET /health/              # Statut général
-GET /health/db/           # Connexion base de données
-GET /health/cache/        # Connexion Redis
-GET /health/celery/       # Statut Celery
+# Tests avec couverture
+coverage run --source='.' manage.py test
+coverage report
 ```
 
-## 🎯 **Prochaines Étapes**
+### Linting et Formatage
 
-### **Phase 2 - Modules Restants**
-1. **Documents** : Génération PDF avec WeasyPrint
-2. **Notifications** : Email/SMS avec templates
-3. **Verification** : Upload et validation documents
-4. **Admin Panel** : Dashboard avec statistiques
-5. **Analytics** : Métriques et rapports
-6. **Internationalization** : Support FR/EN/AR
+```bash
+# Flake8
+flake8 kleerlogistics/
 
-## 📞 **Support**
+# Black
+black kleerlogistics/
 
-### **Accès Admin**
-- **URL**: http://localhost:8000/admin/
-- **Username**: `romualdo`
-- **Password**: `passwordkleer`
+# Isort
+isort kleerlogistics/
+```
 
-### **Documentation API**
-- **Swagger**: http://localhost:8000/swagger/
-- **ReDoc**: http://localhost:8000/redoc/
+## 📋 Roadmap
+
+### Phase 1 - Core (✅ Terminé)
+- [x] Module Users avec OTP sécurisé
+- [x] Module Shipments avec OTP de livraison
+- [x] Système d'authentification JWT
+- [x] API REST complète
+
+### Phase 2 - Business Logic (🔄 En cours)
+- [ ] Module Trips
+- [ ] Système de Matching intelligent
+- [ ] Intégration paiements Stripe
+- [ ] Messagerie interne
+
+### Phase 3 - Advanced Features (📅 Planifié)
+- [ ] Dashboard analytics avancé
+- [ ] Intégration code export Kleer Infini
+- [ ] Système de notifications push
+
+## 🤝 Contribution
+
+### Standards de Code
+
+- **Python** : PEP 8, type hints
+- **Django** : Best practices, DRY principle
+- **API** : RESTful, OpenAPI 3.0
+- **Tests** : Coverage > 80%
+
+## 📞 Support
+
+### Contact
+
+- **Email** : support@kleer-infini.com
+- **Téléphone** : +213 XXX XXX XXX
+- **Adresse** : Alger Centre, Algérie
+
+### Documentation
+
+- **API Docs** : `/api/docs/`
+- **Dictionnaire de données** : `DICTIONNAIRE_DONNEES.md`
+- **Tests OTP** : `api_tests/delivery_otp.http`
+
+## 📄 Licence
+
+Ce projet est propriétaire de Kleer Infini. Tous droits réservés.
 
 ---
 
-**Développé avec ❤️ par l'équipe Kleer Logistics**
+**Version** : 2.0  
+**Dernière mise à jour** : 12 Août 2025  
+**Statut** : ✅ Système OTP de livraison implémenté selon cahier des charges

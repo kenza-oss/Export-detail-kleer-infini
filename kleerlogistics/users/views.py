@@ -16,6 +16,9 @@ from django.db.models import Q
 from django.conf import settings
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LoginRateThrottle(AnonRateThrottle):
     """Throttle spécifique pour le login."""
@@ -31,7 +34,7 @@ from .serializers import (
     AdminUserSerializer
 )
 from .permissions import IsAdminUser, IsSender, IsTraveler, IsOwnerOrAdmin, IsPhoneVerified, IsVerifiedForTransactions
-from .services import OTPService, AuthService
+from .services import OTPService, AuthService, OTPAuditService
 from config.swagger_examples import (
     USER_REGISTRATION_EXAMPLE, USER_PROFILE_EXAMPLE, PHONE_VERIFICATION_EXAMPLE,
     PASSWORD_CHANGE_EXAMPLE, PASSWORD_RESET_EXAMPLE, USER_DOCUMENT_EXAMPLE,
@@ -330,16 +333,20 @@ class SendOTPView(APIView):
                 # Get user (authenticated or None for unauthenticated)
                 user = request.user if request.user.is_authenticated else None
                 
-                # Créer l'OTP
-                otp, plain_code, error_message = OTPService.create_otp(user, phone_number)
+                # Créer l'OTP avec le paramètre request pour la sécurité
+                otp, plain_code, error_message = OTPService.create_otp(user, phone_number, request)
                 
                 if error_message:
+                    # Audit de l'échec
+                    OTPAuditService.log_otp_creation(phone_number, user, request, False, error_message)
                     return Response({
                         'success': False,
                         'message': error_message
                     }, status=status.HTTP_400_BAD_REQUEST)
                 
                 if not otp:
+                    # Audit de l'échec
+                    OTPAuditService.log_otp_creation(phone_number, user, request, False, "Erreur lors de la création de l'OTP")
                     return Response({
                         'success': False,
                         'message': 'Erreur lors de la création de l\'OTP'
@@ -351,10 +358,15 @@ class SendOTPView(APIView):
                 if not sms_success:
                     # En cas d'échec d'envoi SMS, supprimer l'OTP créé
                     otp.delete()
+                    # Audit de l'échec
+                    OTPAuditService.log_otp_creation(phone_number, user, request, False, f"Erreur SMS: {sms_message}")
                     return Response({
                         'success': False,
                         'message': f'Erreur lors de l\'envoi SMS: {sms_message}'
                     }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+                # Audit du succès
+                OTPAuditService.log_otp_creation(phone_number, user, request, True)
                 
                 resp = {
                     'success': True,
@@ -363,8 +375,11 @@ class SendOTPView(APIView):
                     'expires_in': '10 minutes',
                     'provider': getattr(settings, 'SMS_PROVIDER', 'console')
                 }
-                if getattr(settings, 'DEBUG', False):
-                    resp['dev_code'] = plain_code
+                
+                # Ne pas inclure le code OTP dans la réponse en production
+                if getattr(settings, 'DEBUG', False) and plain_code:
+                    resp['debug_code'] = plain_code
+                
                 return Response(resp)
             else:
                 return Response({
@@ -373,11 +388,11 @@ class SendOTPView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(f"Error in OTP send: {e}")
+            logger.error(f"Error in SendOTPView: {str(e)}")
             return Response({
                 'success': False,
-                'message': f'Erreur lors du traitement de la requête: {str(e)}'
-            }, status=status.HTTP_400_BAD_REQUEST)
+                'message': 'Erreur lors du traitement de la requête'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class VerifyOTPView(APIView):
@@ -423,10 +438,12 @@ class VerifyOTPView(APIView):
                 phone_number = serializer.validated_data['phone_number']
                 code = serializer.validated_data['code']
                 
-                # Vérifier l'OTP
-                is_valid, user = OTPService.verify_otp(phone_number, code, request.user if request.user.is_authenticated else None)
+                # Vérifier l'OTP avec le paramètre request pour la sécurité
+                is_valid, user = OTPService.verify_otp(phone_number, code, request.user if request.user.is_authenticated else None, request)
                 
                 if is_valid:
+                    # Audit du succès
+                    OTPAuditService.log_otp_verification(phone_number, user, request, True)
                     return Response({
                         'success': True,
                         'message': 'Téléphone vérifié avec succès',
@@ -434,6 +451,8 @@ class VerifyOTPView(APIView):
                         'user_id': user.id if user else None
                     })
                 else:
+                    # Audit de l'échec
+                    OTPAuditService.log_otp_verification(phone_number, user, request, False, "Code OTP invalide ou expiré")
                     return Response({
                         'success': False,
                         'message': 'Code OTP invalide ou expiré. Veuillez vérifier le code et réessayer.'
@@ -445,9 +464,10 @@ class VerifyOTPView(APIView):
                     'errors': serializer.errors
                 }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.error(f"Error in VerifyOTPView: {str(e)}")
             return Response({
                 'success': False,
-                'message': f'Erreur lors du traitement de la requête: {str(e)}'
+                'message': 'Erreur lors du traitement de la requête'
             }, status=status.HTTP_400_BAD_REQUEST)
 
 

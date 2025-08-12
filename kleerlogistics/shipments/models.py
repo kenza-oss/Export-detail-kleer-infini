@@ -338,3 +338,116 @@ class ShipmentTracking(models.Model):
             self.shipment.status = self.status
             self.shipment.save(update_fields=['status'])
         super().save(*args, **kwargs)
+
+
+class DeliveryOTP(models.Model):
+    """
+    Modèle pour les OTP de livraison selon le cahier des charges.
+    
+    Le destinataire reçoit un code secret à 6 chiffres généré par l'application.
+    Quand le voyageur arrive, le destinataire lui donne le code.
+    Le voyageur saisit ce code dans son appli → Livraison confirmée ✅
+    """
+    
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name='delivery_otps')
+    otp_code = models.CharField(max_length=6, help_text="Code OTP à 6 chiffres pour la livraison")
+    
+    # Informations du destinataire
+    recipient_phone = models.CharField(max_length=20, help_text="Numéro de téléphone du destinataire")
+    recipient_name = models.CharField(max_length=200, help_text="Nom du destinataire")
+    
+    # Informations de génération
+    generated_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='delivery_otps_generated', help_text="Voyageur qui a généré l'OTP")
+    created_at = models.DateTimeField(auto_now_add=True, help_text="Date de génération de l'OTP")
+    expires_at = models.DateTimeField(help_text="Date d'expiration de l'OTP (24h après génération)")
+    
+    # Informations de vérification
+    is_used = models.BooleanField(default=False, help_text="OTP utilisé pour confirmer la livraison")
+    verified_at = models.DateTimeField(null=True, blank=True, help_text="Date de vérification de l'OTP")
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='delivery_otps_verified', help_text="Voyageur qui a vérifié l'OTP")
+    
+    # Informations de sécurité
+    sms_sent = models.BooleanField(default=False, help_text="SMS envoyé au destinataire")
+    sms_sent_at = models.DateTimeField(null=True, blank=True, help_text="Date d'envoi du SMS")
+    sms_delivery_status = models.CharField(max_length=20, default='pending', choices=[
+        ('pending', 'En attente'),
+        ('sent', 'Envoyé'),
+        ('delivered', 'Livré'),
+        ('failed', 'Échoué'),
+    ], help_text="Statut de livraison du SMS")
+    
+    class Meta:
+        verbose_name = 'OTP de livraison'
+        verbose_name_plural = 'OTP de livraison'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['shipment', 'is_used', 'expires_at']),
+            models.Index(fields=['recipient_phone', 'is_used']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Delivery OTP for {self.shipment.tracking_number} - {self.recipient_name}"
+    
+    @property
+    def is_expired(self):
+        """Vérifie si l'OTP est expiré."""
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+    
+    @property
+    def is_valid(self):
+        """Vérifie si l'OTP est valide (non utilisé et non expiré)."""
+        return not self.is_used and not self.is_expired
+    
+    @property
+    def time_remaining(self):
+        """Retourne le temps restant avant expiration en minutes."""
+        from django.utils import timezone
+        if self.is_expired:
+            return 0
+        remaining = self.expires_at - timezone.now()
+        return int(remaining.total_seconds() / 60)
+    
+    def mark_as_used(self, verified_by_user=None):
+        """Marque l'OTP comme utilisé."""
+        from django.utils import timezone
+        self.is_used = True
+        self.verified_at = timezone.now()
+        self.verified_by = verified_by_user
+        self.save()
+    
+    def mark_sms_sent(self, delivery_status='sent'):
+        """Marque le SMS comme envoyé."""
+        from django.utils import timezone
+        self.sms_sent = True
+        self.sms_sent_at = timezone.now()
+        self.sms_delivery_status = delivery_status
+        self.save()
+    
+    @classmethod
+    def cleanup_expired_otps(cls):
+        """Nettoie tous les OTP expirés."""
+        from django.utils import timezone
+        expired_count = cls.objects.filter(
+            expires_at__lt=timezone.now()
+        ).delete()[0]
+        return expired_count
+    
+    @classmethod
+    def get_active_otp_for_shipment(cls, shipment):
+        """Récupère l'OTP actif pour un envoi."""
+        from django.utils import timezone
+        return cls.objects.filter(
+            shipment=shipment,
+            is_used=False,
+            expires_at__gt=timezone.now()
+        ).first()
+    
+    @classmethod
+    def get_used_otp_for_shipment(cls, shipment):
+        """Récupère l'OTP utilisé pour un envoi."""
+        return cls.objects.filter(
+            shipment=shipment,
+            is_used=True
+        ).first()

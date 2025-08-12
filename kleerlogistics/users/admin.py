@@ -7,11 +7,12 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
-from django.db.models import Count, Avg
+from django.db.models import Count, Avg, Q
 from django.utils import timezone
 from datetime import timedelta
 
 from .models import User, UserProfile, UserDocument, OTPCode
+from .services import OTPMaintenanceService, OTPAuditService
 
 
 @admin.register(User)
@@ -272,77 +273,144 @@ class UserDocumentAdmin(admin.ModelAdmin):
 
 @admin.register(OTPCode)
 class OTPCodeAdmin(admin.ModelAdmin):
-    """Interface d'administration pour les codes OTP."""
+    """Administration des codes OTP avec monitoring de sécurité."""
     
     list_display = [
-        'phone_number', 'user', 'code', 'is_used', 'is_expired', 
-        'created_at', 'expires_at'
+        'phone_number', 'user_info', 'status', 'created_at', 'expires_at', 'security_info'
     ]
-    
     list_filter = [
-        'is_used', 'created_at', 'expires_at'
+        'is_used', 'created_at', 'expires_at', 'user__role'
     ]
-    
-    search_fields = [
-        'phone_number', 'user__username', 'user__email', 'code'
-    ]
-    
-    readonly_fields = [
-        'created_at', 'expires_at', 'is_expired', 'is_valid'
-    ]
-    
-    fieldsets = (
-        ('Informations OTP', {
-            'fields': ('phone_number', 'user', 'code')
-        }),
-        ('Statut', {
-            'fields': ('is_used', 'is_expired', 'is_valid')
-        }),
-        ('Dates', {
-            'fields': ('created_at', 'expires_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
+    search_fields = ['phone_number', 'user__username', 'user__email']
+    readonly_fields = ['created_at', 'expires_at', 'security_hash_info']
     ordering = ['-created_at']
     
-    def is_expired(self, obj):
-        """Indiquer si l'OTP est expiré."""
-        return "✅" if obj.is_expired() else "❌"
-    is_expired.short_description = "Expiré"
+    actions = ['cleanup_expired_otps', 'mark_as_used', 'reset_rate_limits']
     
-    def is_valid(self, obj):
-        """Indiquer si l'OTP est valide."""
-        return "✅" if obj.is_valid() else "❌"
-    is_valid.short_description = "Valide"
+    def user_info(self, obj):
+        """Affiche les informations de l'utilisateur."""
+        if obj.user:
+            url = reverse('admin:users_user_change', args=[obj.user.id])
+            return format_html('<a href="{}">{}</a>', url, obj.user.username)
+        return "Anonyme"
+    user_info.short_description = "Utilisateur"
     
-    actions = ['mark_as_used', 'mark_as_unused', 'delete_expired']
+    def status(self, obj):
+        """Affiche le statut de l'OTP avec couleur."""
+        if obj.is_used:
+            return format_html('<span style="color: red;">Utilisé</span>')
+        elif obj.is_expired():
+            return format_html('<span style="color: orange;">Expiré</span>')
+        else:
+            return format_html('<span style="color: green;">Actif</span>')
+    status.short_description = "Statut"
+    
+    def security_info(self, obj):
+        """Affiche les informations de sécurité."""
+        info = []
+        if obj.is_used:
+            info.append("✅ Utilisé")
+        if obj.is_expired():
+            info.append("⏰ Expiré")
+        if not obj.is_used and not obj.is_expired():
+            info.append("🔒 Actif")
+        
+        return format_html('<br>'.join(info))
+    security_info.short_description = "Sécurité"
+    
+    def security_hash_info(self, obj):
+        """Affiche les informations sur le hash (sans révéler le code)."""
+        if ':' in obj.code:
+            hash_part, salt_part = obj.code.split(':', 1)
+            return format_html(
+                'Hash: <code>{}</code><br>Salt: <code>{}</code>',
+                hash_part[:16] + '...',
+                salt_part[:8] + '...'
+            )
+        return "Format de hash invalide"
+    security_hash_info.short_description = "Informations de Hash"
+    
+    def cleanup_expired_otps(self, request, queryset):
+        """Nettoie les OTP expirés."""
+        expired_count = OTPMaintenanceService.cleanup_expired_otps()
+        self.message_user(
+            request,
+            f"{expired_count} OTP expirés ont été supprimés avec succès."
+        )
+    cleanup_expired_otps.short_description = "Nettoyer les OTP expirés"
     
     def mark_as_used(self, request, queryset):
-        """Marquer les OTP comme utilisés."""
+        """Marque les OTP sélectionnés comme utilisés."""
         updated = queryset.update(is_used=True)
-        self.message_user(request, f"{updated} OTP(s) marqué(s) comme utilisé(s).")
+        self.message_user(
+            request,
+            f"{updated} OTP ont été marqués comme utilisés."
+        )
     mark_as_used.short_description = "Marquer comme utilisés"
     
-    def mark_as_unused(self, request, queryset):
-        """Marquer les OTP comme non utilisés."""
-        updated = queryset.update(is_used=False)
-        self.message_user(request, f"{updated} OTP(s) marqué(s) comme non utilisé(s).")
-    mark_as_unused.short_description = "Marquer comme non utilisés"
+    def reset_rate_limits(self, request, queryset):
+        """Réinitialise les limitations de taux pour les numéros sélectionnés."""
+        from django.core.cache import cache
+        
+        reset_count = 0
+        for otp in queryset:
+            cache_key = f"otp_rate_limit_{otp.phone_number}"
+            if cache.delete(cache_key):
+                reset_count += 1
+        
+        self.message_user(
+            request,
+            f"Limitations de taux réinitialisées pour {reset_count} numéros."
+        )
+    reset_rate_limits.short_description = "Réinitialiser les limitations de taux"
     
-    def delete_expired(self, request, queryset):
-        """Supprimer les OTP expirés."""
-        expired_count = queryset.filter(expires_at__lt=timezone.now()).count()
-        queryset.filter(expires_at__lt=timezone.now()).delete()
-        self.message_user(request, f"{expired_count} OTP(s) expiré(s) supprimé(s).")
-    delete_expired.short_description = "Supprimer les OTP expirés"
+    def get_queryset(self, request):
+        """Optimise la requête avec les relations."""
+        return super().get_queryset(request).select_related('user')
+    
+    def has_add_permission(self, request):
+        """Interdit la création manuelle d'OTP."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Autorise uniquement la modification du statut utilisé."""
+        return True
+    
+    def has_delete_permission(self, request, obj=None):
+        """Autorise la suppression des OTP expirés uniquement."""
+        if obj and obj.is_expired():
+            return True
+        return False
 
+class OTPMonitoringAdmin(admin.ModelAdmin):
+    """Interface de monitoring des OTP."""
+    
+    change_list_template = 'admin/otp_monitoring.html'
+    
+    def changelist_view(self, request, extra_context=None):
+        """Vue personnalisée pour le monitoring des OTP."""
+        extra_context = extra_context or {}
+        
+        # Statistiques des OTP
+        otp_stats = OTPMaintenanceService.get_otp_statistics()
+        extra_context['otp_stats'] = otp_stats
+        
+        # Activité suspecte
+        suspicious_activity = OTPMaintenanceService.monitor_suspicious_activity()
+        extra_context['suspicious_activity'] = suspicious_activity
+        
+        # Top des numéros avec le plus d'OTP
+        top_phones = OTPCode.objects.values('phone_number').annotate(
+            count=Count('id')
+        ).order_by('-count')[:10]
+        extra_context['top_phones'] = top_phones
+        
+        return super().changelist_view(request, extra_context)
 
 # Configuration personnalisée de l'admin
 admin.site.site_header = "Kleer Logistics - Administration"
 admin.site.site_title = "Kleer Logistics Admin"
 admin.site.index_title = "Bienvenue dans l'administration de Kleer Logistics"
 
-# Personnalisation de l'affichage des modèles
-admin.site.unregister(User)
-admin.site.register(User, UserAdmin)
+# Note: Les modèles sont déjà enregistrés avec les décorateurs @admin.register
+# Pas besoin d'enregistrements manuels supplémentaires
