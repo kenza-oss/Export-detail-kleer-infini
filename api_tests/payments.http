@@ -1,0 +1,298 @@
+### Tests pour les paiements algériens - Kleer Logistics
+### Support pour CIB, Eddahabia et paiement en espèces au bureau
+
+### Variables d'environnement
+@base_url = http://localhost:8000/api/v1
+@auth_token = {{login.response.body.access}}
+
+### 1. Connexion utilisateur
+# @name login
+POST {{base_url}}/auth/login/
+Content-Type: application/json
+
+{
+    "email": "test@example.com",
+    "password": "testpass123"
+}
+
+### 2. Récupérer les méthodes de paiement disponibles
+GET {{base_url}}/payments/methods/
+Authorization: Bearer {{auth_token}}
+
+### 3. Calculer les frais pour un paiement CIB
+GET {{base_url}}/payments/fees/?amount=5000&payment_method=cib
+Authorization: Bearer {{auth_token}}
+
+### 4. Paiement par carte CIB
+# @name cib_payment
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 5000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Ahmed Benali",
+    "cvv": "123",
+    "expiry_month": "12",
+    "expiry_year": "2025",
+    "description": "Paiement pour envoi #12345"
+}
+
+### 5. Paiement par carte Eddahabia
+# @name eddahabia_payment
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 3000.00,
+    "card_type": "eddahabia",
+    "card_number": "9876543210987654",
+    "card_holder_name": "Fatima Zohra",
+    "cvv": "456",
+    "expiry_month": "06",
+    "expiry_year": "2026",
+    "description": "Paiement pour envoi #12346"
+}
+
+### 6. Créer un paiement en espèces
+# @name cash_payment
+POST {{base_url}}/payments/cash/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 2500.00,
+    "office_location": "Bureau Kleer Infini - Alger Centre",
+    "description": "Paiement en espèces pour envoi #12347",
+    "contact_phone": "+213123456789"
+}
+
+### 7. Confirmer un paiement en espèces (Admin)
+POST {{base_url}}/payments/cash/{{cash_payment.response.body.transaction.transaction_id}}/confirm/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "payment_date": "2024-08-12T15:30:00Z",
+    "confirmation_notes": "Paiement reçu en espèces",
+    "receipt_number": "REC-2024-001"
+}
+
+### 8. Récupérer les détails d'une transaction
+GET {{base_url}}/payments/transactions/{{cib_payment.response.body.transaction.transaction_id}}/
+Authorization: Bearer {{auth_token}}
+
+### 9. Statistiques de paiement (Admin)
+GET {{base_url}}/payments/statistics/?start_date=2024-08-01&end_date=2024-08-31
+Authorization: Bearer {{auth_token}}
+
+### 10. Test de validation - Montant invalide
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": -100.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User"
+}
+
+### 11. Test de validation - Type de carte non supporté
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "visa",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User"
+}
+
+### 12. Test de validation - Numéro de carte invalide
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "cib",
+    "card_number": "123",
+    "card_holder_name": "Test User"
+}
+
+### 13. Test de validation - Paiement espèces montant trop élevé
+POST {{base_url}}/payments/cash/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 100000.00,
+    "office_location": "Bureau Kleer Infini - Alger Centre"
+}
+
+### 14. Calcul des frais pour différentes méthodes
+GET {{base_url}}/payments/fees/?amount=10000&payment_method=eddahabia
+Authorization: Bearer {{auth_token}}
+
+GET {{base_url}}/payments/fees/?amount=500&payment_method=cash
+Authorization: Bearer {{auth_token}}
+
+### 15. Méthodes de paiement pour un montant spécifique
+GET {{base_url}}/payments/methods/?amount=15000
+Authorization: Bearer {{auth_token}}
+
+### 16. Test de confirmation de paiement espèces sans autorisation
+POST {{base_url}}/payments/cash/INVALID-TXN-ID/confirm/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "payment_date": "2024-08-12T15:30:00Z"
+}
+
+### 17. Test d'accès aux statistiques sans autorisation admin
+GET {{base_url}}/payments/statistics/
+Authorization: Bearer {{auth_token}}
+
+### 18. Test d'accès aux détails d'une transaction inexistante
+GET {{base_url}}/payments/transactions/INVALID-TXN-ID/
+Authorization: Bearer {{auth_token}}
+
+### 19. Test de validation des dates d'expiration
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User",
+    "expiry_month": "13",
+    "expiry_year": "2025"
+}
+
+### 20. Test de validation - Année d'expiration passée
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User",
+    "expiry_month": "12",
+    "expiry_year": "2020"
+}
+
+### 21. Test de paiement avec envoi associé
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 7500.00,
+    "card_type": "eddahabia",
+    "card_number": "1111222233334444",
+    "card_holder_name": "Karim Boudiaf",
+    "cvv": "789",
+    "expiry_month": "09",
+    "expiry_year": "2027",
+    "shipment": 1,
+    "description": "Paiement pour envoi urgent vers Paris"
+}
+
+### 22. Test de paiement en espèces avec bureau spécifique
+POST {{base_url}}/payments/cash/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1500.00,
+    "office_location": "Bureau Kleer Infini - Oran",
+    "description": "Paiement pour documents",
+    "contact_phone": "+213987654321"
+}
+
+### 23. Test de calcul des frais avec montant élevé
+GET {{base_url}}/payments/fees/?amount=50000&payment_method=cib
+Authorization: Bearer {{auth_token}}
+
+### 24. Test de méthodes de paiement sans montant
+GET {{base_url}}/payments/methods/
+Authorization: Bearer {{auth_token}}
+
+### 25. Test de statistiques avec dates invalides
+GET {{base_url}}/payments/statistics/?start_date=2024-08-31&end_date=2024-08-01
+Authorization: Bearer {{auth_token}}
+
+### 26. Test de validation - CVV invalide
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User",
+    "cvv": "12"
+}
+
+### 27. Test de validation - Mois d'expiration invalide
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 1000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Test User",
+    "expiry_month": "00",
+    "expiry_year": "2025"
+}
+
+### 28. Test de paiement avec caractères spéciaux dans le nom
+POST {{base_url}}/payments/card/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 2000.00,
+    "card_type": "eddahabia",
+    "card_number": "5555666677778888",
+    "card_holder_name": "Mohammed El-Hadj",
+    "cvv": "321",
+    "expiry_month": "11",
+    "expiry_year": "2026"
+}
+
+### 29. Test de paiement en espèces avec description longue
+POST {{base_url}}/payments/cash/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "amount": 800.00,
+    "office_location": "Bureau Kleer Infini - Constantine",
+    "description": "Paiement pour envoi de documents administratifs vers la France. Documents très importants nécessitant un traitement spécial et une attention particulière lors du transport.",
+    "contact_phone": "+213123456789"
+}
+
+### 30. Test de confirmation avec notes détaillées
+POST {{base_url}}/payments/cash/{{cash_payment.response.body.transaction.transaction_id}}/confirm/
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+    "payment_date": "2024-08-12T16:45:00Z",
+    "confirmation_notes": "Paiement reçu en espèces. Client a présenté sa carte d'identité. Montant compté et vérifié. Reçu délivré au client.",
+    "receipt_number": "REC-2024-002"
+}

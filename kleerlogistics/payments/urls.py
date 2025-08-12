@@ -1,41 +1,34 @@
 """
-URLs for payments app - Payment and wallet management
+URLs pour la gestion des paiements algériens
+Support pour CIB, Eddahabia et paiement en espèces au bureau
 """
 
 from django.urls import path
-from . import views
+from .views import (
+    PaymentMethodsView, CardPaymentView, CashPaymentView,
+    CashPaymentConfirmationView, PaymentFeesView,
+    PaymentStatisticsView, TransactionDetailView
+)
 
 app_name = 'payments'
 
 urlpatterns = [
-    # Wallet Management
-    path('wallet/', views.WalletView.as_view(), name='wallet'),
+    # Méthodes de paiement
+    path('methods/', PaymentMethodsView.as_view(), name='payment_methods'),
     
-    # Transaction Management
-    path('transactions/', views.TransactionListView.as_view(), name='transaction_list'),
+    # Paiements par carte bancaire algérienne
+    path('card/', CardPaymentView.as_view(), name='card_payment'),
     
-    # Payment Operations
-    path('deposit/', views.DepositView.as_view(), name='deposit'),
-    path('withdraw/', views.WithdrawView.as_view(), name='withdraw'),
-    path('transfer/', views.TransferView.as_view(), name='transfer'),
+    # Paiements en espèces
+    path('cash/', CashPaymentView.as_view(), name='cash_payment'),
+    path('cash/<str:transaction_id>/confirm/', CashPaymentConfirmationView.as_view(), name='cash_payment_confirm'),
     
-    # Chargily Pay Integration
-    path('chargily-pay/create/', views.ChargilyPayView.as_view(), name='chargily_pay_create'),
-    path('chargily-pay/callback/', views.ChargilyPayCallbackView.as_view(), name='chargily_pay_callback'),
+    # Calcul des frais
+    path('fees/', PaymentFeesView.as_view(), name='payment_fees'),
     
-    # Shipment Payment Processing
-    path('shipments/<int:shipment_id>/process-payment/', views.ProcessShipmentPaymentView.as_view(), name='process_shipment_payment'),
+    # Statistiques (admin)
+    path('statistics/', PaymentStatisticsView.as_view(), name='payment_statistics'),
     
-    # Commission Management
-    path('commissions/', views.CommissionListView.as_view(), name='commission_list'),
-    
-    # Refund Management
-    path('refunds/<int:transaction_id>/', views.RefundView.as_view(), name='refund'),
-    
-    # Payment Analytics
-    path('analytics/', views.PaymentAnalyticsView.as_view(), name='payment_analytics'),
-    
-    # Admin endpoints
-    path('admin/transactions/', views.AdminTransactionListView.as_view(), name='admin_transaction_list'),
-    path('admin/wallets/', views.AdminWalletListView.as_view(), name='admin_wallet_list'),
+    # Détails des transactions
+    path('transactions/<str:transaction_id>/', TransactionDetailView.as_view(), name='transaction_detail'),
 ] 

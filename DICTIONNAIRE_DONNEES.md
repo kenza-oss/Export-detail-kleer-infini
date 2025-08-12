@@ -334,15 +334,45 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `user` | ForeignKey | - | Oui | User | Utilisateur |
 | `type` | CharField | 20 | Oui | deposit, withdrawal, payment, earning, refund, transfer, commission | Type transaction |
 | `amount` | DecimalField | 12,2 | Oui | - | Montant |
-| `currency` | CharField | 3 | Oui | EUR | Devise |
-| `status` | CharField | 20 | Oui | pending, processing, completed, failed, cancelled | Statut |
+| `currency` | CharField | 3 | Oui | DZD | Devise |
+| `status` | CharField | 20 | Oui | pending, processing, completed, failed, cancelled, refunded | Statut |
 | `shipment` | ForeignKey | - | Non | Shipment | Envoi associé |
-| `payment_method` | CharField | 20 | Non | wallet, card, bank_transfer, cash | Méthode paiement |
-| `payment_gateway` | CharField | 20 | Non | stripe, paypal, bank | Passerelle |
+| `related_transaction` | ForeignKey | - | Non | Transaction | Transaction liée |
+| `payment_method` | CharField | 20 | Non | wallet, card, cib, eddahabia, cash, bank_transfer, chargily | Méthode paiement |
+| `payment_gateway` | CharField | 20 | Non | cib, eddahabia, chargily, stripe, manual | Passerelle |
+| `card_type` | CharField | 20 | Non | cib, eddahabia, visa, mastercard | Type de carte |
+| `card_last_four` | CharField | 4 | Non | - | 4 derniers chiffres |
+| `card_holder_name` | CharField | 100 | Non | - | Nom titulaire |
+| `cash_payment_reference` | CharField | 50 | Non | - | Référence espèces |
+| `cash_payment_location` | CharField | 200 | Non | - | Bureau de paiement |
+| `cash_payment_date` | DateTimeField | - | Non | - | Date paiement espèces |
+| `cash_payment_confirmed_by` | ForeignKey | - | Non | User | Confirmé par |
 | `description` | TextField | - | Non | - | Description |
 | `metadata` | JSONField | - | Oui | {} | Métadonnées |
 | `created_at` | DateTimeField | - | Oui | Auto | Date création |
 | `completed_at` | DateTimeField | - | Non | - | Date finalisation |
+
+### **5.3 PaymentMethod (Méthode de Paiement)**
+**Méthodes de paiement disponibles**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 50 | Oui | Unique | Nom de la méthode |
+| `method_type` | CharField | 20 | Oui | card, cib, eddahabia, cash, bank_transfer, chargily | Type de méthode |
+| `is_active` | BooleanField | - | Oui | True | Méthode active |
+| `is_online` | BooleanField | - | Oui | True | Paiement en ligne |
+| `min_amount` | DecimalField | 10,2 | Oui | 0.01 | Montant minimum |
+| `max_amount` | DecimalField | 10,2 | Oui | 100000.00 | Montant maximum |
+| `processing_fee` | DecimalField | 5,2 | Oui | 0.00 | Frais % |
+| `fixed_fee` | DecimalField | 10,2 | Oui | 0.00 | Frais fixes |
+| `office_locations` | JSONField | - | Oui | [] | Bureaux disponibles |
+| `office_hours` | CharField | 200 | Non | - | Heures d'ouverture |
+| `office_instructions` | TextField | - | Non | - | Instructions bureau |
+| `description` | TextField | - | Non | - | Description |
+| `icon_url` | URLField | - | Non | - | URL icône |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
 
 ---
 
@@ -581,9 +611,12 @@ Rating (N) ←→ (1) Shipment
 
 5. **Paiements**
    - Volume total des transactions
-   - Répartition par méthode de paiement
+   - Répartition par méthode de paiement (CIB, Eddahabia, Espèces)
    - Taux de succès des paiements
    - Paiements libérés après confirmation OTP
+   - Statistiques des cartes algériennes
+   - Paiements en espèces confirmés
+   - Frais de traitement par méthode
 
 6. **OTP de Livraison**
    - Nombre d'OTP générés
@@ -606,7 +639,7 @@ Rating (N) ←→ (1) Shipment
 - **OTP Authentification** : Codes temporaires avec expiration (10 min)
 - **OTP Livraison** : Codes à 6 chiffres avec expiration (24h)
 - **Documents** : Stockage sécurisé avec validation
-- **Paiements** : Conformité PCI DSS
+- **Paiements** : Conformité PCI DSS, cartes algériennes sécurisées
 
 ### **Contrôles d'Accès**
 - **Rôles** : Expéditeur, Voyageur, Admin
@@ -639,7 +672,34 @@ Rating (N) ←→ (1) Shipment
 
 ---
 
+## 💳 **PAIEMENTS ALGÉRIENS - CIB & EDDAHABIA**
+
+### **Méthodes de Paiement Supportées**
+- **CIB** : Cartes bancaires CIB (Crédit Industriel et Commercial)
+- **Eddahabia** : Cartes bancaires Eddahabia (Poste Algérienne)
+- **Espèces** : Paiement en espèces au bureau Kleer Infini
+
+### **Endpoints API Paiements**
+- `GET /api/v1/payments/methods/` - Méthodes disponibles
+- `POST /api/v1/payments/card/` - Paiement carte algérienne
+- `POST /api/v1/payments/cash/` - Paiement en espèces
+- `POST /api/v1/payments/cash/{id}/confirm/` - Confirmation espèces (Admin)
+- `GET /api/v1/payments/fees/` - Calcul des frais
+- `GET /api/v1/payments/statistics/` - Statistiques (Admin)
+
+### **Sécurité des Paiements**
+- **Validation** : Numéro de carte, CVV, dates d'expiration
+- **Limites** : Montants maximum par méthode
+- **Chiffrement** : Données sensibles sécurisées
+- **Audit** : Toutes les transactions sont loggées
+
+### **Flux de Paiement**
+1. **Carte Bancaire** : Validation → Traitement → Confirmation automatique
+2. **Espèces** : Création → Paiement bureau → Confirmation admin → Finalisation
+
+---
+
 **Document créé le :** 12 Août 2025  
 **Version :** 2.0  
 **Projet :** Kleer Logistics API  
-**Statut :** ✅ Fonctionnel avec système OTP de livraison
+**Statut :** ✅ Fonctionnel avec système OTP de livraison et paiements algériens

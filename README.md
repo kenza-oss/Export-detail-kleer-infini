@@ -20,7 +20,7 @@ Kleer Logistics est une plateforme web et mobile qui met en relation des expédi
 - **Base de données** : PostgreSQL
 - **Authentification** : JWT (JSON Web Tokens)
 - **SMS** : Twilio/Vonage (production), Console (développement)
-- **Paiements** : Stripe, Wallet intégré
+- **Paiements** : CIB, Eddahabia, Espèces, Wallet intégré
 - **Documentation API** : Swagger/OpenAPI
 - **Sécurité** : Django Axes, Rate Limiting, OTP sécurisés
 
@@ -57,6 +57,57 @@ kleerlogistics/
 - Vérifie le contenu des colis
 - Gère les paiements et commissions
 - Assure la traçabilité avec code export
+
+## 💳 Système de Paiements Algériens (Nouveau)
+
+### Méthodes de Paiement Supportées
+
+#### 🏦 Cartes Bancaires Algériennes
+- **CIB** : Cartes bancaires CIB (Crédit Industriel et Commercial)
+- **Eddahabia** : Cartes bancaires Eddahabia (Poste Algérienne)
+
+#### 💰 Paiement en Espèces
+- **Bureau Kleer Infini** : Paiement en espèces au bureau
+- **Confirmation admin** : Validation par le personnel
+
+### Endpoints API Paiements
+
+```http
+# Méthodes de paiement disponibles
+GET /api/v1/payments/methods/
+
+# Paiement par carte algérienne
+POST /api/v1/payments/card/
+{
+    "amount": 5000.00,
+    "card_type": "cib",
+    "card_number": "1234567890123456",
+    "card_holder_name": "Ahmed Benali",
+    "cvv": "123",
+    "expiry_month": "12",
+    "expiry_year": "2025"
+}
+
+# Paiement en espèces
+POST /api/v1/payments/cash/
+{
+    "amount": 2500.00,
+    "office_location": "Bureau Kleer Infini - Alger Centre"
+}
+
+# Confirmation paiement espèces (Admin)
+POST /api/v1/payments/cash/{transaction_id}/confirm/
+
+# Calcul des frais
+GET /api/v1/payments/fees/?amount=5000&payment_method=cib
+```
+
+### Sécurité des Paiements
+
+- ✅ **Validation** : Numéro de carte, CVV, dates d'expiration
+- ✅ **Limites** : Montants maximum par méthode
+- ✅ **Chiffrement** : Données sensibles sécurisées
+- ✅ **Audit** : Toutes les transactions loggées
 
 ## 🔐 Système OTP de Livraison (Nouveau)
 
@@ -122,7 +173,7 @@ POST /api/v1/shipments/{tracking_number}/delivery/otp/verify/
 
 - **Trips** : Gestion des trajets voyageurs
 - **Matching** : Algorithme de mise en relation
-- **Payments** : Intégration Stripe et wallet
+- **Payments** : Intégration CIB, Eddahabia, Espèces et wallet
 - **Chat** : Messagerie interne sécurisée
 - **Notifications** : SMS et emails automatiques
 
@@ -213,9 +264,10 @@ TWILIO_FROM_NUMBER=+1234567890
 SECRET_KEY=your-secret-key
 JWT_SECRET_KEY=your-jwt-secret
 
-# Paiements (Stripe)
-STRIPE_PUBLIC_KEY=pk_test_...
-STRIPE_SECRET_KEY=sk_test_...
+# Paiements (CIB, Eddahabia)
+CIB_MAX_AMOUNT=100000
+EDDAHABIA_MAX_AMOUNT=100000
+CASH_MAX_AMOUNT=50000
 ```
 
 ## 📱 API Documentation
@@ -241,6 +293,9 @@ api_tests/users.http
 
 # Tests envois
 api_tests/shipments.http
+
+# Tests paiements algériens
+api_tests/payments.http
 ```
 
 ## 📈 Métriques et Statistiques
@@ -302,7 +357,7 @@ isort kleerlogistics/
 ### Phase 2 - Business Logic (🔄 En cours)
 - [ ] Module Trips
 - [ ] Système de Matching intelligent
-- [ ] Intégration paiements Stripe
+- [ ] Intégration paiements CIB/Eddahabia
 - [ ] Messagerie interne
 
 ### Phase 3 - Advanced Features (📅 Planifié)
@@ -341,4 +396,4 @@ Ce projet est propriétaire de Kleer Infini. Tous droits réservés.
 
 **Version** : 2.0  
 **Dernière mise à jour** : 12 Août 2025  
-**Statut** : ✅ Système OTP de livraison implémenté selon cahier des charges
+**Statut** : ✅ Système OTP de livraison et paiements algériens implémentés selon cahier des charges

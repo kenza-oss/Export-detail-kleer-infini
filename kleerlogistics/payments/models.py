@@ -127,18 +127,24 @@ class Transaction(models.Model):
         ('refunded', 'Remboursé'),
     ]
     
+    # Méthodes de paiement
     PAYMENT_METHODS = [
         ('wallet', 'Portefeuille'),
         ('card', 'Carte bancaire'),
-        ('bank_transfer', 'Virement bancaire'),
+        ('cib', 'CIB'),
+        ('eddahabia', 'Eddahabia'),
         ('cash', 'Espèces'),
+        ('bank_transfer', 'Virement bancaire'),
         ('chargily', 'Chargily Pay'),
     ]
     
+    # Passerelles de paiement
     PAYMENT_GATEWAYS = [
+        ('cib', 'CIB'),
+        ('eddahabia', 'Eddahabia'),
         ('chargily', 'Chargily Pay'),
         ('stripe', 'Stripe'),
-        ('manual', 'Manuel'),
+        ('manual', 'Manuel (Bureau)'),
     ]
     
     # Identifiant unique
@@ -160,6 +166,22 @@ class Transaction(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, blank=True)
     payment_gateway = models.CharField(max_length=20, choices=PAYMENT_GATEWAYS, blank=True)
     
+    # Informations spécifiques aux cartes algériennes
+    card_type = models.CharField(max_length=20, blank=True, choices=[
+        ('cib', 'CIB'),
+        ('eddahabia', 'Eddahabia'),
+        ('visa', 'Visa'),
+        ('mastercard', 'Mastercard'),
+    ])
+    card_last_four = models.CharField(max_length=4, blank=True)
+    card_holder_name = models.CharField(max_length=100, blank=True)
+    
+    # Informations pour paiement en espèces
+    cash_payment_reference = models.CharField(max_length=50, blank=True, help_text="Référence de paiement en espèces")
+    cash_payment_location = models.CharField(max_length=200, blank=True, help_text="Bureau de paiement")
+    cash_payment_date = models.DateTimeField(null=True, blank=True, help_text="Date de paiement en espèces")
+    cash_payment_confirmed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='cash_payments_confirmed')
+    
     # Description et métadonnées
     description = models.TextField(blank=True)
     metadata = models.JSONField(default=dict)
@@ -176,6 +198,8 @@ class Transaction(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['transaction_id']),
             models.Index(fields=['created_at']),
+            models.Index(fields=['payment_method']),
+            models.Index(fields=['card_type']),
         ]
     
     def __str__(self):
@@ -184,6 +208,11 @@ class Transaction(models.Model):
     def save(self, *args, **kwargs):
         if not self.transaction_id:
             self.transaction_id = f"TXN{uuid.uuid4().hex[:12].upper()}"
+        
+        # Définir automatiquement le type de carte basé sur la méthode de paiement
+        if self.payment_method in ['cib', 'eddahabia']:
+            self.card_type = self.payment_method
+        
         super().save(*args, **kwargs)
     
     def complete(self):
@@ -245,6 +274,36 @@ class Transaction(models.Model):
         self.save()
         
         return refund_transaction
+    
+    @property
+    def is_cash_payment(self):
+        """Vérifie si c'est un paiement en espèces."""
+        return self.payment_method == 'cash'
+    
+    @property
+    def is_card_payment(self):
+        """Vérifie si c'est un paiement par carte."""
+        return self.payment_method in ['card', 'cib', 'eddahabia']
+    
+    @property
+    def is_algerian_card(self):
+        """Vérifie si c'est une carte bancaire algérienne."""
+        return self.card_type in ['cib', 'eddahabia']
+    
+    def confirm_cash_payment(self, confirmed_by_user, payment_date=None):
+        """Confirme un paiement en espèces."""
+        from django.utils import timezone
+        
+        if not self.is_cash_payment:
+            raise ValueError("Cette transaction n'est pas un paiement en espèces")
+        
+        if self.status != 'pending':
+            raise ValueError("Seule une transaction en attente peut être confirmée")
+        
+        self.cash_payment_confirmed_by = confirmed_by_user
+        self.cash_payment_date = payment_date or timezone.now()
+        self.cash_payment_reference = f"CASH-{self.transaction_id}"
+        self.complete()
 
 
 class Commission(models.Model):
@@ -325,3 +384,58 @@ class Commission(models.Model):
         traveler_transaction.complete()
         
         return platform_transaction, traveler_transaction
+
+
+class PaymentMethod(models.Model):
+    """Modèle pour gérer les méthodes de paiement disponibles."""
+    
+    METHOD_TYPES = [
+        ('card', 'Carte bancaire'),
+        ('cib', 'CIB'),
+        ('eddahabia', 'Eddahabia'),
+        ('cash', 'Espèces'),
+        ('bank_transfer', 'Virement bancaire'),
+        ('chargily', 'Chargily Pay'),
+    ]
+    
+    name = models.CharField(max_length=50, unique=True)
+    method_type = models.CharField(max_length=20, choices=METHOD_TYPES)
+    is_active = models.BooleanField(default=True)
+    is_online = models.BooleanField(default=True, help_text="Paiement en ligne ou au bureau")
+    
+    # Configuration spécifique
+    min_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.01)
+    max_amount = models.DecimalField(max_digits=10, decimal_places=2, default=100000.00)
+    processing_fee = models.DecimalField(max_digits=5, decimal_places=2, default=0.00, help_text="Frais de traitement en %")
+    fixed_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, help_text="Frais fixes")
+    
+    # Informations pour paiement au bureau
+    office_locations = models.JSONField(default=list, blank=True, help_text="Liste des bureaux disponibles")
+    office_hours = models.CharField(max_length=200, blank=True, help_text="Heures d'ouverture")
+    office_instructions = models.TextField(blank=True, help_text="Instructions pour paiement au bureau")
+    
+    # Métadonnées
+    description = models.TextField(blank=True)
+    icon_url = models.URLField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['name']
+        indexes = [
+            models.Index(fields=['method_type']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_method_type_display()})"
+    
+    def calculate_fees(self, amount):
+        """Calcule les frais pour un montant donné."""
+        percentage_fee = (amount * self.processing_fee) / 100
+        total_fees = percentage_fee + self.fixed_fee
+        return total_fees
+    
+    def is_available_for_amount(self, amount):
+        """Vérifie si la méthode est disponible pour un montant donné."""
+        return self.is_active and self.min_amount <= amount <= self.max_amount
