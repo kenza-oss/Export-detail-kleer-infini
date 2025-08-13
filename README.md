@@ -378,9 +378,7 @@ isort kleerlogistics/
 
 ### Contact
 
-- **Email** : support@kleer-infini.com
-- **Téléphone** : +213 XXX XXX XXX
-- **Adresse** : Alger Centre, Algérie
+- **Email** : romualdosebany@gmail.com
 
 ### Documentation
 
