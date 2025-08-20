@@ -34,9 +34,9 @@
 - ⏳ Email alerts for downtime
 
 ## 💾 Data Backups
-- ⏳ Automate PostgreSQL dumps  
+- ✅ Automate PostgreSQL dumps  
 - ⏳ Backup media files  
-- ⏳ Sync securely with AWS S3
+- ✅ Sync securely with AWS S3
 
 ## 🌐 Infrastructure & Networking
 - ⏳ Manage DNS (Cloudflare or registrar)  
