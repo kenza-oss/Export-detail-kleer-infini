@@ -35,6 +35,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # RUN DJANGO_SETTINGS_MODULE=config.settings.production python kleerlogistics/manage.py collectstatic --noinput || true
+RUN mkdir -p /app/kleerlogistics/logs
 
 # Exposer le port
 EXPOSE 8000
