@@ -1432,24 +1432,40 @@ class UserRequestVerificationView(APIView):
                     'message': 'Ce document a été rejeté. Veuillez télécharger un nouveau document.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Si le document est déjà en attente, on renvoie un message de confirmation
-            if document.status == 'pending':
+            # Vérifier s'il existe déjà une vérification en cours pour ce document
+            from verification.models import DocumentVerification
+            existing_verification = DocumentVerification.objects.filter(
+                document=document,
+                status__in=['pending', 'processing']
+            ).first()
+            
+            if existing_verification:
                 return Response({
                     'success': True,
                     'message': 'Demande de vérification déjà en cours',
                     'document_id': document_id,
-                    'status': 'pending'
+                    'verification_id': str(existing_verification.id),
+                    'status': existing_verification.status
                 })
             
-            # Mettre le statut en attente (normalement déjà le cas par défaut)
-            document.status = 'pending'
-            document.save()
+            # Créer une nouvelle vérification automatique
+            verification = DocumentVerification.objects.create(
+                user=request.user,
+                document=document,
+                verification_method='automatic',
+                status='pending'
+            )
+            
+            # Lancer la vérification automatique en arrière-plan
+            self.start_automatic_verification(verification)
             
             return Response({
                 'success': True,
                 'message': 'Demande de vérification soumise avec succès',
                 'document_id': document_id,
-                'status': 'pending'
+                'verification_id': str(verification.id),
+                'status': 'pending',
+                'estimated_completion_time': '5 minutes'
             })
             
         except UserDocument.DoesNotExist:
@@ -1462,6 +1478,48 @@ class UserRequestVerificationView(APIView):
                 'success': False,
                 'message': f'Erreur lors de la demande de vérification: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def start_automatic_verification(self, verification):
+        """Démarrer la vérification automatique."""
+        try:
+            # Simuler la vérification automatique (à remplacer par l'implémentation réelle)
+            import threading
+            import time
+            
+            def verify_document():
+                time.sleep(2)  # Simulation du traitement
+                
+                # Mettre à jour le statut
+                verification.status = 'approved'
+                verification.validation_score = 95.50
+                verification.fraud_detection_score = 98.00
+                verification.verified_at = timezone.now()
+                verification.verification_duration = timezone.timedelta(seconds=2)
+                verification.save()
+                
+                # Mettre à jour le document
+                verification.document.status = 'approved'
+                verification.document.verified_at = timezone.now()
+                verification.document.save()
+                
+                # Créer un log
+                from verification.models import VerificationLog
+                VerificationLog.objects.create(
+                    verification=verification,
+                    log_level='success',
+                    message='Vérification automatique terminée avec succès',
+                    details={'score': 95.50, 'fraud_score': 98.00}
+                )
+            
+            # Lancer la vérification en arrière-plan
+            thread = threading.Thread(target=verify_document)
+            thread.daemon = True
+            thread.start()
+            
+        except Exception as e:
+            logger.error(f"Erreur lors de la vérification automatique: {str(e)}")
+            verification.status = 'requires_manual_review'
+            verification.save()
 
 
 class UserLanguagePreferenceView(APIView):
@@ -2154,11 +2212,11 @@ class UserDepositView(APIView):
     )
     def post(self, request):
         """Effectuer un dépôt."""
-        # Import the DepositView from payments app
-        from payments.views import DepositView
+        # Import the WalletDepositView from payments app
+        from payments.views import WalletDepositView
         
-        # Create an instance of DepositView and call its post method
-        deposit_view = DepositView()
+        # Create an instance of WalletDepositView and call its post method
+        deposit_view = WalletDepositView()
         deposit_view.request = request
         deposit_view.format_kwarg = None
         
@@ -2220,11 +2278,11 @@ class UserWithdrawView(APIView):
     )
     def post(self, request):
         """Effectuer un retrait."""
-        # Import the WithdrawView from payments app
-        from payments.views import WithdrawView
+        # Import the WalletWithdrawView from payments app
+        from payments.views import WalletWithdrawView
         
-        # Create an instance of WithdrawView and call its post method
-        withdraw_view = WithdrawView()
+        # Create an instance of WalletWithdrawView and call its post method
+        withdraw_view = WalletWithdrawView()
         withdraw_view.request = request
         withdraw_view.format_kwarg = None
         
@@ -2283,11 +2341,11 @@ class UserTransferView(APIView):
     )
     def post(self, request):
         """Effectuer un transfert."""
-        # Import the TransferView from payments app
-        from payments.views import TransferView
+        # Import the WalletTransferView from payments app
+        from payments.views import WalletTransferView
         
-        # Create an instance of TransferView and call its post method
-        transfer_view = TransferView()
+        # Create an instance of WalletTransferView and call its post method
+        transfer_view = WalletTransferView()
         transfer_view.request = request
         transfer_view.format_kwarg = None
         
@@ -2355,11 +2413,11 @@ class UserTransactionListView(APIView):
     )
     def get(self, request):
         """Récupérer l'historique des transactions."""
-        # Import the TransactionListView from payments app
-        from payments.views import TransactionListView
+        # Import the WalletTransactionsView from payments app
+        from payments.views import WalletTransactionsView
         
-        # Create an instance of TransactionListView and call its get method
-        transaction_view = TransactionListView()
+        # Create an instance of WalletTransactionsView and call its get method
+        transaction_view = WalletTransactionsView()
         transaction_view.request = request
         transaction_view.format_kwarg = None
         

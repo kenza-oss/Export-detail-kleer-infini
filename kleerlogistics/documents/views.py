@@ -19,6 +19,7 @@ from .serializers import (
     DocumentSerializer, DocumentTemplateSerializer,
     InvoiceSerializer, ReceiptSerializer
 )
+from .services import PDFGenerationService, DocumentValidationService
 from config.swagger_config import (
     document_upload_schema, document_list_schema, document_verify_schema
 )
@@ -88,14 +89,41 @@ class GenerateInvoiceView(APIView):
             # Générer le numéro de facture
             invoice_number = self.generate_invoice_number()
             
+            # Préparer les données de facture
+            invoice_data = {
+                'invoice_number': invoice_number,
+                'client_name': f"{shipment.user.first_name} {shipment.user.last_name}",
+                'client_email': shipment.user.email,
+                'client_address': shipment.origin,
+                'tracking_number': shipment.tracking_number,
+                'origin': shipment.origin,
+                'destination': shipment.destination,
+                'weight': shipment.weight,
+                'shipping_cost': float(shipment.shipping_cost),
+                'packaging_fee': 500.0,  # Frais d'emballage standard
+                'commission': float(shipment.shipping_cost) * 0.25,  # 25% de commission
+                'total_amount': float(shipment.shipping_cost) + 500.0 + (float(shipment.shipping_cost) * 0.25)
+            }
+            
+            # Valider les données
+            validation = DocumentValidationService.validate_invoice_data(invoice_data)
+            if not validation['valid']:
+                return Response({
+                    'success': False,
+                    'message': validation['errors']
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Générer le PDF
+            pdf_content = PDFGenerationService.generate_invoice_pdf(invoice_data)
+            
             # Créer le document
             document = Document.objects.create(
                 user=request.user,
                 document_type='invoice',
-                reference=invoice_number,
                 title=f'Facture {invoice_number}',
-                content=self.generate_invoice_content(shipment, invoice_number),
-                status='generated'
+                status='generated',
+                content_data=invoice_data,
+                generated_file=ContentFile(pdf_content, f'invoice_{invoice_number}.pdf')
             )
             
             return Response({
@@ -203,14 +231,36 @@ class GenerateReceiptView(APIView):
             # Générer le numéro de reçu
             receipt_number = self.generate_receipt_number()
             
+            # Préparer les données de reçu
+            receipt_data = {
+                'receipt_number': receipt_number,
+                'client_name': f"{transaction.user.first_name} {transaction.user.last_name}",
+                'client_email': transaction.user.email,
+                'transaction_reference': transaction.reference,
+                'payment_method': transaction.get_payment_method_display(),
+                'payment_date': transaction.created_at.strftime('%d/%m/%Y'),
+                'amount_paid': float(transaction.amount)
+            }
+            
+            # Valider les données
+            validation = DocumentValidationService.validate_receipt_data(receipt_data)
+            if not validation['valid']:
+                return Response({
+                    'success': False,
+                    'message': validation['errors']
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Générer le PDF
+            pdf_content = PDFGenerationService.generate_receipt_pdf(receipt_data)
+            
             # Créer le document
             document = Document.objects.create(
                 user=request.user,
                 document_type='receipt',
-                reference=receipt_number,
                 title=f'Reçu {receipt_number}',
-                content=self.generate_receipt_content(transaction, receipt_number),
-                status='generated'
+                status='generated',
+                content_data=receipt_data,
+                generated_file=ContentFile(pdf_content, f'receipt_{receipt_number}.pdf')
             )
             
             return Response({
@@ -389,12 +439,16 @@ class DocumentDownloadView(APIView):
         try:
             document = Document.objects.get(pk=pk, user=request.user)
             
-            # En production, générer le PDF réel
-            # Pour la démonstration, on simule
-            pdf_content = self.generate_pdf_content(document)
-            
-            response = HttpResponse(pdf_content, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{document.reference}.pdf"'
+            # Retourner le fichier PDF généré
+            if document.generated_file:
+                response = HttpResponse(document.generated_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="{document.generated_file.name}"'
+                return response
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Fichier PDF non trouvé'
+                }, status=status.HTTP_404_NOT_FOUND)
             
             return response
         except Document.DoesNotExist:
@@ -551,14 +605,29 @@ class GenerateCustomDocumentView(APIView):
             # Générer le numéro de document
             document_number = self.generate_document_number(template.document_type)
             
+            # Préparer les données de contrat
+            contract_data = {
+                'contract_number': document_number,
+                'sender_name': data.get('sender_name', ''),
+                'traveler_name': data.get('traveler_name', ''),
+                'recipient_name': data.get('recipient_name', ''),
+                'departure_date': data.get('departure_date', ''),
+                'route': data.get('route', ''),
+                'package_weight': data.get('package_weight', ''),
+                'compensation': float(data.get('compensation', 0))
+            }
+            
+            # Générer le PDF
+            pdf_content = PDFGenerationService.generate_contract_pdf(contract_data)
+            
             # Créer le document
             document = Document.objects.create(
                 user=request.user,
                 document_type=template.document_type,
-                reference=document_number,
                 title=f'{template.name} {document_number}',
-                content=data,
-                status='generated'
+                status='generated',
+                content_data=data,
+                generated_file=ContentFile(pdf_content, f'contract_{document_number}.pdf')
             )
             
             return Response({

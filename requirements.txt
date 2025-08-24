@@ -14,8 +14,9 @@ django-redis
 django-ratelimit==4.1.0
 django-csp==3.7
 
-# PDF Generation (optional)
-# weasyprint==60.2
+# PDF Generation
+weasyprint==60.2
+reportlab==4.0.7
 
 # Additional testing tools
 coverage==7.3.2
@@ -57,6 +58,10 @@ Pillow
 
 # HTTP Requests
 requests==2.31.0
+
+# Excel & Data Processing
+openpyxl==3.1.5
+pandas==2.3.2
 
 # Date/Time
 python-dateutil==2.8.2

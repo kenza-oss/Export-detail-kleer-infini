@@ -17,7 +17,7 @@ JWT_BLACKLIST_AFTER_ROTATION = True
 OTP_LENGTH = 6
 OTP_EXPIRY_MINUTES = 10
 OTP_MAX_ATTEMPTS = 3
-OTP_RESEND_COOLDOWN_MINUTES = 1
+OTP_RESEND_COOLDOWN_MINUTES = 5  # Augmenté à 5 minutes pour un meilleur contrôle
 
 # Nouvelles configurations de sécurité OTP
 OTP_MAX_DEVICE_ATTEMPTS = 2  # Tentatives max par appareil

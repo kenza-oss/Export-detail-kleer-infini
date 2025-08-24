@@ -31,6 +31,7 @@ class Shipment(models.Model):
         ('pending', 'En attente'),
         ('matched', 'Associé'),
         ('in_transit', 'En transit'),
+        ('out_for_delivery', 'En livraison'),
         ('delivered', 'Livré'),
         ('cancelled', 'Annulé'),
         ('lost', 'Perdu'),
@@ -57,6 +58,7 @@ class Shipment(models.Model):
     
     # Origine
     origin_city = models.CharField(max_length=100)
+    origin_country = models.CharField(max_length=100, default='Algeria')
     origin_address = models.TextField()
     
     # Destination
@@ -88,13 +90,19 @@ class Shipment(models.Model):
     ])
     payment_date = models.DateTimeField(null=True, blank=True)
     
-    # OTP pour livraison
-    otp_code = models.CharField(max_length=6, blank=True)
-    otp_generated_at = models.DateTimeField(null=True, blank=True)
-    delivery_otp = models.CharField(max_length=6, blank=True)
+    # OTP pour livraison (OBSOLÈTE - Remplacé par le modèle DeliveryOTP)
+    # Ces champs sont conservés pour compatibilité mais ne doivent plus être utilisés
+    # Utiliser le modèle DeliveryOTP pour la gestion des OTP de livraison
+    otp_code = models.CharField(max_length=6, blank=True, help_text="OBSOLÈTE - Code OTP ramassage (remplacé par DeliveryOTP)")
+    otp_generated_at = models.DateTimeField(null=True, blank=True, help_text="OBSOLÈTE - Date génération OTP (remplacé par DeliveryOTP)")
+    delivery_otp = models.CharField(max_length=6, blank=True, help_text="OBSOLÈTE - Code OTP livraison (remplacé par DeliveryOTP)")
     
     # Dates de livraison
     delivery_date = models.DateTimeField(null=True, blank=True)
+    
+    # Informations de confirmation de livraison
+    delivery_notes = models.TextField(blank=True, help_text="Notes sur la livraison")
+    recipient_signature = models.CharField(max_length=200, blank=True, help_text="Signature du destinataire")
     
     # Coût d'expédition
     shipping_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -342,7 +350,7 @@ class ShipmentTracking(models.Model):
 
 class DeliveryOTP(models.Model):
     """
-    Modèle pour les OTP de livraison selon le cahier des charges.
+    Modèle pour les OTP de livraison.
     
     Le destinataire reçoit un code secret à 6 chiffres généré par l'application.
     Quand le voyageur arrive, le destinataire lui donne le code.

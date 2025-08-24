@@ -1,0 +1,828 @@
+### KleerLogistics Verification API - Vérification et Validation de Documents
+### Tests pour le module d'upload et validation manuelle/automatique des documents
+### Version: 2.0 - Mise à jour avec nouvelles fonctionnalités
+
+# Base URL: http://localhost:8000/api/v1/verification/
+# Authentication: Bearer Token required for all endpoints
+# Documentation: http://localhost:8000/api/v1/verification/docs/
+
+### ========================================
+### VARIABLES D'ENVIRONNEMENT
+### ========================================
+@baseUrl = http://localhost:8000/api/v1/verification
+@contentType = application/json
+@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MjE1ODQwLCJpYXQiOjE3NTUyMTIyNDAsImp0aSI6ImY0N2M5OTdkNzEwOTRkMThiMjM0MGFlMmMyYWIwYWNkIiwidXNlcl9pZCI6IjYifQ.wqMCCOv4NRJ7H2OKpXAPg-P_jbF2SRdTknUAb9B58Zk
+@senderToken = Bearer YOUR_SENDER_TOKEN_HERE
+@travelerToken = Bearer YOUR_TRAVELER_TOKEN_HERE
+
+### ========================================
+### AUTHENTIFICATION ET SETUP
+### ========================================
+
+### 0. Connexion utilisateur (pour obtenir un token valide)
+# @name login
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "password": "TestPass123!"
+}
+
+### 0.1 Connexion administrateur
+# @name adminLogin
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "admin",
+    "password": "AdminPass123!"
+}
+
+### 0.2 Connexion voyageur
+# @name travelerLogin
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "traveler",
+    "password": "TravelerPass123!"
+}
+
+### ========================================
+### UPLOAD ET VÉRIFICATION AUTOMATIQUE
+### ========================================
+
+### 1. Upload et vérification automatique d'un passeport
+# Upload d'un passeport avec vérification automatique
+# @name uploadPassport
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Passeport algérien en cours de validité
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 2. Upload et vérification d'une carte d'identité nationale
+# @name uploadNationalId
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+national_id
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Carte d'identité nationale algérienne
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="national_id.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/national_id.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 3. Upload et vérification d'un billet d'avion
+# @name uploadFlightTicket
+POST {{baseUrl}}/upload/
+Authorization: {{travelerToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+flight_ticket
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Billet d'avion Alger-Paris du 20 février 2024
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="flight_ticket.pdf"
+Content-Type: application/pdf
+
+< ./test_files/flight_ticket.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 4. Upload et vérification d'un justificatif de domicile
+# @name uploadAddressProof
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+address_proof
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Facture EDF comme justificatif de domicile
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="address_proof.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/address_proof.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 5. Upload et vérification d'un permis de conduire
+# @name uploadDriverLicense
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+driver_license
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Permis de conduire algérien catégorie B
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="driver_license.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/driver_license.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 6. Upload et vérification d'un acte de naissance
+# @name uploadBirthCertificate
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+birth_certificate
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Acte de naissance officiel
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="birth_certificate.pdf"
+Content-Type: application/pdf
+
+< ./test_files/birth_certificate.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 7. Upload et vérification d'un acte de mariage
+# @name uploadMarriageCertificate
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+marriage_certificate
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Acte de mariage officiel
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="marriage_certificate.pdf"
+Content-Type: application/pdf
+
+< ./test_files/marriage_certificate.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ========================================
+### GESTION DES VÉRIFICATIONS
+### ========================================
+
+### 8. Lister toutes les vérifications de l'utilisateur
+# @name listVerifications
+GET {{baseUrl}}/verifications/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 8.1 Vérifications avec filtres par statut
+# @name listVerificationsByStatus
+GET {{baseUrl}}/verifications/?status=approved&document_type=passport
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 8.2 Vérifications par méthode de vérification
+# @name listVerificationsByMethod
+GET {{baseUrl}}/verifications/?verification_method=automatic
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 8.3 Vérifications avec pagination
+# @name listVerificationsPaginated
+GET {{baseUrl}}/verifications/?page=1&page_size=10
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 8.4 Vérifications par période
+# @name listVerificationsByPeriod
+GET {{baseUrl}}/verifications/?start_date=2024-01-01&end_date=2024-12-31
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 9. Obtenir les détails d'une vérification
+# @name getVerificationDetail
+GET {{baseUrl}}/verifications/UUID-HERE/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 10. Demander une vérification pour un document existant
+# @name requestVerification
+POST {{baseUrl}}/documents/1/verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "verification_method": "manual",
+    "priority": "high",
+    "notes": "Vérification manuelle requise pour validation rapide"
+}
+
+### 10.1 Demander une vérification hybride
+# @name requestHybridVerification
+POST {{baseUrl}}/documents/1/verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "verification_method": "hybrid",
+    "priority": "normal",
+    "notes": "Vérification automatique + validation manuelle si nécessaire"
+}
+
+### 10.2 Demander une vérification avec priorité urgente
+# @name requestUrgentVerification
+POST {{baseUrl}}/documents/1/verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "verification_method": "automatic",
+    "priority": "urgent",
+    "notes": "Validation urgente pour voyage imminent"
+}
+
+### ========================================
+### VÉRIFICATION EN LOT
+### ========================================
+
+### 11. Vérification en lot de plusieurs documents
+# @name bulkVerification
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [1, 2, 3, 4],
+    "verification_method": "automatic",
+    "priority": "normal"
+}
+
+### 11.1 Vérification en lot avec priorité élevée
+# @name bulkVerificationHighPriority
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [5, 6, 7],
+    "verification_method": "hybrid",
+    "priority": "high"
+}
+
+### 11.2 Vérification en lot manuelle
+# @name bulkVerificationManual
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [8, 9, 10],
+    "verification_method": "manual",
+    "priority": "urgent"
+}
+
+### 11.3 Vérification en lot avec documents mixtes
+# @name bulkVerificationMixed
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [11, 12, 13, 14, 15],
+    "verification_method": "hybrid",
+    "priority": "high"
+}
+
+### ========================================
+### STATISTIQUES DE VÉRIFICATION
+### ========================================
+
+### 12. Obtenir les statistiques de vérification personnelles
+# @name getVerificationStatistics
+GET {{baseUrl}}/statistics/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 12.1 Statistiques avec période spécifique
+# @name getVerificationStatisticsByPeriod
+GET {{baseUrl}}/statistics/?period=month&start_date=2024-01-01&end_date=2024-01-31
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 12.2 Statistiques par type de document
+# @name getVerificationStatisticsByType
+GET {{baseUrl}}/statistics/?document_type=passport
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 12.3 Statistiques par méthode de vérification
+# @name getVerificationStatisticsByMethod
+GET {{baseUrl}}/statistics/?verification_method=automatic
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### ENDPOINTS ADMINISTRATEUR
+### ========================================
+
+### 13. Liste de toutes les vérifications (Admin)
+# @name adminListVerifications
+GET {{baseUrl}}/admin/verifications/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 13.1 Vérifications admin avec filtres
+# @name adminListVerificationsFiltered
+GET {{baseUrl}}/admin/verifications/?status=pending&document_type=passport
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 13.2 Vérifications admin par utilisateur
+# @name adminListVerificationsByUser
+GET {{baseUrl}}/admin/verifications/?user_id=1
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 13.3 Vérifications admin avec pagination
+# @name adminListVerificationsPaginated
+GET {{baseUrl}}/admin/verifications/?page=1&page_size=20
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 14. Mettre à jour le statut d'une vérification (Admin)
+# @name adminUpdateVerification
+PUT {{baseUrl}}/admin/verifications/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "approved",
+    "verification_notes": "Document validé après vérification manuelle"
+}
+
+### 14.1 Rejeter une vérification (Admin)
+# @name adminRejectVerification
+PUT {{baseUrl}}/admin/verifications/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "rejected",
+    "rejection_reason": "Document illisible, qualité d'image insuffisante",
+    "verification_notes": "Demander un nouveau scan de meilleure qualité"
+}
+
+### 14.2 Marquer pour vérification manuelle (Admin)
+# @name adminMarkForManualReview
+PUT {{baseUrl}}/admin/verifications/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "requires_manual_review",
+    "verification_notes": "Nécessite vérification par un expert en documents"
+}
+
+### 14.3 Approuver avec notes (Admin)
+# @name adminApproveWithNotes
+PUT {{baseUrl}}/admin/verifications/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "approved",
+    "verification_notes": "Document approuvé après vérification approfondie. Données extraites avec succès."
+}
+
+### ========================================
+### TESTS DE SCÉNARIOS COMPLEXES
+### ========================================
+
+### 15. Test de vérification de passeport avec données personnalisées
+# @name uploadFrenchPassport
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+FR
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Passeport français avec visa Schengen
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="french_passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/french_passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 16. Test de vérification de billet d'avion international
+# @name uploadInternationalFlight
+POST {{baseUrl}}/upload/
+Authorization: {{travelerToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+flight_ticket
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+US
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Billet d'avion international Alger-New York via Paris
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="international_flight.pdf"
+Content-Type: application/pdf
+
+< ./test_files/international_flight.pdf
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 17. Test de vérification en lot avec documents mixtes
+# @name bulkVerificationMixedDocuments
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [11, 12, 13, 14, 15],
+    "verification_method": "hybrid",
+    "priority": "high"
+}
+
+### 18. Test de vérification de documents de voyageur
+# @name uploadTravelerDocuments
+POST {{baseUrl}}/upload/
+Authorization: {{travelerToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="country"
+
+DZ
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="description"
+
+Passeport pour voyage Alger-Paris
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="traveler_passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/traveler_passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ========================================
+### TESTS DE VALIDATION ET ERREURS
+### ========================================
+
+### 19. Test avec fichier trop volumineux (>10MB)
+# @name testLargeFile
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="large_file.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/large_file.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 20. Test avec type de fichier non supporté
+# @name testUnsupportedFileType
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="document.txt"
+Content-Type: text/plain
+
+< ./test_files/document.txt
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 21. Test sans authentification
+# @name testUnauthenticated
+POST {{baseUrl}}/upload/
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 22. Test avec données invalides
+# @name testInvalidData
+POST {{baseUrl}}/documents/999/verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "verification_method": "invalid_method",
+    "priority": "invalid_priority"
+}
+
+### 23. Test de vérification en lot avec documents inexistants
+# @name testBulkVerificationInvalidDocuments
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [999, 998, 997],
+    "verification_method": "automatic",
+    "priority": "normal"
+}
+
+### 24. Test avec token expiré
+# @name testExpiredToken
+POST {{baseUrl}}/upload/
+Authorization: Bearer expired_token_here
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 25. Test avec document type invalide
+# @name testInvalidDocumentType
+POST {{baseUrl}}/upload/
+Authorization: {{userToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_type"
+
+invalid_type
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="document_file"; filename="passport.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/passport.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ========================================
+### TESTS DE PERFORMANCE ET STRESS
+### ========================================
+
+### 26. Test de vérification en lot massive
+# @name testMassiveBulkVerification
+POST {{baseUrl}}/bulk-verify/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "document_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    "verification_method": "automatic",
+    "priority": "normal"
+}
+
+### 27. Test de statistiques avec beaucoup de données
+# @name testStatisticsWithLargeDataset
+GET {{baseUrl}}/statistics/?period=year&start_date=2020-01-01&end_date=2024-12-31
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### DOCUMENTATION ET MÉTADONNÉES
+### ========================================
+
+### 28. Obtenir la documentation de l'API
+# @name getApiDocs
+GET {{baseUrl}}/docs/
+Content-Type: {{contentType}}
+
+### 29. Obtenir le schéma OpenAPI
+# @name getOpenAPISchema
+GET {{baseUrl}}/schema/
+Content-Type: {{contentType}}
+
+### 30. Tester la santé de l'API
+# @name testApiHealth
+GET {{baseUrl}}/health/
+Content-Type: {{contentType}}
+
+### 31. Obtenir la version de l'API
+# @name getApiVersion
+GET {{baseUrl}}/version/
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE SÉCURITÉ ET VALIDATION
+### ========================================
+
+### 32. Test d'accès admin sans privilèges
+# @name testAdminAccessWithoutPrivileges
+GET {{baseUrl}}/admin/verifications/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 33. Test de modification de vérification par utilisateur non-admin
+# @name testUpdateVerificationByNonAdmin
+PUT {{baseUrl}}/admin/verifications/UUID-HERE/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "approved",
+    "verification_notes": "Tentative d'accès non autorisé"
+}
+
+### 34. Test d'accès aux statistiques d'un autre utilisateur
+# @name testAccessOtherUserStatistics
+GET {{baseUrl}}/statistics/?user_id=999
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### NOTES D'UTILISATION ET DOCUMENTATION
+### ========================================
+
+# Ce fichier de tests couvre tous les endpoints du module de vérification des documents
+# Version 2.0 - Mise à jour avec nouvelles fonctionnalités et tests avancés
+# 
+# Points clés du système de vérification :
+# 1. Upload automatique avec validation des fichiers
+# 2. Vérification automatique par OCR et IA
+# 3. Vérification manuelle par administrateurs
+# 4. Workflows de vérification configurables
+# 5. Détection automatique de fraude
+# 6. Vérification en lot pour efficacité
+# 7. Statistiques et suivi complet
+# 8. Tests de sécurité et validation
+# 9. Tests de performance et stress
+#
+# Types de documents supportés :
+# - Passeports (tous pays)
+# - Cartes d'identité nationales
+# - Billets d'avion
+# - Justificatifs de domicile
+# - Permis de conduire
+# - Actes de naissance
+# - Actes de mariage
+#
+# Méthodes de vérification :
+# - Automatique (OCR + IA)
+# - Manuelle (administrateurs)
+# - Hybride (automatique + manuelle si nécessaire)
+#
+# Priorités de vérification :
+# - Faible (low)
+# - Normale (normal)
+# - Élevée (high)
+# - Urgente (urgent)
+#
+# Fonctionnalités de sécurité :
+# - Validation des types de fichiers
+# - Contrôle de la taille des fichiers (max 10MB)
+# - Détection de fraude automatisée
+# - Logs complets de toutes les actions
+# - Workflows de validation configurables
+# - Contrôle d'accès basé sur les rôles
+#
+# Nouveautés de la version 2.0 :
+# - Tests de performance et stress
+# - Tests de sécurité avancés
+# - Validation des erreurs complète
+# - Tests de scénarios complexes
+# - Documentation améliorée
+# - Tests d'accès non autorisés
+#
+# Pour exécuter les tests :
+# 1. Remplacer les tokens par des tokens valides
+# 2. Ajuster les IDs selon votre base de données
+# 3. Vérifier que le serveur est en cours d'exécution
+# 4. Utiliser un client HTTP comme VS Code REST Client ou Postman
+# 5. Tester d'abord l'authentification pour obtenir un token valide
+# 6. Préparer des fichiers de test dans le dossier test_files/
+# 7. Remplacer UUID-HERE par des UUIDs valides de vérification
+# 8. Tester les scénarios d'erreur pour valider la robustesse
+# 9. Vérifier les logs de sécurité et d'audit
+# 10. Tester les performances avec des charges importantes
+#
+# Structure des fichiers de test recommandée :
+# test_files/
+# ├── passport.jpg
+# ├── national_id.jpg
+# ├── flight_ticket.pdf
+# ├── address_proof.jpg
+# ├── driver_license.jpg
+# ├── birth_certificate.pdf
+# ├── marriage_certificate.pdf
+# ├── french_passport.jpg
+# ├── international_flight.pdf
+# ├── traveler_passport.jpg
+# ├── large_file.jpg (fichier >10MB pour test)
+# └── document.txt (fichier texte pour test d'erreur)
+#
+# Ordre de test recommandé :
+# 1. Tests d'authentification
+# 2. Tests d'upload simples
+# 3. Tests de gestion des vérifications
+# 4. Tests de vérification en lot
+# 5. Tests de statistiques
+# 6. Tests administrateur
+# 7. Tests de scénarios complexes
+# 8. Tests de validation et erreurs
+# 9. Tests de performance
+# 10. Tests de sécurité

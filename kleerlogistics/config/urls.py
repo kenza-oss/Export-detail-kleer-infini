@@ -70,10 +70,13 @@ urlpatterns = [
         path('trips/', include('trips.urls')),
         path('matching/', include('matching.urls')),
         path('payments/', include('payments.urls')),
-        path('documents/', include('documents.urls')),
+        #path('documents/', include('documents.urls')),
+        path('verification/', include('verification.urls')),
+        path('admin/', include('admin_panel.urls')),
         path('notifications/', include('notifications.urls')),
         path('analytics/', include('analytics.urls')),
         path('ratings/', include('ratings.urls')),
+        path('internationalization/', include('internationalization.urls')),
     ])),
 ]
 

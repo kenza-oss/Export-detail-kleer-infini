@@ -269,7 +269,7 @@ def user_document_upload_schema():
             properties={
                 'document_type': openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    enum=['passport', 'national_id', 'flight_ticket', 'address_proof'],
+                    enum=['passport', 'national_id', 'id_card', 'driver_license', 'flight_ticket', 'address_proof', 'birth_certificate', 'marriage_certificate', 'other'],
                     description="Type de document"
                 ),
                 'document_file': openapi.Schema(type=openapi.TYPE_FILE, description="Fichier document")

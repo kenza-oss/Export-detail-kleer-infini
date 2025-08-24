@@ -1,0 +1,494 @@
+### Tests HTTP pour le module Matching - Kleer Logistics API
+### Conforme au cahier des charges du projet
+
+### Variables d'environnement
+@baseUrl = http://localhost:8000/api/v1
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTc4OTUxLCJpYXQiOjE3NTU5NzUzNTEsImp0aSI6IjMxM2RmZGI0ZTNjYzRlODVhMmY3ZTY3YTM5MDQ0MjgxIiwidXNlcl9pZCI6IjEwIn0.szsE40RLmT-NJCP313vLCiaWcjTasL8UiYZCtUSjloo
+@senderToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTc4OTUxLCJpYXQiOjE3NTU5NzUzNTEsImp0aSI6IjMxM2RmZGI0ZTNjYzRlODVhMmY3ZTY3YTM5MDQ0MjgxIiwidXNlcl9pZCI6IjEwIn0.szsE40RLmT-NJCP313vLCiaWcjTasL8UiYZCtUSjloo
+@travelerToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTc4OTk1LCJpYXQiOjE3NTU5NzUzOTUsImp0aSI6ImMxNWIwNWYzNjczNjRlZWVhYjc5NzRkYzAyZmVjYjc5IiwidXNlcl9pZCI6IjYifQ.Qm6aH2uXq1NtgZH5hpN7Hj6Z1F4AFORbD9IsEQ7s6cM
+
+### ========================================
+### 1. AUTHENTIFICATION
+### ========================================
+
+### Connexion administrateur
+# @name login
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "username": "romu",
+    "password": "TestPass123!"
+}
+
+### Connexion expéditeur
+# @name senderLogin
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "username": "romualdo",
+    "password": "TestPass123!"
+}
+
+### Connexion voyageur
+# @name travelerLogin
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "username": "sebany",
+    "password": "TestPass123!"
+}
+
+### ========================================
+### 2. CRÉATION DES DONNÉES DE TEST
+### ========================================
+
+### Créer un envoi de test
+# @name createShipment
+POST {{baseUrl}}/shipments/create/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "package_type": "document",
+    "description": "Documents importants pour test matching",
+    "weight": 2.5,
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "origin_address": "123 Rue d'Alger",
+    "destination_address": "456 Avenue de Paris",
+    "recipient_name": "Jean Dupont",
+    "recipient_phone": "+33123456789",
+    "recipient_email": "jean@example.com",
+    "preferred_pickup_date": "2024-02-01T10:00:00Z",
+    "max_delivery_date": "2024-02-07T18:00:00Z",
+    "is_fragile": false,
+    "urgency": "medium"
+}
+
+### Créer un trajet de test
+# @name createTrip
+POST {{baseUrl}}/trips/create/
+Authorization: Bearer {{travelerToken}}
+Content-Type: application/json
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-02T08:00:00Z",
+    "arrival_date": "2025-09-06T20:00:00Z",
+    "max_weight": 20.0,
+    "max_packages": 5,
+    "min_price_per_kg": 100.0,
+    "accepts_fragile": true,
+    "accepted_package_types": ["document", "electronics", "clothing"],
+    "flexible_dates": false,
+    "flexibility_days": 0
+}
+
+### ========================================
+### 3. MOTEUR DE MATCHING
+### ========================================
+
+### Trouver des matches pour un envoi
+# @name findShipmentMatches
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 6
+}
+
+### Trouver des matches pour un trajet
+# @name findTripMatches
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{travelerToken}}
+Content-Type: application/json
+
+{
+    "type": "trip",
+    "item_id": 13
+}
+
+### ========================================
+### 4. MATCHING AUTOMATIQUE
+### ========================================
+
+### Matching automatique pour un envoi
+# @name automaticShipmentMatching
+POST {{baseUrl}}/matching/automatic/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 4,
+    "auto_accept": false,
+    "limit": 10
+}
+
+### Matching automatique pour un trajet
+# @name automaticTripMatching
+POST {{baseUrl}}/matching/automatic/
+Authorization: Bearer {{travelerToken}}
+Content-Type: application/json
+
+{
+    "type": "trip",
+    "item_id": 11,
+    "auto_accept": false,
+    "limit": 10
+}
+
+### ========================================
+### 5. GESTION DES MATCHES
+### ========================================
+
+### Lister les matches de l'utilisateur
+# @name listMatches
+GET {{baseUrl}}/matching/matches/
+Authorization: Bearer {{senderToken}}
+
+### Accepter un match
+# @name acceptMatch
+POST {{baseUrl}}/matching/matches/6/accept/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "accepted_price": "250.00",
+    "message": "J'accepte cette proposition avec plaisir",
+    "auto_accept": false
+}
+
+### Rejeter un match
+# @name rejectMatch
+POST {{baseUrl}}/matching/matches/6/reject/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "reason": "Prix trop élevé",
+    "message": "Le prix dépasse mon budget"
+}
+
+### ========================================
+### 6. SYSTÈME OTP DE LIVRAISON
+### ========================================
+
+### Générer un OTP de livraison
+# @name generateOTP
+POST {{baseUrl}}/matching/matches/{{acceptMatch.response.body.match_id}}/otp/
+Authorization: Bearer {{travelerToken}}
+Content-Type: application/json
+
+### Vérifier un OTP de livraison
+# @name verifyOTP
+PUT {{baseUrl}}/matching/matches/{{acceptMatch.response.body.match_id}}/otp/
+Authorization: Bearer {{travelerToken}}
+Content-Type: application/json
+
+{
+    "otp_code": "{{generateOTP.response.body.otp_code}}"
+}
+
+### ========================================
+### 7. INTÉGRATION CHAT
+### ========================================
+
+### Activer le chat pour un match
+# @name activateChat
+POST {{baseUrl}}/matching/matches/{{acceptMatch.response.body.match_id}}/chat/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+### ========================================
+### 8. PRÉFÉRENCES DE MATCHING
+### ========================================
+
+### Récupérer les préférences de matching
+# @name getPreferences
+GET {{baseUrl}}/matching/preferences/
+Authorization: Bearer {{senderToken}}
+
+### Créer/Mettre à jour les préférences de matching
+# @name updatePreferences
+POST {{baseUrl}}/matching/preferences/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "min_rating": 4.0,
+    "min_price": "50.00",
+    "max_price": "500.00",
+    "auto_accept_threshold": 90.0,
+    "notification_enabled": true,
+    "preferred_cities": ["Paris", "Lyon", "Marseille"],
+    "blacklisted_users": [],
+    "response_time_hours": 24,
+    "accepts_fragile": true,
+    "accepts_urgent": false,
+    "max_distance_km": 100,
+    "max_price_per_kg": "15.00",
+    "preferred_package_types": ["electronics", "clothing", "documents"]
+}
+
+### ========================================
+### 9. ANALYTICS DE MATCHING
+### ========================================
+
+### Récupérer les analytics de matching
+# @name getAnalytics
+GET {{baseUrl}}/matching/analytics/
+Authorization: Bearer {{senderToken}}
+
+### Récupérer les analytics avec filtres
+# @name getAnalyticsWithFilters
+GET {{baseUrl}}/matching/analytics/?date_from=2024-01-01&date_to=2024-12-31
+Authorization: Bearer {{senderToken}}
+
+### ========================================
+### 10. RÈGLES DE MATCHING (ADMIN)
+### ========================================
+
+### Lister les règles de matching
+# @name listMatchingRules
+GET {{baseUrl}}/matching/rules/
+Authorization: Bearer {{authToken}}
+
+### Créer une nouvelle règle de matching
+# @name createMatchingRule
+POST {{baseUrl}}/matching/rules/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Règle Premium",
+    "description": "Règle de matching pour utilisateurs premium",
+    "min_compatibility_score": 40.00,
+    "max_distance_km": 150,
+    "max_date_flexibility_days": 10,
+    "geographic_weight": 40.00,
+    "weight_weight": 25.00,
+    "package_type_weight": 15.00,
+    "fragility_weight": 10.00,
+    "date_weight": 10.00,
+    "reputation_weight": 0.00,
+    "enable_auto_acceptance": true,
+    "auto_accept_threshold": 95.00,
+    "is_active": true
+}
+
+### ========================================
+### 11. NOTIFICATIONS DE MATCHING
+### ========================================
+
+### Récupérer les notifications de matching
+# @name getNotifications
+GET {{baseUrl}}/matching/notifications/
+Authorization: Bearer {{senderToken}}
+
+### ========================================
+### 12. TESTS DE VALIDATION
+### ========================================
+
+### Test avec données invalides - Matching engine
+# @name invalidMatchingEngine
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "invalid_type",
+    "item_id": 99999
+}
+
+### Test sans authentification
+# @name unauthorizedAccess
+GET {{baseUrl}}/matching/matches/
+
+### Test avec ID de match invalide
+# @name invalidMatchId
+GET {{baseUrl}}/matching/matches/99999/
+Authorization: Bearer {{senderToken}}
+
+### ========================================
+### 13. TESTS DE PERFORMANCE
+### ========================================
+
+### Test de matching avec beaucoup de données
+# @name performanceTest
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 4,
+    "limit": 50
+}
+
+### ========================================
+### 14. TESTS DE SÉCURITÉ
+### ========================================
+
+### Test d'accès à un match d'un autre utilisateur
+# @name securityTest
+GET {{baseUrl}}/matching/matches/{{acceptMatch.response.body.match_id}}/
+Authorization: Bearer {{travelerToken}}
+
+### Test de modification d'un match accepté
+# @name modifyAcceptedMatch
+POST {{baseUrl}}/matching/matches/{{acceptMatch.response.body.match_id}}/reject/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "reason": "Test de sécurité"
+}
+
+### ========================================
+### 15. TESTS DE WORKFLOW COMPLET
+### ========================================
+
+### Workflow complet : Création → Matching → Acceptation → OTP → Livraison
+# @name completeWorkflow
+POST {{baseUrl}}/matching/automatic/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 4,
+    "auto_accept": true
+}
+
+### ========================================
+### 16. TESTS DE CAS PARTICULIERS
+### ========================================
+
+### Test avec colis fragile
+# @name fragilePackageTest
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 4
+}
+
+### Test avec urgence élevée
+# @name urgentPackageTest
+POST {{baseUrl}}/matching/engine/
+Authorization: Bearer {{senderToken}}
+Content-Type: application/json
+
+{
+    "type": "shipment",
+    "item_id": 4
+}
+
+### ========================================
+### 17. TESTS DE CONFIGURATION
+### ========================================
+
+### Tester la configuration de l'algorithme de matching
+# @name algorithmConfig
+POST {{baseUrl}}/matching/algorithm/config/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "geographic_weight": 35.00,
+    "weight_weight": 20.00,
+    "package_type_weight": 15.00,
+    "fragility_weight": 10.00,
+    "date_weight": 15.00,
+    "reputation_weight": 5.00
+}
+
+### ========================================
+### 18. TESTS D'EXPORT
+### ========================================
+
+### Exporter les matches
+# @name exportMatches
+GET {{baseUrl}}/matching/export/
+Authorization: Bearer {{authToken}}
+
+### Exporter les matches avec filtres
+# @name exportMatchesWithFilters
+GET {{baseUrl}}/matching/export/?status=accepted&date_from=2024-01-01
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 19. TESTS DE MAINTENANCE
+### ========================================
+
+### Nettoyer les matches expirés
+# @name cleanupExpiredMatches
+POST {{baseUrl}}/matching/cleanup/
+Authorization: Bearer {{authToken}}
+
+### Statistiques de maintenance
+# @name maintenanceStats
+GET {{baseUrl}}/matching/maintenance/stats/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 20. TESTS DE DOCUMENTATION
+### ========================================
+
+### Récupérer la documentation Swagger
+# @name swaggerDocs
+GET {{baseUrl}}/swagger/
+
+### Récupérer la documentation ReDoc
+# @name redocDocs
+GET {{baseUrl}}/redoc/
+
+### ========================================
+### NOTES DE TEST
+### ========================================
+
+### Points à vérifier dans les réponses :
+
+### 1. Structure des réponses
+# - Toutes les réponses doivent avoir un format JSON cohérent
+# - Les codes de statut HTTP doivent être appropriés
+# - Les messages d'erreur doivent être clairs et informatifs
+
+### 2. Sécurité
+# - L'authentification doit être requise pour toutes les opérations sensibles
+# - Les utilisateurs ne doivent pouvoir accéder qu'à leurs propres données
+# - Les tokens JWT doivent être valides
+
+### 3. Validation des données
+# - Les données d'entrée doivent être validées
+# - Les erreurs de validation doivent être claires
+# - Les valeurs par défaut doivent être appropriées
+
+### 4. Performance
+# - Les requêtes doivent être rapides (< 2 secondes)
+# - La pagination doit fonctionner correctement
+# - Les requêtes complexes doivent être optimisées
+
+### 5. Fonctionnalités métier
+# - Le calcul des scores de compatibilité doit être cohérent
+# - La répartition économique doit respecter le cahier des charges
+# - Le système OTP doit être sécurisé et fonctionnel
+# - L'intégration chat doit fonctionner correctement
+
+### 6. Gestion des erreurs
+# - Les erreurs doivent être gérées gracieusement
+# - Les logs doivent être appropriés
+# - Les messages d'erreur doivent être utiles pour le débogage

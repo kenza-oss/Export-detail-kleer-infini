@@ -102,18 +102,24 @@ class OTPService:
         cache_key = OTPService.get_cache_key(phone_number, 'rate_limit')
         attempts = cache.get(cache_key, 0)
         
+        logger.info(f"Rate limit check for {phone_number}: {attempts} attempts")
+        
         # Vérification du fingerprint d'appareil si disponible
         if request:
             device_fp = OTPSecurityService.generate_device_fingerprint(request)
             device_key = f"otp_device_{phone_number}_{device_fp}"
             device_attempts = cache.get(device_key, 0)
             
+            logger.info(f"Device attempts for {phone_number}: {device_attempts}")
+            
             # Limitation plus stricte par appareil
             if device_attempts >= getattr(settings, 'OTP_MAX_DEVICE_ATTEMPTS', 2):
-                return False, f"Trop de tentatives depuis cet appareil. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1)} minute(s)."
+                logger.warning(f"Device rate limit exceeded for {phone_number}: {device_attempts} attempts")
+                return False, f"Trop de tentatives depuis cet appareil. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 5)} minute(s)."
         
         if attempts >= getattr(settings, 'OTP_MAX_ATTEMPTS', 3):
-            return False, f"Trop de tentatives. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1)} minute(s)."
+            logger.warning(f"Rate limit exceeded for {phone_number}: {attempts} attempts")
+            return False, f"Trop de tentatives. Réessayez dans {getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 5)} minute(s)."
         
         return True, None
     
@@ -122,14 +128,19 @@ class OTPService:
         """Incrémente le compteur de tentatives avec fingerprint d'appareil"""
         cache_key = OTPService.get_cache_key(phone_number, 'rate_limit')
         attempts = cache.get(cache_key, 0) + 1
-        cache.set(cache_key, attempts, getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1) * 60)
+        # Le cache doit durer plus longtemps que le cooldown pour maintenir le blocage
+        cache_duration = getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 5) * 60 * 2  # 2x le cooldown
+        cache.set(cache_key, attempts, cache_duration)
+        
+        logger.info(f"Incremented rate limit for {phone_number}: {attempts} attempts, cache_key: {cache_key}, duration: {cache_duration}s")
         
         # Incrémenter aussi le compteur par appareil
         if request:
             device_fp = OTPSecurityService.generate_device_fingerprint(request)
             device_key = f"otp_device_{phone_number}_{device_fp}"
             device_attempts = cache.get(device_key, 0) + 1
-            cache.set(device_key, device_attempts, getattr(settings, 'OTP_RESEND_COOLDOWN_MINUTES', 1) * 60)
+            cache.set(device_key, device_attempts, cache_duration)
+            logger.info(f"Device attempts for {phone_number}: {device_attempts}, device_key: {device_key}")
 
     @staticmethod
     def _check_verify_rate_limit(phone_number: str, request=None):
@@ -198,18 +209,6 @@ class OTPService:
         if expired_count > 0:
             logger.info(f"Cleaned up {expired_count} expired OTPs for {phone_number}")
         
-        # Vérifier s'il y a déjà un OTP valide récent (pour éviter le spam)
-        recent_otp = OTPCode.objects.filter(
-            phone_number=phone_number,
-            is_used=False,
-            expires_at__gt=timezone.now(),
-            created_at__gt=timezone.now() - timedelta(minutes=1)
-        ).first()
-        
-        if recent_otp:
-            logger.info(f"Recent OTP already exists for {phone_number}, reusing it")
-            return recent_otp, None, None
-        
         # Vérifier le nombre maximum d'OTP actifs
         active_count = OTPCode.get_active_otp_count(phone_number)
         max_active_otps = getattr(settings, 'OTP_MAX_ACTIVE_PER_PHONE', 3)
@@ -217,6 +216,19 @@ class OTPService:
         if active_count >= max_active_otps:
             logger.warning(f"Too many active OTPs for {phone_number}: {active_count}")
             return None, None, "Trop d'OTP actifs. Veuillez attendre l'expiration des codes précédents."
+        
+        # Vérifier s'il y a déjà un OTP valide récent (pour éviter le spam)
+        # Seulement si on n'a pas atteint la limite de tentatives
+        recent_otp = OTPCode.objects.filter(
+            phone_number=phone_number,
+            is_used=False,
+            expires_at__gt=timezone.now(),
+            created_at__gt=timezone.now() - timedelta(minutes=2)  # Augmenté à 2 minutes
+        ).first()
+        
+        if recent_otp:
+            logger.info(f"Recent OTP already exists for {phone_number}, reusing it")
+            return recent_otp, None, None
         
         # Créer un nouveau OTP sécurisé
         code = OTPSecurityService.generate_secure_otp()

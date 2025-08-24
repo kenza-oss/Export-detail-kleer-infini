@@ -1,0 +1,252 @@
+### ========================================
+### TESTS API DOCUMENTS - KLEER LOGISTICS
+### ========================================
+
+### Configuration de base
+@baseUrl = http://localhost:8000/api/v1
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTc4OTUxLCJpYXQiOjE3NTU5NzUzNTEsImp0aSI6IjMxM2RmZGI0ZTNjYzRlODVhMmY3ZTY3YTM5MDQ0MjgxIiwidXNlcl9pZCI6IjEwIn0.szsE40RLmT-NJCP313vLCiaWcjTasL8UiYZCtUSjloo
+
+### ========================================
+### 1. AUTHENTIFICATION
+### ========================================
+
+# @name login
+POST {{baseUrl}}/auth/login/
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "admin123"
+}
+
+### ========================================
+### 2. GÉNÉRATION DE DOCUMENTS
+### ========================================
+
+### Générer une facture PDF
+POST {{baseUrl}}/documents/generate/invoice/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "shipment_id": 1
+}
+
+### Générer un reçu PDF
+POST {{baseUrl}}/documents/generate/receipt/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "transaction_id": 1
+}
+
+### Générer un contrat PDF
+POST {{baseUrl}}/documents/generate/custom/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "template_id": 1,
+    "data": {
+        "sender_name": "Ahmed Benali",
+        "traveler_name": "Fatima Zohra",
+        "recipient_name": "Mohammed Boudiaf",
+        "departure_date": "15/01/2024",
+        "route": "Alger → Paris",
+        "package_weight": "2.5",
+        "compensation": 5000
+    }
+}
+
+### ========================================
+### 3. GESTION DES DOCUMENTS
+### ========================================
+
+### Lister tous les documents
+GET {{baseUrl}}/documents/
+Authorization: Bearer {{authToken}}
+
+### Obtenir les détails d'un document
+GET {{baseUrl}}/documents/1/
+Authorization: Bearer {{authToken}}
+
+### Télécharger un document PDF
+GET {{baseUrl}}/documents/1/download/
+Authorization: Bearer {{authToken}}
+
+### Prévisualiser un document
+GET {{baseUrl}}/documents/1/preview/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 4. TEMPLATES DE DOCUMENTS
+### ========================================
+
+### Lister les templates disponibles
+GET {{baseUrl}}/documents/templates/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 5. ADMIN - GESTION DES DOCUMENTS
+### ========================================
+
+### Lister tous les documents (admin)
+GET {{baseUrl}}/documents/admin/documents/
+Authorization: Bearer {{authToken}}
+
+### Lister tous les templates (admin)
+GET {{baseUrl}}/documents/admin/templates/
+Authorization: Bearer {{authToken}}
+
+### Créer un nouveau template (admin)
+POST {{baseUrl}}/documents/admin/templates/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "name": "Template Facture Premium",
+    "document_type": "invoice",
+    "description": "Template de facture avec design premium",
+    "is_active": true
+}
+
+### ========================================
+### 6. TESTS D'ERREURS
+### ========================================
+
+### Générer facture sans shipment_id
+POST {{baseUrl}}/documents/generate/invoice/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "shipment_id": null
+}
+
+### Générer reçu avec transaction inexistante
+POST {{baseUrl}}/documents/generate/receipt/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "transaction_id": 999
+}
+
+### Accéder à un document inexistant
+GET {{baseUrl}}/documents/999/
+Authorization: Bearer {{authToken}}
+
+### Télécharger un document sans fichier
+GET {{baseUrl}}/documents/999/download/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 7. TESTS DE VALIDATION
+### ========================================
+
+### Générer contrat avec données incomplètes
+POST {{baseUrl}}/documents/generate/custom/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "template_id": 1,
+    "data": {
+        "sender_name": "Ahmed Benali"
+        // Données manquantes
+    }
+}
+
+### Générer document avec template inexistant
+POST {{baseUrl}}/documents/generate/custom/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "template_id": 999,
+    "data": {
+        "sender_name": "Ahmed Benali",
+        "traveler_name": "Fatima Zohra",
+        "recipient_name": "Mohammed Boudiaf",
+        "departure_date": "15/01/2024",
+        "route": "Alger → Paris",
+        "package_weight": "2.5",
+        "compensation": 5000
+    }
+}
+
+### ========================================
+### 8. TESTS DE PERFORMANCE
+### ========================================
+
+### Générer plusieurs factures rapidement
+POST {{baseUrl}}/documents/generate/invoice/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "shipment_id": 1
+}
+
+###
+
+POST {{baseUrl}}/documents/generate/invoice/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "shipment_id": 2
+}
+
+###
+
+POST {{baseUrl}}/documents/generate/invoice/
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+    "shipment_id": 3
+}
+
+### ========================================
+### 9. TESTS DE SÉCURITÉ
+### ========================================
+
+### Accéder sans authentification
+GET {{baseUrl}}/documents/
+# Pas d'Authorization header
+
+### Accéder avec token invalide
+GET {{baseUrl}}/documents/
+Authorization: Bearer invalid_token
+
+### Accéder au document d'un autre utilisateur
+GET {{baseUrl}}/documents/1/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 10. TESTS DE FORMATS
+### ========================================
+
+### Vérifier le format de réponse JSON
+GET {{baseUrl}}/documents/
+Authorization: Bearer {{authToken}}
+
+### Vérifier le format PDF
+GET {{baseUrl}}/documents/1/download/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### NOTES DE TEST
+### ========================================
+
+# Tests à effectuer manuellement :
+# 1. Vérifier que les PDFs générés contiennent bien le logo et les cachets
+# 2. Vérifier que les signatures digitales sont présentes
+# 3. Tester avec différents types de données (montants, dates, etc.)
+# 4. Vérifier la qualité des PDFs générés
+# 5. Tester la génération avec des caractères spéciaux (accents, etc.)
+# 6. Vérifier que les numéros de référence sont uniques
+# 7. Tester la génération de documents volumineux
+# 8. Vérifier la gestion des erreurs WeasyPrint

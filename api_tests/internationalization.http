@@ -1,0 +1,763 @@
+### KleerLogistics Internationalization API - Tests pour le module d'internationalisation
+### Tests pour la gestion des traductions multilingues (FR/EN/AR)
+
+# Base URL: http://localhost:8000/api/v1/internationalization/
+# Authentication: Bearer Token required for most endpoints
+
+### Variables d'environnement
+@baseUrl = http://localhost:8000/api/v1/internationalization
+@contentType = application/json
+@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MjE1ODQwLCJpYXQiOjE3NTUyMTIyNDAsImp0aSI6ImY0N2M5OTdkNzEwOTRkMThiMjM0MGFlMmMyYWIwYWNkIiwidXNlcl9pZCI6IjYifQ.wqMCCOv4NRJ7H2OKpXAPg-P_jbF2SRdTknUAb9B58Zk
+
+### ========================================
+### AUTHENTICATION
+### ========================================
+
+### 0. Connexion utilisateur (pour obtenir un token valide)
+# @name login
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "password": "TestPass123!"
+}
+
+### ========================================
+### GESTION DES CATÉGORIES DE TRADUCTION
+### ========================================
+
+### 1. Créer une catégorie de traduction
+POST {{baseUrl}}/categories/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Interface utilisateur",
+    "code": "ui",
+    "description": "Traductions pour l'interface utilisateur de la plateforme"
+}
+
+### 1.1 Créer une catégorie pour les notifications
+POST {{baseUrl}}/categories/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Notifications",
+    "code": "notifications",
+    "description": "Traductions pour les notifications et alertes"
+}
+
+### 1.2 Créer une catégorie pour les emails
+POST {{baseUrl}}/categories/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Emails",
+    "code": "emails",
+    "description": "Traductions pour les modèles d'emails"
+}
+
+### 2. Lister toutes les catégories
+GET {{baseUrl}}/categories/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 2.1 Catégories avec filtres
+GET {{baseUrl}}/categories/?is_active=true
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 3. Obtenir les statistiques d'une catégorie
+GET {{baseUrl}}/categories/1/statistics/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### GESTION DES CLÉS DE TRADUCTION
+### ========================================
+
+### 4. Créer une clé de traduction
+POST {{baseUrl}}/keys/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": "welcome_message",
+    "category": 1,
+    "description": "Message de bienvenue sur la page d'accueil",
+    "context": "Page d'accueil, affiché en haut de la page"
+}
+
+### 4.1 Créer une clé pour les boutons
+POST {{baseUrl}}/keys/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": "login_button",
+    "category": 1,
+    "description": "Texte du bouton de connexion",
+    "context": "Formulaire de connexion"
+}
+
+### 4.2 Créer une clé pour les notifications
+POST {{baseUrl}}/keys/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": "shipment_accepted",
+    "category": 2,
+    "description": "Notification d'acceptation d'envoi",
+    "context": "Notification push et email"
+}
+
+### 5. Créer plusieurs clés en lot
+POST {{baseUrl}}/bulk/keys/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+[
+    {
+        "key": "register_button",
+        "category": 1,
+        "description": "Bouton d'inscription",
+        "context": "Formulaire d'inscription"
+    },
+    {
+        "key": "search_placeholder",
+        "category": 1,
+        "description": "Placeholder du champ de recherche",
+        "context": "Barre de recherche"
+    },
+    {
+        "key": "delivery_confirmed",
+        "category": 2,
+        "description": "Notification de confirmation de livraison",
+        "context": "Notification push"
+    }
+]
+
+### 6. Rechercher des clés de traduction
+GET {{baseUrl}}/search/keys/?query=welcome
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 6.1 Recherche avec filtres
+GET {{baseUrl}}/search/keys/?query=button&category=ui&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 7. Obtenir les détails d'une clé avec toutes les traductions
+GET {{baseUrl}}/keys/1/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### GESTION DES TRADUCTIONS
+### ========================================
+
+### 8. Créer une traduction française
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 1,
+    "language_code": "fr",
+    "text": "Bienvenue sur KleerLogistics"
+}
+
+### 8.1 Créer une traduction anglaise
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 1,
+    "language_code": "en",
+    "text": "Welcome to KleerLogistics"
+}
+
+### 8.2 Créer une traduction arabe
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 1,
+    "language_code": "ar",
+    "text": "مرحباً بك في KleerLogistics"
+}
+
+### 9. Créer plusieurs traductions en lot
+POST {{baseUrl}}/bulk/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "translations": [
+        {
+            "key": "login_button",
+            "text": "Se connecter"
+        },
+        {
+            "key": "register_button",
+            "text": "S'inscrire"
+        },
+        {
+            "key": "search_placeholder",
+            "text": "Rechercher un envoi ou un voyage..."
+        }
+    ],
+    "action": "create",
+    "language_code": "fr"
+}
+
+### 10. Approuver plusieurs traductions
+POST {{baseUrl}}/bulk/approve/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "translation_ids": [1, 2, 3],
+    "approve": true,
+    "notes": "Traductions approuvées par l'administrateur"
+}
+
+### 11. Obtenir les statistiques des traductions
+GET {{baseUrl}}/statistics/translations/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 11.1 Statistiques avec filtres
+GET {{baseUrl}}/statistics/translations/?language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### SERVICES DE TRADUCTION
+### ========================================
+
+### 12. Obtenir une traduction par clé
+GET {{baseUrl}}/services/get-translation/?key=welcome_message&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 13. Obtenir plusieurs traductions
+GET {{baseUrl}}/services/get-multiple-translations/?keys=welcome_message&keys=login_button&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 14. Obtenir les statistiques par langue
+GET {{baseUrl}}/services/language-statistics/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### PRÉFÉRENCES DE LANGUE UTILISATEUR
+### ========================================
+
+### 15. Obtenir mes préférences de langue
+GET {{baseUrl}}/user-preferences/my-preferences/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 16. Mettre à jour mes préférences
+POST {{baseUrl}}/user-preferences/update-preferences/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "preferred_language": "en",
+    "fallback_language": "fr"
+}
+
+### 16.1 Préférences en arabe
+POST {{baseUrl}}/user-preferences/update-preferences/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "preferred_language": "ar",
+    "fallback_language": "en"
+}
+
+### ========================================
+### MODÈLES DE TRADUCTION
+### ========================================
+
+### 17. Créer un modèle de traduction
+POST {{baseUrl}}/templates/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Email de confirmation d'envoi",
+    "template_type": "email",
+    "key": "shipment_confirmation_email",
+    "variables": ["user_name", "shipment_id", "tracking_code"],
+    "category": 3
+}
+
+### 18. Créer le contenu du modèle en français
+POST {{baseUrl}}/template-contents/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "template": 1,
+    "language_code": "fr",
+    "subject": "Confirmation de votre envoi",
+    "content": "Bonjour {{user_name}},\n\nVotre envoi {{shipment_id}} a été confirmé.\nCode de suivi : {{tracking_code}}\n\nMerci de votre confiance,\nL'équipe KleerLogistics"
+}
+
+### 19. Créer le contenu du modèle en anglais
+POST {{baseUrl}}/template-contents/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "template": 1,
+    "language_code": "en",
+    "subject": "Shipment Confirmation",
+    "content": "Hello {{user_name}},\n\nYour shipment {{shipment_id}} has been confirmed.\nTracking code: {{tracking_code}}\n\nThank you for your trust,\nThe KleerLogistics Team"
+}
+
+### 20. Rendre un modèle avec variables
+GET {{baseUrl}}/templates/1/render/?language_code=fr&variables={"user_name":"Ahmed","shipment_id":"KL123456","tracking_code":"ABC123"}
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### EXPORT ET IMPORT
+### ========================================
+
+### 21. Exporter les traductions en JSON
+POST {{baseUrl}}/export-import/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "format": "json",
+    "language_codes": ["fr", "en", "ar"],
+    "categories": ["ui", "notifications"],
+    "include_unapproved": false
+}
+
+### 22. Exporter les traductions en CSV
+POST {{baseUrl}}/export-import/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "format": "csv",
+    "language_codes": ["fr", "en"],
+    "include_unapproved": true
+}
+
+### 23. Exporter les traductions en XLSX
+POST {{baseUrl}}/export-import/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "format": "xlsx",
+    "language_codes": ["fr", "en", "ar"],
+    "categories": ["ui", "notifications", "emails"],
+    "include_unapproved": false
+}
+
+### 24. Importer des traductions depuis JSON
+POST {{baseUrl}}/export-import/import/
+Authorization: {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="translations.json"
+Content-Type: application/json
+
+{
+    "translations": [
+        {
+            "key": "new_feature",
+            "category": "ui",
+            "language_code": "fr",
+            "text": "Nouvelle fonctionnalité disponible",
+            "is_approved": true
+        },
+        {
+            "key": "new_feature",
+            "category": "ui",
+            "language_code": "en",
+            "text": "New feature available",
+            "is_approved": true
+        }
+    ]
+}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="format"
+
+json
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="overwrite_existing"
+
+true
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="auto_approve"
+
+true
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 25. Importer des traductions depuis CSV
+POST {{baseUrl}}/export-import/import/
+Authorization: {{adminToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="translations.csv"
+Content-Type: text/csv
+
+Key,Category,Language,Text,Approved,Context
+new_button,ui,fr,Nouveau bouton,true,Interface
+new_button,ui,en,New button,true,Interface
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="format"
+
+csv
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="overwrite_existing"
+
+false
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="auto_approve"
+
+false
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### ========================================
+### CACHE DES TRADUCTIONS
+### ========================================
+
+### 26. Lister le cache des traductions
+GET {{baseUrl}}/cache/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 27. Nettoyer le cache expiré
+POST {{baseUrl}}/cache/clear-expired/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 28. Nettoyer tout le cache
+POST {{baseUrl}}/cache/clear-all/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE SCÉNARIOS COMPLETS
+### ========================================
+
+### 29. Scénario complet : Création et gestion d'une traduction
+# Étape 1: Créer une catégorie
+POST {{baseUrl}}/categories/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Messages d'erreur",
+    "code": "errors",
+    "description": "Traductions pour les messages d'erreur"
+}
+
+# Étape 2: Créer une clé de traduction
+POST {{baseUrl}}/keys/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": "invalid_credentials",
+    "category": 4,
+    "description": "Message d'erreur pour identifiants invalides",
+    "context": "Formulaire de connexion"
+}
+
+# Étape 3: Créer les traductions pour les 3 langues
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 4,
+    "language_code": "fr",
+    "text": "Identifiants invalides. Veuillez réessayer."
+}
+
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 4,
+    "language_code": "en",
+    "text": "Invalid credentials. Please try again."
+}
+
+POST {{baseUrl}}/translations/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 4,
+    "language_code": "ar",
+    "text": "بيانات اعتماد غير صالحة. يرجى المحاولة مرة أخرى."
+}
+
+# Étape 4: Approuver les traductions
+POST {{baseUrl}}/bulk/approve/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "translation_ids": [7, 8, 9],
+    "approve": true,
+    "notes": "Traductions de messages d'erreur approuvées"
+}
+
+# Étape 5: Tester la récupération
+GET {{baseUrl}}/services/get-translation/?key=invalid_credentials&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 30. Scénario : Gestion des préférences utilisateur
+# Étape 1: Définir les préférences
+POST {{baseUrl}}/user-preferences/update-preferences/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "preferred_language": "ar",
+    "fallback_language": "en"
+}
+
+# Étape 2: Tester la récupération avec fallback
+GET {{baseUrl}}/services/get-translation/?key=welcome_message&language_code=ar
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 31. Scénario : Modèle de traduction avec variables
+# Étape 1: Créer un modèle pour les notifications de livraison
+POST {{baseUrl}}/templates/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Notification de livraison",
+    "template_type": "notification",
+    "key": "delivery_notification",
+    "variables": ["recipient_name", "shipment_id", "delivery_date"],
+    "category": 2
+}
+
+# Étape 2: Créer le contenu en français
+POST {{baseUrl}}/template-contents/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "template": 2,
+    "language_code": "fr",
+    "subject": "Livraison confirmée",
+    "content": "Bonjour {{recipient_name}},\n\nVotre envoi {{shipment_id}} a été livré avec succès le {{delivery_date}}.\n\nMerci d'avoir choisi KleerLogistics !"
+}
+
+# Étape 3: Tester le rendu
+GET {{baseUrl}}/templates/2/render/?language_code=fr&variables={"recipient_name":"Fatima","shipment_id":"KL789012","delivery_date":"15/01/2024"}
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE VALIDATION ET ERREURS
+### ========================================
+
+### 32. Test sans authentification
+GET {{baseUrl}}/categories/
+Content-Type: {{contentType}}
+
+### 33. Test avec données invalides
+POST {{baseUrl}}/translations/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+{
+    "key": 999,
+    "language_code": "invalid",
+    "text": ""
+}
+
+### 34. Test avec clé inexistante
+GET {{baseUrl}}/services/get-translation/?key=nonexistent_key&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 35. Test avec langue non supportée
+GET {{baseUrl}}/services/get-translation/?key=welcome_message&language_code=es
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE PERFORMANCE
+### ========================================
+
+### 36. Test de récupération multiple de traductions
+GET {{baseUrl}}/services/get-multiple-translations/?keys=welcome_message&keys=login_button&keys=register_button&keys=search_placeholder&keys=shipment_accepted&language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 37. Test de recherche avec beaucoup de résultats
+GET {{baseUrl}}/search/keys/?query=message
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE FILTRAGE ET TRI
+### ========================================
+
+### 38. Trier les catégories par nom
+GET {{baseUrl}}/categories/?ordering=name
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 39. Trier les clés par date de création
+GET {{baseUrl}}/keys/?ordering=-created_at
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 40. Filtrer les traductions par langue et statut
+GET {{baseUrl}}/translations/?language_code=fr&is_approved=true
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 41. Recherche avancée avec pagination
+GET {{baseUrl}}/search/keys/?query=button&category=ui&page=1&page_size=10
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE MODÈLES ET TEMPLATES
+### ========================================
+
+### 42. Lister tous les modèles de traduction
+GET {{baseUrl}}/templates/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 43. Filtrer les modèles par type
+GET {{baseUrl}}/templates/?template_type=email
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 44. Lister le contenu des modèles
+GET {{baseUrl}}/template-contents/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 45. Filtrer le contenu par langue
+GET {{baseUrl}}/template-contents/?language_code=fr
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### DOCUMENTATION ET MÉTADONNÉES
+### ========================================
+
+### 46. Obtenir la documentation de l'API
+GET {{baseUrl}}/docs/
+Content-Type: {{contentType}}
+
+### 47. Obtenir le schéma OpenAPI
+GET {{baseUrl}}/schema/
+Content-Type: {{contentType}}
+
+### 48. Tester la santé de l'API
+GET {{baseUrl}}/health/
+Content-Type: {{contentType}}
+
+### ========================================
+### NOTES D'UTILISATION
+### ========================================
+
+# Ce fichier de tests couvre tous les endpoints du module d'internationalisation
+# 
+# Points clés du système d'internationalisation :
+# 1. Gestion des catégories de traduction pour organiser les contenus
+# 2. Clés de traduction avec contexte et description
+# 3. Traductions par langue (FR/EN/AR) avec système d'approbation
+# 4. Préférences de langue utilisateur avec fallback
+# 5. Modèles de traduction avec variables pour emails/notifications
+# 6. Cache des traductions pour optimiser les performances
+# 7. Export/Import en différents formats (JSON, CSV, XLSX)
+# 8. Statistiques et rapports de complétude
+#
+# Workflow typique d'internationalisation :
+# 1. Créer une catégorie de traduction
+# 2. Créer des clés de traduction avec contexte
+# 3. Ajouter les traductions pour chaque langue
+# 4. Approuver les traductions
+# 5. Utiliser via l'API de service
+# 6. Gérer les préférences utilisateur
+#
+# Fonctionnalités de sécurité :
+# - Authentification requise pour la plupart des endpoints
+# - Système d'approbation des traductions
+# - Cache sécurisé avec expiration
+# - Validation des données d'entrée
+# - Logs d'activité pour audit
+#
+# Types de contenus supportés :
+# - Interface utilisateur (boutons, messages, labels)
+# - Notifications (push, email, SMS)
+# - Documents (PDF, contrats)
+# - Messages d'erreur et de validation
+# - Emails transactionnels
+#
+# Langues supportées :
+# - Français (fr) - Langue principale
+# - Anglais (en) - Langue internationale
+# - Arabe (ar) - Langue régionale
+#
+# Formats d'export/import :
+# - JSON (structuré, facile à manipuler)
+# - CSV (compatible Excel, traducteurs)
+# - XLSX (format professionnel)
+# - PO (format standard gettext)
+#
+# Endpoints disponibles :
+# - /categories/ - Gestion des catégories
+# - /keys/ - Gestion des clés de traduction
+# - /translations/ - Gestion des traductions
+# - /templates/ - Modèles de traduction
+# - /template-contents/ - Contenu des modèles
+# - /cache/ - Gestion du cache
+# - /export-import/ - Export/Import
+# - /services/ - Services de traduction
+# - /user-preferences/ - Préférences utilisateur
+# - /bulk/ - Opérations en lot
+# - /search/ - Recherche avancée
+# - /statistics/ - Statistiques
+#
+# Pour exécuter les tests :
+# 1. Remplacer les tokens par des tokens valides
+# 2. Vérifier que le serveur est en cours d'exécution
+# 3. Créer d'abord les catégories et clés de base
+# 4. Tester les traductions dans l'ordre logique
+# 5. Vérifier les statistiques et rapports
+# 6. Tester les scénarios complets
+# 7. Valider les performances avec de gros volumes
+# 8. Tester les cas d'erreur et edge cases
+# 9. Vérifier le filtrage et le tri
+# 10. Tester les modèles et templates

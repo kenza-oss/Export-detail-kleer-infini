@@ -236,10 +236,53 @@ class ResetPasswordSerializer(serializers.Serializer):
 class UserDocumentSerializer(serializers.ModelSerializer):
     """Serializer pour les documents utilisateur."""
     
+    document_type_display = serializers.CharField(source='get_document_type_display', read_only=True)
+    file_url = serializers.SerializerMethodField()
+    file_size = serializers.SerializerMethodField()
+    
     class Meta:
         model = UserDocument
-        fields = ['id', 'document_type', 'document_file', 'status', 'uploaded_at', 'verified_at', 'rejection_reason']
+        fields = [
+            'id', 'document_type', 'document_type_display', 'document_file', 
+            'file_url', 'file_size', 'status', 'uploaded_at', 'verified_at', 'rejection_reason'
+        ]
         read_only_fields = ['id', 'status', 'uploaded_at', 'verified_at', 'rejection_reason']
+    
+    def get_file_url(self, obj):
+        """Obtenir l'URL du fichier."""
+        if obj.document_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.document_file.url)
+            return obj.document_file.url
+        return None
+    
+    def get_file_size(self, obj):
+        """Obtenir la taille du fichier en bytes."""
+        if obj.document_file:
+            try:
+                return obj.document_file.size
+            except:
+                return 0
+        return 0
+    
+    def validate_document_file(self, value):
+        """Valider le fichier uploadé."""
+        # Vérifier la taille du fichier (max 10MB)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if value.size > max_size:
+            raise serializers.ValidationError("Le fichier ne peut pas dépasser 10MB.")
+        
+        # Vérifier le type de fichier
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
+        file_name = value.name.lower()
+        
+        if not any(file_name.endswith(ext) for ext in allowed_extensions):
+            raise serializers.ValidationError(
+                f"Type de fichier non autorisé. Types acceptés: {', '.join(allowed_extensions)}"
+            )
+        
+        return value
 
 
 class UserSearchSerializer(serializers.ModelSerializer):

@@ -1,0 +1,973 @@
+### KleerLogistics Admin Panel API - Tableau de Bord Administratif
+### Tests pour le module d'administration avec vue d'ensemble sur envois, paiements, commissions, utilisateurs
+### Version: 2.0 - Mise à jour avec nouvelles fonctionnalités et tests avancés
+### Version: 2.0 - Mise à jour avec nouvelles fonctionnalités et tests avancés
+
+# Base URL: http://localhost:8000/api/v1/admin/
+# Authentication: Bearer Token Admin required for all endpoints
+# Documentation: http://localhost:8000/api/v1/admin/docs/
+# Documentation: http://localhost:8000/api/v1/admin/docs/
+
+### Variables d'environnement
+@baseUrl = http://localhost:8000/api/v1/admin
+@contentType = application/json
+@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MjE1ODQwLCJpYXQiOjE3NTUyMTIyNDAsImp0aSI6ImY0N2M5OTdkNzEwOTRkMThiMjM0MGFlMmMyYWIwYWNkIiwidXNlcl9pZCI6IjYifQ.wqMCCOv4NRJ7H2OKpXAPg-P_jbF2SRdTknUAb9B58Zk
+
+### ========================================
+### AUTHENTICATION ET SETUP
+### ========================================
+
+### 0. Connexion administrateur (pour obtenir un token valide)
+# @name adminLogin
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "admin",
+    "password": "AdminPass123!"
+}
+
+### 0.1 Connexion utilisateur non-admin (pour tester les permissions)
+# @name userLogin
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "testuser",
+    "password": "TestPass123!"
+}
+
+### 0.2 Connexion super administrateur
+# @name superAdminLogin
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
+
+{
+    "username": "superadmin",
+    "password": "SuperAdminPass123!"
+}
+
+### ========================================
+### TABLEAU DE BORD PRINCIPAL
+### ========================================
+
+### 1. Vue d'ensemble complète du tableau de bord
+# @name dashboardOverview
+# Récupère toutes les métriques et statistiques en une seule requête
+GET {{baseUrl}}/dashboard/overview/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 1.1 Vue d'ensemble avec cache désactivé
+# @name dashboardOverviewNoCache
+GET {{baseUrl}}/dashboard/overview/?no_cache=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 1.2 Vue d'ensemble avec métriques détaillées
+# @name dashboardOverviewWithDetails
+GET {{baseUrl}}/dashboard/overview/?include_details=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 1.3 Vue d'ensemble avec période spécifique
+# @name dashboardOverviewWithPeriod
+GET {{baseUrl}}/dashboard/overview/?period=monthly&date_from=2024-01-01&date_to=2024-01-31
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 1.4 Vue d'ensemble avec filtres avancés
+# @name dashboardOverviewWithFilters
+GET {{baseUrl}}/dashboard/overview/?include_shipments=true&include_payments=true&include_commissions=true&include_users=true&include_financial=true&include_performance=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### MÉTRIQUES DU TABLEAU DE BORD
+### ========================================
+
+### 2. Récupérer toutes les métriques
+# @name dashboardMetrics
+GET {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 2.1 Métriques par type
+# @name dashboardMetricsByType
+GET {{baseUrl}}/dashboard/metrics/?type=shipments
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 2.2 Métriques par période
+# @name dashboardMetricsByPeriod
+GET {{baseUrl}}/dashboard/metrics/?period=monthly
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 2.3 Métriques actives uniquement
+# @name dashboardMetricsActive
+GET {{baseUrl}}/dashboard/metrics/?is_active=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 2.4 Métriques avec pagination
+# @name dashboardMetricsPaginated
+GET {{baseUrl}}/dashboard/metrics/?page=1&page_size=20
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 2.5 Métriques avec tri
+# @name dashboardMetricsSorted
+GET {{baseUrl}}/dashboard/metrics/?ordering=-created_at&metric_type=shipments
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 3. Créer une nouvelle métrique
+# @name createDashboardMetric
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "shipments",
+    "period_type": "daily",
+    "period_start": "2024-01-15T00:00:00Z",
+    "period_end": "2024-01-15T23:59:59Z",
+    "value": "150.00",
+    "previous_value": "120.00",
+    "change_percentage": "25.00",
+    "metadata": {
+        "source": "manual_entry",
+        "notes": "Métrique créée manuellement"
+    }
+}
+
+### 3.1 Créer une métrique de performance
+# @name createPerformanceMetric
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "performance",
+    "period_type": "weekly",
+    "period_start": "2024-01-08T00:00:00Z",
+    "period_end": "2024-01-14T23:59:59Z",
+    "value": "95.50",
+    "previous_value": "92.30",
+    "change_percentage": "3.47",
+    "metadata": {
+        "source": "system_monitoring",
+        "uptime_percentage": 95.5,
+        "response_time_avg": 150
+    }
+}
+
+### 3.2 Créer une métrique financière
+# @name createFinancialMetric
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "revenue",
+    "period_type": "monthly",
+    "period_start": "2024-01-01T00:00:00Z",
+    "period_end": "2024-01-31T23:59:59Z",
+    "value": "50000.00",
+    "previous_value": "45000.00",
+    "change_percentage": "11.11",
+    "metadata": {
+        "source": "financial_system",
+        "currency": "DZD",
+        "transaction_count": 1250
+    }
+}
+
+### 3.3 Créer une métrique d'utilisateurs
+# @name createUsersMetric
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "users",
+    "period_type": "weekly",
+    "period_start": "2024-01-08T00:00:00Z",
+    "period_end": "2024-01-14T23:59:59Z",
+    "value": "250.00",
+    "previous_value": "200.00",
+    "change_percentage": "25.00",
+    "metadata": {
+        "source": "user_registration",
+        "new_users": 50,
+        "active_users": 180
+    }
+}
+
+### 4. Mettre à jour une métrique existante
+# @name updateDashboardMetric
+PUT {{baseUrl}}/dashboard/metrics/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "value": "160.00",
+    "change_percentage": "33.33",
+    "metadata": {
+        "source": "manual_entry",
+        "notes": "Métrique mise à jour",
+        "updated_by": "admin"
+    }
+}
+
+### 5. Supprimer une métrique
+# @name deleteDashboardMetric
+DELETE {{baseUrl}}/dashboard/metrics/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### RAPPORTS ADMINISTRATIFS
+### ========================================
+
+### 6. Liste de tous les rapports
+# @name listReports
+GET {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 6.1 Rapports par type
+# @name listReportsByType
+GET {{baseUrl}}/reports/?type=shipments_summary
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 6.2 Rapports par format
+# @name listReportsByFormat
+GET {{baseUrl}}/reports/?format=pdf
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 6.3 Rapports programmés
+# @name listScheduledReports
+GET {{baseUrl}}/reports/?is_scheduled=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 6.4 Rapports avec pagination
+# @name listReportsPaginated
+GET {{baseUrl}}/reports/?page=1&page_size=10
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 6.5 Rapports par utilisateur
+# @name listReportsByUser
+GET {{baseUrl}}/reports/?generated_by=1
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 7. Générer un rapport d'envois
+# @name generateShipmentsReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "shipments_summary",
+    "format": "json",
+    "filters": {
+        "date_from": "2024-01-01",
+        "date_to": "2024-01-31",
+        "status": ["pending", "in_transit", "delivered"]
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 7.1 Générer un rapport financier
+# @name generateFinancialReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "financial_summary",
+    "format": "excel",
+    "filters": {
+        "date_from": "2024-01-01",
+        "date_to": "2024-01-31",
+        "include_commissions": true
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 7.2 Générer un rapport de commissions
+# @name generateCommissionsReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "commissions_summary",
+    "format": "pdf",
+    "filters": {
+        "date_from": "2024-01-01",
+        "date_to": "2024-01-31",
+        "commission_type": "all"
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 7.3 Générer un rapport d'utilisateurs
+# @name generateUsersReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "users_summary",
+    "format": "csv",
+    "filters": {
+        "date_from": "2024-01-01",
+        "date_to": "2024-01-31",
+        "user_role": "all",
+        "verification_status": "all"
+    },
+    "include_charts": false,
+    "include_metadata": true
+}
+
+### 7.4 Générer un rapport de performance
+# @name generatePerformanceReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "performance_summary",
+    "format": "excel",
+    "date_from": "2024-01-01",
+    "date_to": "2024-01-31",
+    "filters": {
+        "include_delivery_times": true,
+        "include_success_rates": true,
+        "include_customer_satisfaction": true
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 7.5 Rapport de géographie des envois
+# @name generateGeographyReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "shipments_summary",
+    "format": "pdf",
+    "date_from": "2024-01-01",
+    "date_to": "2024-01-31",
+    "filters": {
+        "group_by_country": true,
+        "group_by_city": true,
+        "include_route_analysis": true
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 8. Détails d'un rapport
+# @name getReportDetail
+GET {{baseUrl}}/reports/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 9. Télécharger un rapport
+# @name downloadReport
+GET {{baseUrl}}/reports/UUID-HERE/download/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 10. Programmer un rapport récurrent
+# @name scheduleReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Rapport hebdomadaire des envois",
+    "report_type": "shipments_summary",
+    "format": "pdf",
+    "is_scheduled": true,
+    "schedule_cron": "0 9 * * 1",
+    "filters": {
+        "include_charts": true,
+        "include_metadata": true
+    }
+}
+
+### ========================================
+### NOTIFICATIONS ADMINISTRATIVES
+### ========================================
+
+### 11. Liste des notifications
+# @name listNotifications
+GET {{baseUrl}}/notifications/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 11.1 Notifications par type
+# @name listNotificationsByType
+GET {{baseUrl}}/notifications/?type=alert
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 11.2 Notifications par priorité
+# @name listNotificationsByPriority
+GET {{baseUrl}}/notifications/?priority=high
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 11.3 Notifications non lues
+# @name listUnreadNotifications
+GET {{baseUrl}}/notifications/?is_read=false
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 11.4 Notifications avec pagination
+# @name listNotificationsPaginated
+GET {{baseUrl}}/notifications/?page=1&page_size=20
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 12. Créer une notification
+# @name createNotification
+POST {{baseUrl}}/notifications/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "title": "Maintenance planifiée",
+    "message": "Une maintenance est prévue ce soir de 23h à 2h du matin.",
+    "notification_type": "info",
+    "priority": "normal",
+    "is_broadcast": true,
+    "expires_at": "2024-01-16T02:00:00Z"
+}
+
+### 12.1 Créer une alerte urgente
+# @name createUrgentAlert
+POST {{baseUrl}}/notifications/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "title": "Problème de paiement détecté",
+    "message": "Plusieurs transactions ont échoué dans les dernières minutes.",
+    "notification_type": "error",
+    "priority": "urgent",
+    "is_broadcast": false,
+    "recipients": [1, 2, 3],
+    "action_url": "/admin/payments/transactions/",
+    "action_text": "Vérifier les transactions"
+}
+
+### 13. Marquer une notification comme lue
+# @name markNotificationRead
+POST {{baseUrl}}/notifications/UUID-HERE/mark-read/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 14. Supprimer une notification
+# @name deleteNotification
+DELETE {{baseUrl}}/notifications/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### SANTÉ DU SYSTÈME
+### ========================================
+
+### 15. Vérification de la santé du système
+# @name systemHealth
+GET {{baseUrl}}/system/health/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 15.1 Santé d'un service spécifique
+# @name systemHealthSpecific
+GET {{baseUrl}}/system/health/?service_name=database
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 15.2 Vérification complète avec détails
+# @name systemHealthDetailed
+GET {{baseUrl}}/system/health/?check_all=true&include_details=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 15.3 Vérification avec timeout personnalisé
+# @name systemHealthWithTimeout
+GET {{baseUrl}}/system/health/?timeout=60
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 16. Mettre à jour le statut d'un service
+# @name updateSystemHealth
+PUT {{baseUrl}}/system/health/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "service_name": "database",
+    "status": "healthy",
+    "response_time": "00:00:00.050000",
+    "uptime_percentage": 99.95,
+    "error_count": 0,
+    "details": {
+        "connection_pool": "active",
+        "query_performance": "optimal"
+    }
+}
+
+### ========================================
+### LOGS D'AUDIT
+### ========================================
+
+### 17. Liste des logs d'audit
+# @name listAuditLogs
+GET {{baseUrl}}/audit/logs/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 17.1 Logs par utilisateur
+# @name listAuditLogsByUser
+GET {{baseUrl}}/audit/logs/?user=1
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 17.2 Logs par action
+# @name listAuditLogsByAction
+GET {{baseUrl}}/audit/logs/?action=create
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 17.3 Logs par modèle
+# @name listAuditLogsByModel
+GET {{baseUrl}}/audit/logs/?model_name=shipment
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 17.4 Logs avec pagination
+# @name listAuditLogsPaginated
+GET {{baseUrl}}/audit/logs/?page=1&page_size=50
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 17.5 Logs par période
+# @name listAuditLogsByPeriod
+GET {{baseUrl}}/audit/logs/?date_from=2024-01-01&date_to=2024-01-31
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 18. Détails d'un log d'audit
+# @name getAuditLogDetail
+GET {{baseUrl}}/audit/logs/UUID-HERE/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### ACTIONS RAPIDES
+### ========================================
+
+### 19. Actions rapides disponibles
+# @name quickActions
+GET {{baseUrl}}/quick-actions/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 20. Exécuter une action rapide
+# @name executeQuickAction
+POST {{baseUrl}}/quick-actions/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "action": "cleanup_expired_otps",
+    "parameters": {
+        "confirm": true
+    }
+}
+
+### 20.1 Action de nettoyage des données
+# @name executeCleanupAction
+POST {{baseUrl}}/quick-actions/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "action": "cleanup_old_logs",
+    "parameters": {
+        "days_to_keep": 90,
+        "confirm": true
+    }
+}
+
+### 20.2 Action de maintenance
+# @name executeMaintenanceAction
+POST {{baseUrl}}/quick-actions/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "action": "system_maintenance",
+    "parameters": {
+        "maintenance_type": "database_optimization",
+        "confirm": true
+    }
+}
+
+### ========================================
+### EXPORT DE DONNÉES
+### ========================================
+
+### 21. Export de données
+# @name exportData
+POST {{baseUrl}}/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "shipments",
+    "format": "excel",
+    "date_from": "2024-01-01",
+    "date_to": "2024-01-31",
+    "filters": {
+        "status": ["delivered", "in_transit"],
+        "include_details": true
+    }
+}
+
+### 21.1 Export des utilisateurs
+# @name exportUsers
+POST {{baseUrl}}/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "users",
+    "format": "csv",
+    "filters": {
+        "role": "all",
+        "verification_status": "all",
+        "include_profile": true
+    }
+}
+
+### 21.2 Export des paiements
+# @name exportPayments
+POST {{baseUrl}}/export/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "payments",
+    "format": "pdf",
+    "date_from": "2024-01-01",
+    "date_to": "2024-01-31",
+    "filters": {
+        "payment_method": "all",
+        "status": "completed",
+        "include_transaction_details": true
+    }
+}
+
+### ========================================
+### TESTS DE SÉCURITÉ ET VALIDATION
+### ========================================
+
+### 22. Test d'accès sans authentification
+# @name testUnauthenticatedAccess
+GET {{baseUrl}}/dashboard/overview/
+Content-Type: {{contentType}}
+
+### 23. Test d'accès avec token utilisateur non-admin
+# @name testNonAdminAccess
+GET {{baseUrl}}/dashboard/overview/
+Authorization: {{userToken}}
+Content-Type: {{contentType}}
+
+### 24. Test d'accès avec token expiré
+# @name testExpiredToken
+GET {{baseUrl}}/dashboard/overview/
+Authorization: Bearer expired_token_here
+Content-Type: {{contentType}}
+
+### 25. Test de création de métrique avec données invalides
+# @name testInvalidMetricData
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "invalid_type",
+    "period_type": "invalid_period",
+    "value": "not_a_number"
+}
+
+### 26. Test de création de rapport avec paramètres invalides
+# @name testInvalidReportData
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "invalid_report_type",
+    "format": "invalid_format",
+    "filters": "not_a_dict"
+}
+
+### ========================================
+### TESTS DE PERFORMANCE ET STRESS
+### ========================================
+
+### 27. Test de génération de rapport volumineux
+# @name testLargeReportGeneration
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "report_type": "shipments_summary",
+    "format": "excel",
+    "date_from": "2020-01-01",
+    "date_to": "2024-12-31",
+    "filters": {
+        "include_all_details": true,
+        "include_charts": true,
+        "include_metadata": true
+    }
+}
+
+### 28. Test de récupération de métriques avec beaucoup de données
+# @name testMetricsWithLargeDataset
+GET {{baseUrl}}/dashboard/metrics/?type=all&period=yearly&date_from=2020-01-01&date_to=2024-12-31
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 29. Test de logs d'audit avec beaucoup d'actions
+# @name testAuditLogsWithLargeDataset
+GET {{baseUrl}}/audit/logs/?date_from=2020-01-01&date_to=2024-12-31&page=1&page_size=1000
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### TESTS DE SCÉNARIOS COMPLEXES
+### ========================================
+
+### 30. Test de tableau de bord complet avec toutes les métriques
+# @name testCompleteDashboard
+GET {{baseUrl}}/dashboard/overview/?include_shipments=true&include_payments=true&include_commissions=true&include_users=true&include_financial=true&include_performance=true&include_real_time=true&include_charts=true&include_alerts=true&include_notifications=true&include_quick_actions=true
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 31. Test de génération de rapport multi-format
+# @name testMultiFormatReport
+POST {{baseUrl}}/reports/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "name": "Rapport complet multi-format",
+    "report_type": "financial_summary",
+    "format": "all",
+    "date_from": "2024-01-01",
+    "date_to": "2024-01-31",
+    "filters": {
+        "include_commissions": true,
+        "include_expenses": true,
+        "include_profit_analysis": true,
+        "include_cash_flow": true
+    },
+    "include_charts": true,
+    "include_metadata": true
+}
+
+### 32. Test de notification de masse
+# @name testMassNotification
+POST {{baseUrl}}/notifications/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "title": "Maintenance système majeure",
+    "message": "Une maintenance majeure est prévue ce weekend. Le système sera indisponible de samedi 22h à dimanche 6h.",
+    "notification_type": "warning",
+    "priority": "high",
+    "is_broadcast": true,
+    "expires_at": "2024-01-21T06:00:00Z",
+    "action_url": "/admin/maintenance/schedule/",
+    "action_text": "Voir le planning"
+}
+
+### ========================================
+### TESTS DE VALIDATION D'ERREURS
+### ========================================
+
+### 33. Test avec UUID invalide
+# @name testInvalidUUID
+GET {{baseUrl}}/dashboard/metrics/invalid-uuid-here/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 34. Test avec paramètres de requête invalides
+# @name testInvalidQueryParams
+GET {{baseUrl}}/dashboard/metrics/?type=invalid&period=invalid&page=not_a_number&page_size=invalid
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 35. Test avec données de requête malformées
+# @name testMalformedRequestData
+POST {{baseUrl}}/dashboard/metrics/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "metric_type": "shipments",
+    "period_start": "invalid_date_format",
+    "value": -1000
+}
+
+### ========================================
+### DOCUMENTATION ET MÉTADONNÉES
+### ========================================
+
+### 36. Obtenir la documentation de l'API
+# @name getApiDocs
+GET {{baseUrl}}/docs/
+Content-Type: {{contentType}}
+
+### 37. Obtenir le schéma OpenAPI
+# @name getOpenAPISchema
+GET {{baseUrl}}/schema/
+Content-Type: {{contentType}}
+
+### 38. Tester la santé de l'API
+# @name testApiHealth
+GET {{baseUrl}}/health/
+Content-Type: {{contentType}}
+
+### 39. Obtenir la version de l'API
+# @name getApiVersion
+GET {{baseUrl}}/version/
+Content-Type: {{contentType}}
+
+### ========================================
+### NOTES D'UTILISATION ET DOCUMENTATION
+### ========================================
+
+# Ce fichier de tests couvre tous les endpoints du tableau de bord administratif
+# Version 2.0 - Mise à jour avec nouvelles fonctionnalités et tests avancés
+# 
+# Points clés du système Admin Panel :
+# 1. Vue d'ensemble complète avec métriques en temps réel
+# 2. Gestion des métriques du tableau de bord
+# 3. Génération et gestion de rapports
+# 4. Système de notifications administratives
+# 5. Surveillance de la santé du système
+# 6. Logs d'audit complets
+# 7. Actions rapides pour les administrateurs
+# 8. Export de données dans différents formats
+# 9. Tests de sécurité et validation
+# 10. Tests de performance et stress
+#
+# Fonctionnalités principales :
+# - Tableau de bord avec métriques en temps réel
+# - Rapports automatisés et programmés
+# - Notifications d'alerte et d'information
+# - Surveillance de la santé du système
+# - Traçabilité complète des actions administratives
+# - Export de données dans multiples formats
+# - Interface d'administration Django intégrée
+# - Tests de sécurité avancés
+# - Tests de performance et stress
+#
+# Types de métriques supportés :
+# - Envois (statistiques, tendances, performance)
+# - Paiements (revenus, transactions, méthodes)
+# - Commissions (calculs, répartition, tendances)
+# - Utilisateurs (croissance, engagement, géographie)
+# - Financier (revenus, dépenses, profit)
+# - Performance (système, API, base de données)
+#
+# Formats de rapport supportés :
+# - JSON (pour intégration API)
+# - CSV (pour analyse Excel)
+# - PDF (pour documentation)
+# - Excel (pour analyse avancée)
+#
+# Types de notification :
+# - Information (mise à jour, maintenance)
+# - Avertissement (attention requise)
+# - Erreur (problème détecté)
+# - Succès (opération réussie)
+# - Alerte (action immédiate requise)
+#
+# Priorités de notification :
+# - Faible (information générale)
+# - Normal (attention modérée)
+# - Élevée (action requise)
+# - Urgente (intervention immédiate)
+#
+# Nouveautés de la version 2.0 :
+# - Tests de sécurité avancés
+# - Tests de performance et stress
+# - Tests de scénarios complexes
+# - Validation d'erreurs complète
+# - Tests de données volumineuses
+# - Tests de permissions et accès
+# - Tests de formatage et validation
+# - Tests de notifications de masse
+#
+# Pour exécuter les tests :
+# 1. Remplacer les tokens par des tokens administrateur valides
+# 2. Vérifier que le serveur est en cours d'exécution
+# 3. Utiliser un client HTTP comme VS Code REST Client ou Postman
+# 4. Tester d'abord l'authentification pour obtenir un token valide
+# 5. Remplacer UUID-HERE par des UUIDs valides de votre base de données
+# 6. Tester les différents scénarios de tableau de bord
+# 7. Vérifier les permissions d'administration
+# 8. Tester la génération de rapports et l'export de données
+# 9. Tester les scénarios d'erreur pour valider la robustesse
+# 10. Vérifier les performances avec des charges importantes
+# 11. Tester les fonctionnalités de sécurité
+# 12. Valider la gestion des notifications et alertes
+#
+# Structure des tests recommandée :
+# 1. Tests d'authentification et permissions
+# 2. Tests de base des fonctionnalités
+# 3. Tests de validation et erreurs
+# 4. Tests de sécurité et accès
+# 5. Tests de performance et stress
+# 6. Tests de scénarios complexes
+# 7. Tests de documentation et métadonnées
+#
+# Ordre de test recommandé :
+# 1. Tests d'authentification
+# 2. Tests du tableau de bord principal
+# 3. Tests des métriques
+# 4. Tests des rapports
+# 5. Tests des notifications
+# 6. Tests de santé système
+# 7. Tests des logs d'audit
+# 8. Tests des actions rapides
+# 9. Tests d'export
+# 10. Tests de sécurité
+# 11. Tests de performance
+# 12. Tests de validation d'erreurs
+

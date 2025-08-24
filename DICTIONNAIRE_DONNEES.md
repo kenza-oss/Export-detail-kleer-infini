@@ -4,6 +4,7 @@
 
 Ce dictionnaire de données documente l'ensemble des entités, attributs et relations de la base de données de l'API Kleer Logistics. Le système permet de connecter expéditeurs et voyageurs pour le transport de colis avec un système de matching intelligent.
 
+
 ---
 
 ## 🗂️ **1. MODULE USERS - Gestion des Utilisateurs**
@@ -90,7 +91,7 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `expires_at` | DateTimeField | - | Oui | - | Date expiration |
 
 ### **1.5 DeliveryOTP (OTP de Livraison)**
-**Codes OTP pour confirmation de livraison selon le cahier des charges**
+**Codes OTP pour confirmation de livraison**
 
 | **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
 |-----------|----------|------------|-----------------|-------------|-----------------|
@@ -154,6 +155,8 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `otp_generated_at` | DateTimeField | - | Non | - | Date génération OTP (obsolète) |
 | `delivery_otp` | CharField | 6 | Non | - | Code OTP livraison (obsolète - remplacé par DeliveryOTP) |
 | `delivery_date` | DateTimeField | - | Non | - | Date livraison effective |
+| `delivery_notes` | TextField | - | Non | - | Notes sur la livraison |
+| `recipient_signature` | CharField | 200 | Non | - | Signature du destinataire |
 | `shipping_cost` | DecimalField | 10,2 | Non | - | Coût expédition |
 | `special_instructions` | TextField | - | Non | - | Instructions spéciales |
 | `insurance_requested` | BooleanField | - | Oui | False | Assurance demandée |
@@ -281,6 +284,23 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 - `matched_shipments` → Shipment (One-to-Many)
 - `documents` → TripDocument (One-to-Many)
 
+### **3.2 TripDocument (Document Trajet)**
+**Documents associés aux trajets**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `trip` | ForeignKey | - | Oui | Trip | Trajet associé |
+| `document_type` | CharField | 20 | Oui | flight_ticket, passport_copy, visa, boarding_pass, travel_insurance, other | Type document |
+| `file` | FileField | - | Oui | - | Fichier document |
+| `is_verified` | BooleanField | - | Oui | False | Document vérifié |
+| `verification_date` | DateTimeField | - | Non | - | Date vérification |
+| `verification_notes` | TextField | - | Non | - | Notes vérification |
+| `uploaded_at` | DateTimeField | - | Oui | Auto | Date upload |
+
+**Relations :**
+- `trip` → Trip (Many-to-One)
+
 ---
 
 ## 🎯 **4. MODULE MATCHING - Algorithme de Matching**
@@ -376,7 +396,7 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 
 ---
 
-## 💬 **6. MODULE CHAT - Messagerie**
+## 💬 **6. MODULE CHAT - Messagerie (🔄 En cours)**
 
 ### **6.1 Conversation (Conversation)**
 **Conversations entre expéditeurs et voyageurs**
@@ -391,6 +411,12 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `last_message_at` | DateTimeField | - | Oui | Auto | Dernier message |
 | `is_active` | BooleanField | - | Oui | True | Conversation active |
 
+**Relations :**
+- `shipment` → Shipment (Many-to-One)
+- `sender` → User (Many-to-One)
+- `traveler` → User (Many-to-One)
+- `messages` → Message (One-to-Many)
+
 ### **6.2 Message (Message)**
 **Messages dans les conversations**
 
@@ -404,6 +430,10 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `metadata` | JSONField | - | Oui | {} | Métadonnées |
 | `is_read` | BooleanField | - | Oui | False | Message lu |
 | `created_at` | DateTimeField | - | Oui | Auto | Date création |
+
+**Relations :**
+- `conversation` → Conversation (Many-to-One)
+- `sender` → User (Many-to-One)
 
 ---
 
@@ -466,7 +496,7 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 
 ---
 
-## 📧 **9. MODULE NOTIFICATIONS - Notifications**
+## 📧 **9. MODULE NOTIFICATIONS - Notifications (🔄 En cours)**
 
 ### **9.1 Notification (Notification)**
 **Notifications système**
@@ -487,25 +517,66 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `sent_at` | DateTimeField | - | Non | - | Date envoi |
 | `read_at` | DateTimeField | - | Non | - | Date lecture |
 
+**Relations :**
+- `user` → User (Many-to-One)
+- `shipment_notifications` → ShipmentNotification (One-to-Many)
+
+### **9.2 EmailTemplate (EmailTemplate)**
+**Templates d'email**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom du template |
+| `subject` | CharField | 200 | Oui | - | Sujet |
+| `html_content` | TextField | - | Oui | - | Contenu HTML |
+| `text_content` | TextField | - | Oui | - | Contenu texte |
+| `is_active` | BooleanField | - | Oui | True | Template actif |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+### **9.3 SMSTemplate (SMSTemplate)**
+**Templates SMS**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom du template |
+| `message` | TextField | 160 | Oui | - | Message SMS |
+| `is_active` | BooleanField | - | Oui | True | Template actif |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+### **9.4 ShipmentNotification (ShipmentNotification)**
+**Notifications liées aux envois**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `notification` | OneToOneField | - | Oui | Notification | Notification associée |
+| `shipment_id` | IntegerField | - | Oui | - | ID de l'envoi |
+| `event_type` | CharField | 20 | Oui | created, status_changed, delivered, problem | Type d'événement |
+| `tracking_number` | CharField | 50 | Non | - | Numéro de suivi |
+
 ---
 
-## 📄 **10. MODULE DOCUMENTS - Génération Documents**
+## 📄 **10. MODULE DOCUMENTS - Génération Documents (🔄 En cours)**
 
-### **10.1 DocumentTemplate (Template Document)**
+### **10.1 DocumentTemplate (DocumentTemplate)**
 **Templates pour génération de documents**
 
 | **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
 |-----------|----------|------------|-----------------|-------------|-----------------|
 | `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
-| `template_id` | UUIDField | - | Oui | Unique | ID template |
 | `name` | CharField | 100 | Oui | - | Nom template |
-| `template_type` | CharField | 20 | Oui | invoice, receipt, contract, custom | Type template |
-| `html_content` | TextField | - | Oui | - | Contenu HTML |
-| `css_styles` | TextField | - | Non | - | Styles CSS |
-| `variables` | JSONField | - | Oui | [] | Variables template |
+| `document_type` | CharField | 20 | Oui | invoice, receipt, contract, custom | Type template |
+| `template_file` | FileField | - | Oui | - | Fichier template |
 | `is_active` | BooleanField | - | Oui | True | Template actif |
 | `created_at` | DateTimeField | - | Oui | Auto | Date création |
 | `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `documents` → Document (One-to-Many)
 
 ### **10.2 Document (Document)**
 **Documents générés**
@@ -527,6 +598,285 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 | `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
 | `generated_at` | DateTimeField | - | Non | - | Date génération |
 
+**Relations :**
+- `user` → User (Many-to-One)
+- `template` → DocumentTemplate (Many-to-One)
+- `invoice` → Invoice (One-to-One)
+- `receipt` → Receipt (One-to-One)
+
+### **10.3 Invoice (Invoice)**
+**Factures générées**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `document` | OneToOneField | - | Oui | Document | Document associé |
+| `client_name` | CharField | 200 | Oui | - | Nom du client |
+| `client_email` | EmailField | - | Oui | - | Email du client |
+| `client_address` | TextField | - | Oui | - | Adresse du client |
+| `invoice_number` | CharField | 50 | Oui | Unique | Numéro de facture |
+| `issue_date` | DateField | - | Oui | - | Date d'émission |
+| `due_date` | DateField | - | Oui | - | Date d'échéance |
+| `subtotal` | DecimalField | 10,2 | Oui | - | Sous-total |
+| `tax_amount` | DecimalField | 10,2 | Oui | 0.00 | Montant des taxes |
+| `total_amount` | DecimalField | 10,2 | Oui | - | Montant total |
+| `is_paid` | BooleanField | - | Oui | False | Facture payée |
+| `paid_at` | DateTimeField | - | Non | - | Date de paiement |
+
+**Relations :**
+- `document` → Document (One-to-One)
+
+### **10.4 Receipt (Receipt)**
+**Reçus générés**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `document` | OneToOneField | - | Oui | Document | Document associé |
+| `client_name` | CharField | 200 | Oui | - | Nom du client |
+| `client_email` | EmailField | - | Oui | - | Email du client |
+| `receipt_number` | CharField | 50 | Oui | Unique | Numéro de reçu |
+| `payment_date` | DateTimeField | - | Oui | - | Date de paiement |
+| `payment_method` | CharField | 50 | Oui | - | Méthode de paiement |
+| `amount_paid` | DecimalField | 10,2 | Oui | - | Montant payé |
+| `transaction_id` | CharField | 100 | Non | - | ID de transaction |
+
+**Relations :**
+- `document` → Document (One-to-One)
+
+## 🔍 **11. MODULE VERIFICATION - Vérification des Documents (✅ Complété)**
+
+### **11.1 DocumentVerification (DocumentVerification)**
+**Vérification des documents utilisateur**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | UUIDField | - | Oui | Unique | Identifiant unique |
+| `user` | ForeignKey | - | Oui | User | Utilisateur |
+| `document` | ForeignKey | - | Oui | UserDocument | Document à vérifier |
+| `status` | CharField | 25 | Oui | pending, processing, approved, rejected, requires_manual_review, expired | Statut vérification |
+| `verification_method` | CharField | 20 | Oui | automatic, manual, hybrid | Méthode vérification |
+| `verified_at` | DateTimeField | - | Non | - | Date vérification |
+| `verified_by` | ForeignKey | - | Non | User | Vérificateur |
+| `rejection_reason` | TextField | - | Non | - | Raison rejet |
+| `ocr_data` | JSONField | - | Oui | {} | Données extraites par OCR |
+| `validation_score` | DecimalField | 5,2 | Non | 0.00-100.00 | Score validation |
+| `fraud_detection_score` | DecimalField | 5,2 | Non | 0.00-100.00 | Score détection fraude |
+| `verification_notes` | TextField | - | Non | - | Notes vérification |
+| `verification_duration` | DurationField | - | Non | - | Durée vérification |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `user` → User (Many-to-One)
+- `document` → UserDocument (Many-to-One)
+- `verified_by` → User (Many-to-One)
+- `logs` → VerificationLog (One-to-Many)
+
+### **11.2 DocumentValidationRule (DocumentValidationRule)**
+**Règles de validation des documents**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom de la règle |
+| `document_type` | CharField | 25 | Oui | passport, national_id, flight_ticket, address_proof, driver_license, birth_certificate, marriage_certificate | Type document |
+| `validation_type` | CharField | 25 | Oui | ocr_extraction, format_validation, expiry_check, fraud_detection, data_consistency, image_quality | Type validation |
+| `is_active` | BooleanField | - | Oui | True | Règle active |
+| `priority` | PositiveIntegerField | - | Oui | 1 | Priorité d'exécution |
+| `validation_config` | JSONField | - | Oui | {} | Configuration règle |
+| `threshold_score` | DecimalField | 5,2 | Oui | 80.00 | Score seuil validation |
+| `description` | TextField | - | Non | - | Description règle |
+| `notes` | TextField | - | Non | - | Notes additionnelles |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- Aucune relation directe
+
+### **11.3 VerificationWorkflow (VerificationWorkflow)**
+**Workflows de vérification**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom workflow |
+| `workflow_type` | CharField | 20 | Oui | standard, premium, express, manual | Type workflow |
+| `is_active` | BooleanField | - | Oui | True | Workflow actif |
+| `steps` | JSONField | - | Oui | [] | Étapes workflow |
+| `auto_approval_threshold` | DecimalField | 5,2 | Oui | 90.00 | Seuil approbation auto |
+| `requires_manual_review` | BooleanField | - | Oui | False | Vérification manuelle |
+| `max_processing_time` | DurationField | - | Non | - | Temps max traitement |
+| `description` | TextField | - | Non | - | Description workflow |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- Aucune relation directe
+
+### **11.4 VerificationLog (VerificationLog)**
+**Historique des vérifications**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `verification` | ForeignKey | - | Oui | DocumentVerification | Vérification associée |
+| `log_level` | CharField | 10 | Oui | info, warning, error, success | Niveau log |
+| `message` | TextField | - | Oui | - | Message log |
+| `details` | JSONField | - | Oui | {} | Détails additionnels |
+| `timestamp` | DateTimeField | - | Oui | Auto | Horodatage |
+| `user` | ForeignKey | - | Non | User | Utilisateur associé |
+
+**Relations :**
+- `verification` → DocumentVerification (Many-to-One)
+- `user` → User (Many-to-One)
+
+### **11.5 DocumentTemplate (DocumentTemplate)**
+**Templates de documents acceptés**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom template |
+| `document_type` | CharField | 25 | Oui | passport, national_id, flight_ticket, address_proof | Type document |
+| `country` | CharField | 5 | Oui | DZ, FR, US, GB, DE, IT, ES, CA, AU, OTHER | Pays origine |
+| `is_active` | BooleanField | - | Oui | True | Template actif |
+| `sample_image` | ImageField | - | Non | - | Image exemple |
+| `validation_zones` | JSONField | - | Oui | {} | Zones validation |
+| `required_fields` | JSONField | - | Oui | [] | Champs requis |
+| `description` | TextField | - | Non | - | Description template |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- Aucune relation directe
+
+---
+
+## 🌍 **12. MODULE INTERNATIONALIZATION - Gestion Multilingue (✅ Complété)**
+
+### **12.1 TranslationCategory (TranslationCategory)**
+**Catégories de traductions**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom catégorie |
+| `code` | CharField | 50 | Oui | Unique | Code catégorie |
+| `description` | TextField | - | Non | - | Description |
+| `is_active` | BooleanField | - | Oui | True | Catégorie active |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `translation_keys` → TranslationKey (One-to-Many)
+
+### **12.2 TranslationKey (TranslationKey)**
+**Clés de traduction**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `key` | CharField | 200 | Oui | Unique | Clé traduction |
+| `category` | ForeignKey | - | Oui | TranslationCategory | Catégorie |
+| `description` | TextField | - | Non | - | Description |
+| `context` | TextField | - | Non | - | Contexte utilisation |
+| `is_active` | BooleanField | - | Oui | True | Clé active |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `category` → TranslationCategory (Many-to-One)
+- `translations` → Translation (One-to-Many)
+
+### **12.3 Translation (Translation)**
+**Traductions par langue**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `key` | ForeignKey | - | Oui | TranslationKey | Clé traduction |
+| `language_code` | CharField | 2 | Oui | fr, en, ar | Code langue |
+| `text` | TextField | - | Oui | - | Texte traduit |
+| `is_approved` | BooleanField | - | Oui | False | Traduction approuvée |
+| `approved_by` | ForeignKey | - | Non | User | Approuvé par |
+| `approved_at` | DateTimeField | - | Non | - | Date approbation |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `key` → TranslationKey (Many-to-One)
+- `approved_by` → User (Many-to-One)
+
+### **12.4 UserLanguagePreference (UserLanguagePreference)**
+**Préférences de langue utilisateur**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `user` | OneToOneField | - | Oui | User | Utilisateur |
+| `preferred_language` | CharField | 2 | Oui | fr, en, ar | Langue préférée |
+| `fallback_language` | CharField | 2 | Oui | fr, en, ar | Langue secours |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `user` → User (One-to-One)
+
+### **12.5 TranslationTemplate (TranslationTemplate)**
+**Modèles de traduction**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `name` | CharField | 100 | Oui | - | Nom template |
+| `template_type` | CharField | 20 | Oui | email, sms, notification, document, ui | Type template |
+| `key` | CharField | 200 | Oui | Unique | Clé template |
+| `variables` | JSONField | - | Oui | [] | Variables disponibles |
+| `category` | ForeignKey | - | Oui | TranslationCategory | Catégorie |
+| `is_active` | BooleanField | - | Oui | True | Template actif |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `category` → TranslationCategory (Many-to-One)
+- `contents` → TranslationTemplateContent (One-to-Many)
+
+### **12.6 TranslationTemplateContent (TranslationTemplateContent)**
+**Contenu des modèles par langue**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `template` | ForeignKey | - | Oui | TranslationTemplate | Template |
+| `language_code` | CharField | 2 | Oui | fr, en, ar | Code langue |
+| `subject` | CharField | 200 | Non | - | Sujet |
+| `content` | TextField | - | Oui | - | Contenu |
+| `is_approved` | BooleanField | - | Oui | False | Contenu approuvé |
+| `approved_by` | ForeignKey | - | Non | User | Approuvé par |
+| `approved_at` | DateTimeField | - | Non | - | Date approbation |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+| `updated_at` | DateTimeField | - | Oui | Auto | Date modification |
+
+**Relations :**
+- `template` → TranslationTemplate (Many-to-One)
+- `approved_by` → User (Many-to-One)
+
+### **12.7 TranslationCache (TranslationCache)**
+**Cache des traductions**
+
+| **Champ** | **Type** | **Taille** | **Obligatoire** | **Valeurs** | **Description** |
+|-----------|----------|------------|-----------------|-------------|-----------------|
+| `id` | Integer | - | Oui | Auto-incrémenté | Identifiant unique |
+| `cache_key` | CharField | 255 | Oui | Unique | Clé cache |
+| `language_code` | CharField | 2 | Oui | fr, en, ar | Code langue |
+| `content` | TextField | - | Oui | - | Contenu cache |
+| `expires_at` | DateTimeField | - | Oui | - | Date expiration |
+| `created_at` | DateTimeField | - | Oui | Auto | Date création |
+
+**Relations :**
+- Aucune relation directe
+
 ---
 
 ## 🔗 **RELATIONS ENTRE ENTITÉS**
@@ -536,10 +886,21 @@ Ce dictionnaire de données documente l'ensemble des entités, attributs et rela
 ```
 User (1) ←→ (1) UserProfile
 User (1) ←→ (1) Wallet
+User (1) ←→ (1) UserLanguagePreference
 User (1) ←→ (N) Shipment (sent_shipments)
 User (1) ←→ (N) Trip
 User (1) ←→ (N) UserDocument
 User (1) ←→ (N) OTPCode
+User (1) ←→ (N) DocumentVerification
+User (1) ←→ (N) Translation (approved_by)
+User (1) ←→ (N) TranslationTemplateContent (approved_by)
+User (1) ←→ (N) AdminAuditLog
+User (1) ←→ (N) AdminNotification
+User (1) ←→ (N) Notification
+User (1) ←→ (N) Document
+User (1) ←→ (N) Conversation (sender)
+User (1) ←→ (N) Conversation (traveler)
+User (1) ←→ (N) Message
 
 Shipment (1) ←→ (1) Package
 Shipment (1) ←→ (N) ShipmentDocument
@@ -547,7 +908,9 @@ Shipment (1) ←→ (N) ShipmentTracking
 Shipment (1) ←→ (1) ShipmentRating
 Shipment (1) ←→ (N) Match
 Shipment (1) ←→ (N) Conversation
-Shipment (1) ←→ (N) Rating
+Shipment (1) ←→ (N) DeliveryOTP
+Shipment (1) ←→ (N) Transaction
+Shipment (1) ←→ (1) Commission
 
 Trip (1) ←→ (N) Match
 Trip (1) ←→ (N) TripDocument
@@ -567,6 +930,25 @@ Transaction (N) ←→ (1) Shipment
 Rating (N) ←→ (1) User (rater)
 Rating (N) ←→ (1) User (rated_user)
 Rating (N) ←→ (1) Shipment
+
+DocumentVerification (N) ←→ (1) User
+DocumentVerification (N) ←→ (1) UserDocument
+DocumentVerification (N) ←→ (1) User (verified_by)
+DocumentVerification (1) ←→ (N) VerificationLog
+
+TranslationCategory (1) ←→ (N) TranslationKey
+TranslationKey (1) ←→ (N) Translation
+TranslationKey (1) ←→ (N) TranslationTemplate
+TranslationTemplate (1) ←→ (N) TranslationTemplateContent
+
+DocumentTemplate (1) ←→ (N) Document
+Document (N) ←→ (1) User
+Document (N) ←→ (1) DocumentTemplate
+Document (1) ←→ (1) Invoice
+Document (1) ←→ (1) Receipt
+
+Notification (N) ←→ (1) User
+Notification (1) ←→ (1) ShipmentNotification
 ```
 
 ---
@@ -630,6 +1012,27 @@ Rating (N) ←→ (1) Shipment
    - Répartition des notes
    - Taux de réponse aux évaluations
 
+8. **Vérification des Documents**
+   - Taux de vérification automatique
+   - Temps moyen de traitement
+   - Score de validation moyen
+   - Taux de détection de fraude
+
+9. **Internationalisation**
+   - Répartition par langue (FR/EN/AR)
+   - Taux de traduction par langue
+   - Utilisation du cache de traductions
+
+10. **Génération de Documents**
+    - Nombre de documents générés par type
+    - Temps moyen de génération
+    - Taux de succès de génération
+
+11. **Chat et Communication**
+    - Nombre de conversations actives
+    - Temps moyen de réponse
+    - Taux d'utilisation des fonctionnalités
+
 ---
 
 ## 🔒 **SÉCURITÉ ET CONFORMITÉ**
@@ -638,8 +1041,10 @@ Rating (N) ←→ (1) Shipment
 - **Chiffrement** : Mots de passe hashés (SHA256)
 - **OTP Authentification** : Codes temporaires avec expiration (10 min)
 - **OTP Livraison** : Codes à 6 chiffres avec expiration (24h)
-- **Documents** : Stockage sécurisé avec validation
+- **Documents** : Stockage sécurisé avec validation OCR et détection de fraude
 - **Paiements** : Conformité PCI DSS, cartes algériennes sécurisées
+- **Vérification** : Processus de validation multi-étapes avec audit complet
+- **Internationalisation** : Cache sécurisé des traductions avec expiration
 
 ### **Contrôles d'Accès**
 - **Rôles** : Expéditeur, Voyageur, Admin
@@ -659,6 +1064,29 @@ Rating (N) ←→ (1) Shipment
 - **Dates** : Validation logique (départ < arrivée)
 - **OTP Livraison** : 6 chiffres exactement, expiration 24h
 - **Renvois OTP** : Maximum 3 renvois par envoi
+
+### **Contraintes Métier Spécifiques**
+- **Origine des trajets** : Doit être en Algérie uniquement
+- **Destination des trajets** : Ne peut pas être en Algérie (trajets internationaux uniquement)
+- **Types de colis acceptés** : Validation stricte des types autorisés
+- **Dates de départ** : Doivent être dans le futur
+- **Flexibilité des dates** : 0-30 jours maximum
+- **Vérification des trajets** : Seuls les trajets vérifiés peuvent accepter des colis
+- **Vérification des documents** : Processus multi-étapes avec scores de validation
+- **Internationalisation** : Support obligatoire FR/EN/AR avec fallback automatique
+- **Génération de documents** : Templates sécurisés avec validation des variables
+- **Chat et communication** : Messages chiffrés avec historique d'audit
+
+### **Règles de Validation Géographique**
+- **Trajets internationaux uniquement** : Origine en Algérie, destination hors Algérie
+- **Validation des pays** : Liste des pays autorisés pour les destinations
+- **Contraintes douanières** : Respect des réglementations d'import/export
+
+### **Règles de Validation Temporelle**
+- **Dates de départ** : Doivent être dans le futur (minimum 24h)
+- **Dates d'arrivée** : Doivent être après la date de départ
+- **Flexibilité** : Maximum 30 jours de flexibilité autorisés
+- **Expiration automatique** : Trajets expirés automatiquement marqués comme "expired"
 
 ### **Index de Performance**
 - Index sur les champs de recherche fréquents
@@ -700,6 +1128,9 @@ Rating (N) ←→ (1) Shipment
 ---
 
 **Document créé le :** 12 Août 2025  
-**Version :** 2.0  
+**Version :** 3.0  
 **Projet :** Kleer Logistics API  
-**Statut :** ✅ Fonctionnel avec système OTP de livraison et paiements algériens
+**Statut :** ✅ 9 modules sur 12 complétés (75% du backend)  
+**Modules terminés :** Users, Shipments, Trips, Matching, Payments, Admin Panel, Internationalization, Verification  
+**Modules en cours :** Analytics, Chat, Notifications, Documents  
+**Dernière mise à jour :** 24 Août 2025  

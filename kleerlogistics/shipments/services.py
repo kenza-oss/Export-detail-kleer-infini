@@ -1,7 +1,6 @@
 """
 Services pour la gestion des OTP de livraison
 Implémentation complète du système OTP de confirmation de livraison
-selon le cahier des charges Kleer Logistics
 """
 
 import random
@@ -371,6 +370,48 @@ class ShipmentDeliveryService:
         except Exception as e:
             logger.error(f"Error completing delivery for shipment {shipment.tracking_number}: {str(e)}")
             return False, f"Erreur lors de la finalisation: {str(e)}"
+    
+    @staticmethod
+    def confirm_delivery(shipment, delivery_notes, recipient_signature, traveler_user):
+        """
+        Confirme la livraison avec des notes et signature du destinataire.
+        
+        Args:
+            shipment: Instance du modèle Shipment
+            delivery_notes: Notes sur la livraison
+            recipient_signature: Signature du destinataire
+            traveler_user: Utilisateur voyageur
+            
+        Returns:
+            tuple: (success: bool, message: str)
+        """
+        try:
+            # Vérifier que l'envoi est en transit
+            if shipment.status != 'in_transit':
+                return False, "L'envoi doit être en transit pour confirmer la livraison"
+            
+            # Mettre à jour le statut de l'envoi
+            shipment.status = 'delivered'
+            shipment.delivery_date = timezone.now()
+            
+            # Ajouter les informations de confirmation
+            shipment.delivery_notes = delivery_notes
+            shipment.recipient_signature = recipient_signature
+            shipment.save()
+            
+            # Libérer le paiement au voyageur
+            payment_success, payment_message = ShipmentDeliveryService._release_traveler_payment(shipment)
+            
+            if payment_success:
+                logger.info(f"Delivery confirmed for shipment {shipment.tracking_number} by {traveler_user.username}")
+                return True, f"Livraison confirmée avec succès. {payment_message}"
+            else:
+                logger.warning(f"Delivery confirmed but payment release failed for shipment {shipment.tracking_number}")
+                return True, f"Livraison confirmée mais erreur de paiement: {payment_message}"
+                
+        except Exception as e:
+            logger.error(f"Error confirming delivery for shipment {shipment.tracking_number}: {str(e)}")
+            return False, f"Erreur lors de la confirmation: {str(e)}"
     
     @staticmethod
     def _release_traveler_payment(shipment):

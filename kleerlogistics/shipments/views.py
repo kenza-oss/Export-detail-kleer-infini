@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db import transaction
 from django.utils import timezone
+from django.apps import apps
 import uuid
 import random
 import string
@@ -15,6 +16,8 @@ from drf_yasg import openapi
 import logging
 
 from .models import Shipment, ShipmentTracking, Package, ShipmentDocument, ShipmentRating
+from matching.models import Match
+from users.permissions import IsAdminUser
 from .serializers import (
     ShipmentSerializer, ShipmentCreateSerializer, ShipmentDetailSerializer,
     ShipmentTrackingSerializer, ShipmentStatusSerializer, PackageSerializer,
@@ -415,36 +418,106 @@ class ShipmentMatchesView(APIView):
                 sender=request.user
             )
             
-            # Simuler des matches (en production, utiliser l'algorithme de matching)
+            # Récupérer les vrais matches depuis la base de données
             matches = []
+            
             if shipment.status == 'pending':
-                # Créer des matches fictifs pour la démonstration
-                matches = [
-                    {
-                        'id': 1,
+                # Récupérer les matches en attente
+                pending_matches = Match.objects.filter(
+                    shipment=shipment,
+                    status='pending'
+                ).select_related('trip', 'trip__traveler').order_by('-compatibility_score')
+                
+                for match in pending_matches:
+                    matches.append({
+                        'id': match.id,
                         'traveler': {
-                            'id': 2,
-                            'name': 'Ahmed Benali',
-                            'rating': 4.8,
-                            'total_trips': 15
+                            'id': match.trip.traveler.id,
+                            'name': f"{match.trip.traveler.first_name} {match.trip.traveler.last_name}",
+                            'rating': getattr(match.trip.traveler, 'rating', 0),
+                            'total_trips': apps.get_model('trips', 'Trip').objects.filter(traveler=match.trip.traveler, status='completed').count()
                         },
                         'trip': {
-                            'id': 1,
-                            'origin': shipment.origin,
-                            'destination': shipment.destination,
-                            'departure_date': '2024-02-15',
-                            'available_capacity': 5.0
+                            'id': match.trip.id,
+                            'origin': match.trip.origin_city,
+                            'destination': match.trip.destination_city,
+                            'departure_date': match.trip.departure_date.strftime('%Y-%m-%d'),
+                            'available_capacity': match.trip.remaining_weight
                         },
-                        'compatibility_score': 0.95,
-                        'estimated_cost': 150.00,
-                        'estimated_delivery': '2024-02-20'
-                    }
-                ]
+                        'compatibility_score': float(match.compatibility_score),
+                        'estimated_cost': float(match.proposed_price),
+                        'estimated_delivery': match.trip.arrival_date.strftime('%Y-%m-%d'),
+                        'status': 'available',
+                        'expires_at': match.expires_at.isoformat() if match.expires_at else None
+                    })
+                    
+            elif shipment.status == 'matched' and shipment.matched_trip:
+                # Récupérer le match accepté
+                accepted_match = Match.objects.filter(
+                    shipment=shipment,
+                    trip=shipment.matched_trip,
+                    status='accepted'
+                ).select_related('trip', 'trip__traveler').first()
+                
+                if accepted_match:
+                    matches.append({
+                        'id': accepted_match.id,
+                        'traveler': {
+                            'id': accepted_match.trip.traveler.id,
+                            'name': f"{accepted_match.trip.traveler.first_name} {accepted_match.trip.traveler.last_name}",
+                            'rating': getattr(accepted_match.trip.traveler, 'rating', 0),
+                            'total_trips': apps.get_model('trips', 'Trip').objects.filter(traveler=accepted_match.trip.traveler, status='completed').count()
+                        },
+                        'trip': {
+                            'id': accepted_match.trip.id,
+                            'origin': accepted_match.trip.origin_city,
+                            'destination': accepted_match.trip.destination_city,
+                            'departure_date': accepted_match.trip.departure_date.strftime('%Y-%m-%d'),
+                            'available_capacity': accepted_match.trip.remaining_weight
+                        },
+                        'compatibility_score': float(accepted_match.compatibility_score),
+                        'estimated_cost': float(accepted_match.proposed_price),
+                        'estimated_delivery': accepted_match.trip.arrival_date.strftime('%Y-%m-%d'),
+                        'status': 'accepted',
+                        'accepted_at': accepted_match.responded_at.isoformat() if accepted_match.responded_at else None
+                    })
+                    
+            elif shipment.status == 'in_transit' and shipment.matched_trip:
+                # Récupérer le match actif pendant le transport
+                active_match = Match.objects.filter(
+                    shipment=shipment,
+                    trip=shipment.matched_trip,
+                    status='accepted'
+                ).select_related('trip', 'trip__traveler').first()
+                
+                if active_match:
+                    matches.append({
+                        'id': active_match.id,
+                        'traveler': {
+                            'id': active_match.trip.traveler.id,
+                            'name': f"{active_match.trip.traveler.first_name} {active_match.trip.traveler.last_name}",
+                            'rating': getattr(active_match.trip.traveler, 'rating', 0),
+                            'total_trips': apps.get_model('trips', 'Trip').objects.filter(traveler=active_match.trip.traveler, status='completed').count()
+                        },
+                        'trip': {
+                            'id': active_match.trip.id,
+                            'origin': active_match.trip.origin_city,
+                            'destination': active_match.trip.destination_city,
+                            'departure_date': active_match.trip.departure_date.strftime('%Y-%m-%d'),
+                            'available_capacity': active_match.trip.remaining_weight
+                        },
+                        'compatibility_score': float(active_match.compatibility_score),
+                        'estimated_cost': float(active_match.proposed_price),
+                        'estimated_delivery': active_match.trip.arrival_date.strftime('%Y-%m-%d'),
+                        'status': 'active',
+                        'accepted_at': active_match.responded_at.isoformat() if active_match.responded_at else None
+                    })
             
             return Response({
                 'success': True,
                 'matches': matches,
-                'count': len(matches)
+                'count': len(matches),
+                'shipment_status': shipment.status
             })
         except Shipment.DoesNotExist:
             return Response({
@@ -466,17 +539,70 @@ class AcceptMatchView(APIView):
                 sender=request.user
             )
             
-            # En production, vérifier que le match existe et est valide
-            # Pour la démonstration, on simule l'acceptation
+            # Vérifier que le shipment est en attente
+            if shipment.status != 'pending':
+                return Response({
+                    'success': False,
+                    'message': f'Impossible d\'accepter un match pour un envoi avec le statut: {shipment.status}'
+                }, status=status.HTTP_400_BAD_REQUEST)
             
-            shipment.status = 'matched'
-            shipment.save()
+            # Récupérer le match depuis la base de données
+            try:
+                match = Match.objects.get(
+                    id=match_id,
+                    shipment=shipment,
+                    status='pending'
+                )
+            except Match.DoesNotExist:
+                return Response({
+                    'success': False,
+                    'message': 'Match non trouvé ou déjà traité'
+                }, status=status.HTTP_404_NOT_FOUND)
             
-            return Response({
-                'success': True,
-                'message': 'Match accepté avec succès',
-                'shipment_status': shipment.status
-            })
+            # Vérifier que le match peut être accepté
+            if not match.can_be_accepted:
+                return Response({
+                    'success': False,
+                    'message': 'Ce match ne peut pas être accepté'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Accepter le match en utilisant la méthode du modèle
+            try:
+                match.accept()
+                
+                # Récupérer les informations mises à jour
+                shipment.refresh_from_db()
+                
+                return Response({
+                    'success': True,
+                    'message': 'Match accepté avec succès',
+                    'shipment_status': shipment.status,
+                    'match_details': {
+                        'match_id': match.id,
+                        'accepted_at': match.responded_at.isoformat() if match.responded_at else None,
+                        'traveler': {
+                            'id': match.trip.traveler.id,
+                            'name': f"{match.trip.traveler.first_name} {match.trip.traveler.last_name}",
+                            'rating': getattr(match.trip.traveler, 'rating', 0)
+                        },
+                        'trip': {
+                            'id': match.trip.id,
+                            'origin': match.trip.origin_city,
+                            'destination': match.trip.destination_city,
+                            'departure_date': match.trip.departure_date.strftime('%Y-%m-%d'),
+                            'arrival_date': match.trip.arrival_date.strftime('%Y-%m-%d')
+                        },
+                        'compatibility_score': float(match.compatibility_score),
+                        'proposed_price': float(match.proposed_price)
+                    }
+                })
+                
+            except ValueError as e:
+                return Response({
+                    'success': False,
+                    'message': str(e)
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
         except Shipment.DoesNotExist:
             return Response({
                 'success': False,
@@ -551,7 +677,7 @@ class ProcessPaymentView(APIView):
 
 
 class GenerateDeliveryOTPView(APIView):
-    """Vue pour générer un OTP de livraison selon le cahier des charges."""
+    """Vue pour générer un OTP de livraison."""
     
     permission_classes = [permissions.IsAuthenticated]
     
@@ -648,9 +774,9 @@ class VerifyDeliveryOTPView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                'otp_code': openapi.Schema(type=openapi.TYPE_STRING, description="Code OTP à 6 chiffres fourni par le destinataire")
+                'otp': openapi.Schema(type=openapi.TYPE_STRING, description="Code OTP à 6 chiffres fourni par le destinataire")
             },
-            required=['otp_code']
+            required=['otp']
         ),
         responses={
             status.HTTP_200_OK: openapi.Response(
@@ -692,7 +818,7 @@ class VerifyDeliveryOTPView(APIView):
                 }, status=status.HTTP_403_FORBIDDEN)
             
             # Récupérer le code OTP
-            otp_code = request.data.get('otp_code')
+            otp_code = request.data.get('otp')
             if not otp_code:
                 return Response({
                     'success': False,
@@ -928,11 +1054,125 @@ class InitiateDeliveryProcessView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class ConfirmDeliveryView(APIView):
+    """Vue pour confirmer la livraison avec des notes et signature."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    @swagger_auto_schema(
+        operation_description="Confirme la livraison avec des notes et signature du destinataire",
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'delivery_notes': openapi.Schema(type=openapi.TYPE_STRING, description="Notes sur la livraison"),
+                'recipient_signature': openapi.Schema(type=openapi.TYPE_STRING, description="Signature du destinataire")
+            },
+            required=['delivery_notes', 'recipient_signature']
+        ),
+        responses={
+            status.HTTP_200_OK: openapi.Response(
+                description="Livraison confirmée avec succès",
+                examples={"application/json": {
+                    "success": True,
+                    "message": "Livraison confirmée avec succès",
+                    "delivery_confirmation": {
+                        "delivery_date": "2024-01-15T14:30:00Z",
+                        "recipient_name": "Ahmed Benali",
+                        "delivery_notes": "Livré en bon état",
+                        "recipient_signature": "Ahmed Benali",
+                        "payment_released": True,
+                        "amount_released": 3000.00
+                    }
+                }}
+            ),
+            status.HTTP_400_BAD_REQUEST: openapi.Response(
+                description="Erreur lors de la confirmation",
+                examples={"application/json": {
+                    "success": False,
+                    "message": "L'envoi doit être en transit pour confirmer la livraison"
+                }}
+            )
+        }
+    )
+    def post(self, request, tracking_number):
+        """Confirme la livraison avec des notes et signature."""
+        try:
+            # Récupérer l'envoi
+            shipment = Shipment.objects.get(
+                tracking_number=tracking_number,
+                sender=request.user
+            )
+            
+            # Vérifier que l'utilisateur est le voyageur associé
+            if shipment.matched_trip and shipment.matched_trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à confirmer la livraison pour cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Vérifier que l'envoi est en transit
+            if shipment.status != 'in_transit':
+                return Response({
+                    'success': False,
+                    'message': 'L\'envoi doit être en transit pour confirmer la livraison'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Récupérer les données de confirmation
+            delivery_notes = request.data.get('delivery_notes')
+            recipient_signature = request.data.get('recipient_signature')
+            
+            if not delivery_notes or not recipient_signature:
+                return Response({
+                    'success': False,
+                    'message': 'Notes de livraison et signature du destinataire sont requises'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Confirmer la livraison
+            from .services import ShipmentDeliveryService
+            success, message = ShipmentDeliveryService.confirm_delivery(
+                shipment, delivery_notes, recipient_signature, request.user
+            )
+            
+            if success:
+                # Récupérer les informations de confirmation
+                delivery_confirmation = {
+                    'delivery_date': shipment.delivery_date,
+                    'recipient_name': shipment.recipient_name,
+                    'delivery_notes': delivery_notes,
+                    'recipient_signature': recipient_signature,
+                    'payment_released': True,
+                    'amount_released': shipment.price if shipment.price else 0
+                }
+                
+                return Response({
+                    'success': True,
+                    'message': message,
+                    'delivery_confirmation': delivery_confirmation
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'message': message
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Shipment.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Envoi non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error confirming delivery: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de la confirmation de la livraison'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # Views pour l'administration
 class AdminShipmentListView(APIView):
     """Vue admin pour la liste de tous les envois."""
     
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         """Liste de tous les envois."""
@@ -949,7 +1189,7 @@ class AdminShipmentListView(APIView):
 class AdminShipmentDetailView(APIView):
     """Vue admin pour les détails d'un envoi."""
     
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminUser]
     
     def get(self, request, tracking_number):
         """Détails d'un envoi spécifique."""
@@ -1095,9 +1335,31 @@ class ShipmentDocumentListView(APIView):
                 sender=request.user
             )
             
-            serializer = ShipmentDocumentCreateSerializer(data=request.data)
+            # Gérer les fichiers multipart/form-data
+            data = request.data.copy()
+            
+            # Si c'est un fichier multipart, traiter correctement
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # Les données sont déjà dans request.data
+                pass
+            else:
+                # Pour les requêtes JSON, vérifier si un fichier est fourni
+                if 'file' not in request.FILES:
+                    return Response({
+                        'success': False,
+                        'message': 'Un fichier est requis pour l\'upload'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            
+            serializer = ShipmentDocumentCreateSerializer(data=data, files=request.FILES)
             if serializer.is_valid():
                 document = serializer.save(shipment=shipment)
+                
+                # Mettre à jour les métadonnées du fichier
+                if document.file:
+                    document.file_size = document.file.size
+                    document.mime_type = document.file.content_type
+                    document.save()
+                
                 response_serializer = ShipmentDocumentSerializer(document)
                 
                 return Response({
@@ -1115,6 +1377,12 @@ class ShipmentDocumentListView(APIView):
                 'success': False,
                 'message': 'Envoi non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error uploading document: {str(e)}")
+            return Response({
+                'success': False,
+                'message': 'Erreur lors de l\'upload du document'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ShipmentDocumentDetailView(APIView):
@@ -1286,7 +1554,7 @@ class ShipmentWithAllDetailsView(APIView):
 class AdminPackageListView(APIView):
     """Vue admin pour la liste de tous les colis."""
     
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         """Liste de tous les colis."""
@@ -1303,7 +1571,7 @@ class AdminPackageListView(APIView):
 class AdminDocumentListView(APIView):
     """Vue admin pour la liste de tous les documents."""
     
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         """Liste de tous les documents."""
@@ -1320,7 +1588,7 @@ class AdminDocumentListView(APIView):
 class AdminRatingListView(APIView):
     """Vue admin pour la liste de toutes les évaluations."""
     
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [IsAdminUser]
     
     def get(self, request):
         """Liste de toutes les évaluations."""

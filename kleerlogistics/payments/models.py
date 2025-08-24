@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
 import uuid
 
 User = get_user_model()
@@ -35,10 +36,15 @@ class Wallet(models.Model):
     @property
     def available_balance(self):
         """Solde disponible (balance - pending)."""
-        return self.balance - self.pending_balance
+        # S'assurer que les deux valeurs sont des Decimal
+        balance = Decimal(str(self.balance))
+        pending_balance = Decimal(str(self.pending_balance))
+        return balance - pending_balance
     
     def can_withdraw(self, amount):
         """Vérifie si le retrait est possible."""
+        # Convertir amount en Decimal si ce n'est pas déjà le cas
+        amount = Decimal(str(amount))
         return self.available_balance >= amount
     
     def add_funds(self, amount, transaction_type='credit'):
@@ -46,12 +52,17 @@ class Wallet(models.Model):
         if amount <= 0:
             raise ValueError("Le montant doit être positif")
         
+        # Convertir en Decimal pour éviter les problèmes de type
+        amount = Decimal(str(amount))
+        
+        # S'assurer que balance est aussi un Decimal
+        self.balance = Decimal(str(self.balance))
         self.balance += amount
         
         if transaction_type == 'earning':
-            self.total_earned += amount
+            self.total_earned = Decimal(str(self.total_earned)) + amount
         elif transaction_type == 'refund':
-            self.total_spent -= amount
+            self.total_spent = Decimal(str(self.total_spent)) - amount
         
         self.save()
     
@@ -60,13 +71,18 @@ class Wallet(models.Model):
         if amount <= 0:
             raise ValueError("Le montant doit être positif")
         
+        # Convertir en Decimal pour éviter les problèmes de type
+        amount = Decimal(str(amount))
+        
         if not self.can_withdraw(amount):
             raise ValueError("Solde insuffisant")
         
+        # S'assurer que balance est aussi un Decimal
+        self.balance = Decimal(str(self.balance))
         self.balance -= amount
         
         if transaction_type == 'payment':
-            self.total_spent += amount
+            self.total_spent = Decimal(str(self.total_spent)) + amount
         
         self.save()
     
@@ -75,9 +91,14 @@ class Wallet(models.Model):
         if amount <= 0:
             raise ValueError("Le montant doit être positif")
         
+        # Convertir en Decimal pour éviter les problèmes de type
+        amount = Decimal(str(amount))
+        
         if not self.can_withdraw(amount):
             raise ValueError("Solde insuffisant")
         
+        # S'assurer que pending_balance est aussi un Decimal
+        self.pending_balance = Decimal(str(self.pending_balance))
         self.pending_balance += amount
         self.save()
     
@@ -85,6 +106,12 @@ class Wallet(models.Model):
         """Libère les fonds en attente."""
         if amount <= 0:
             raise ValueError("Le montant doit être positif")
+        
+        # Convertir en Decimal pour éviter les problèmes de type
+        amount = Decimal(str(amount))
+        
+        # S'assurer que pending_balance est aussi un Decimal
+        self.pending_balance = Decimal(str(self.pending_balance))
         
         if self.pending_balance < amount:
             raise ValueError("Montant en attente insuffisant")
@@ -96,6 +123,13 @@ class Wallet(models.Model):
         """Confirme une mise en attente (déduit du solde principal)."""
         if amount <= 0:
             raise ValueError("Le montant doit être positif")
+        
+        # Convertir en Decimal pour éviter les problèmes de type
+        amount = Decimal(str(amount))
+        
+        # S'assurer que les balances sont aussi des Decimal
+        self.pending_balance = Decimal(str(self.pending_balance))
+        self.balance = Decimal(str(self.balance))
         
         if self.pending_balance < amount:
             raise ValueError("Montant en attente insuffisant")
@@ -227,10 +261,19 @@ class Transaction(models.Model):
         self.save()
         
         # Mettre à jour le portefeuille si nécessaire
+        wallet, created = Wallet.objects.get_or_create(user=self.user)
         if self.type in ['deposit', 'earning', 'refund']:
-            self.user.wallet.add_funds(self.amount, self.type)
-        elif self.type in ['withdrawal', 'payment']:
-            self.user.wallet.deduct_funds(self.amount, self.type)
+            wallet.add_funds(self.amount, self.type)
+        elif self.type == 'withdrawal':
+            wallet.deduct_funds(self.amount, self.type)
+        elif self.type == 'payment':
+            # Pour les paiements par carte, on ajoute les fonds au portefeuille
+            # car c'est un paiement entrant (l'utilisateur paie pour un service)
+            if self.payment_method in ['cib', 'eddahabia', 'card', 'chargily']:
+                wallet.add_funds(self.amount, 'payment')
+            else:
+                # Pour les autres méthodes (espèces, etc.), on déduit
+                wallet.deduct_funds(self.amount, self.type)
     
     def fail(self, reason=""):
         """Marque la transaction comme échouée."""

@@ -92,8 +92,8 @@ class OTPCode(models.Model):
     """Modèle pour gérer les codes OTP de manière sécurisée"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='otp_codes', null=True, blank=True)
     phone_number = models.CharField(max_length=15)
-    # Stocke le hash du code (hex sha256 => 64 chars)
-    code = models.CharField(max_length=64)
+    # Stocke le hash du code (hex sha256 + salt => ~77 chars)
+    code = models.CharField(max_length=80)
     is_used = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
@@ -150,8 +150,13 @@ class UserDocument(models.Model):
     DOCUMENT_TYPES = [
         ('passport', 'Passeport'),
         ('national_id', 'Carte d\'identité nationale'),
+        ('id_card', 'Carte d\'identité'),
+        ('driver_license', 'Permis de conduire'),
         ('flight_ticket', 'Billet d\'avion'),
-        ('address_proof', 'Justificatif de domicile')
+        ('address_proof', 'Justificatif de domicile'),
+        ('birth_certificate', 'Acte de naissance'),
+        ('marriage_certificate', 'Acte de mariage'),
+        ('other', 'Autre document')
     ]
     
     STATUS_CHOICES = [

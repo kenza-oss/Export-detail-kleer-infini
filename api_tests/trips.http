@@ -1,0 +1,635 @@
+### ========================================
+### TRIPS API - Tests complets pour tous les endpoints
+### ========================================
+
+@baseUrl = http://localhost:8000/api/v1/trips
+@authToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTY2NjAyLCJpYXQiOjE3NTU5NjMwMDIsImp0aSI6IjQ0OTQ1Y2U5ZDk5MjQ0M2JhNWUwZTNiN2MwMTFhNzg0IiwidXNlcl9pZCI6IjEwIn0.eMcpmBRukHOMFV4FvFSVNxrtpJXd9tYNX4njOZ9VKXY
+@adminToken = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODczMDAwLCJpYXQiOjE3NTU4Njk0MDAsImp0aSI6IjhjYjFlMzI2ZTY2YTQxYzhiMGEyZmI5OTU1Y2U1ZjdmIiwidXNlcl9pZCI6IjYifQ.eJ7uHxgdJdFwxuy668kggCGWP3-9ZDdKANyS4DExYu0
+@contentType = application/json
+
+### ========================================
+### 1. TRIP CRUD - Opérations de base
+### ========================================
+
+### 1.1 Lister tous les trajets de l'utilisateur
+GET {{baseUrl}}/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 1.2 Lister les trajets avec filtres
+GET {{baseUrl}}/?status=active&date_from=2025-09-01&date_to=2025-09-30
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 1.3 Créer un nouveau trajet
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 15.00,
+    "accepted_package_types": ["document", "electronics"],
+    "flexible_dates": true,
+    "flexibility_days": 3,
+    "notes": "Trajet Alger-Paris avec capacité pour documents et électroniques"
+}
+
+### 1.4 Obtenir les détails d'un trajet
+GET {{baseUrl}}/10/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 1.5 Mettre à jour un trajet
+PUT {{baseUrl}}/9/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "max_weight": 75.0,
+    "max_packages": 8,
+    "min_price_per_kg": 18.00,
+    "notes": "Trajet mis à jour avec plus de capacité"
+}
+
+### 1.6 Supprimer un trajet
+DELETE {{baseUrl}}/9/delete/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 2. GESTION DES STATUTS
+### ========================================
+
+### 2.1 Obtenir le statut d'un trajet
+GET {{baseUrl}}/10/status/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 2.2 Mettre à jour le statut d'un trajet
+PATCH {{baseUrl}}/10/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "active"
+}
+
+### 2.3 Activer un trajet (draft → active)
+PATCH {{baseUrl}}/10/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "active"
+}
+
+### 2.4 Marquer un trajet comme en cours
+PATCH {{baseUrl}}/9/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "in_progress"
+}
+
+### 2.5 Terminer un trajet
+PATCH {{baseUrl}}/10/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "completed"
+}
+
+### 2.6 Annuler un trajet
+PATCH {{baseUrl}}/9/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "cancelled"
+}
+
+### ========================================
+### 3. TRAJETS DISPONIBLES
+### ========================================
+
+### 3.1 Lister tous les trajets disponibles
+GET {{baseUrl}}/available/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 3.2 Rechercher des trajets disponibles avec filtres
+GET {{baseUrl}}/available/?origin=Alger&destination=Oran&date_from=2025-09-01&max_weight=50
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 4. GESTION DES DOCUMENTS
+### ========================================
+
+### 4.1 Lister les documents d'un trajet
+GET {{baseUrl}}/10/documents/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 4.2 Uploader un document pour un trajet
+POST {{baseUrl}}/10/documents/upload/
+Authorization: Bearer {{authToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="document_type"
+
+passport
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="passport.pdf"
+Content-Type: application/pdf
+
+< ./passport.pdf
+------WebKitFormBoundary--
+
+### 4.3 Vérifier un document (admin)
+PATCH {{baseUrl}}/1/documents/10/
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "is_verified": true,
+    "verification_notes": "Document valide"
+}
+
+### ========================================
+### 5. GESTION DE LA CAPACITÉ
+### ========================================
+
+### 5.1 Mettre à jour la capacité d'un trajet
+PATCH {{baseUrl}}/10/capacity/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "max_weight": 80.0,
+    "max_packages": 10,
+    "remaining_weight": 80.0
+}
+
+### ========================================
+### 6. RECHERCHE DE TRAJETS
+### ========================================
+
+### 6.1 Recherche simple
+GET {{baseUrl}}/search/?query=Alger Oran
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 6.2 Recherche avancée avec filtres
+GET {{baseUrl}}/search/?origin=Alger&destination=Oran&date_from=2025-09-01&date_to=2025-09-30&max_weight=50&package_types=document,electronics&price_min=10&price_max=25
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 6.3 Recherche par géolocalisation
+GET {{baseUrl}}/search/?lat_origin=36.7538&lng_origin=3.0588&lat_dest=35.6979&lng_dest=-0.6339&radius=50
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 7. MATCHING ET ACCEPTATION
+### ========================================
+
+### 7.1 Voir les correspondances pour un trajet
+GET {{baseUrl}}/10/matches/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 7.2 Accepter un envoi pour un trajet
+POST {{baseUrl}}/10/matches/3/accept/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "accepted": true,
+    "notes": "Envoi accepté, prêt pour le transport"
+}
+
+### 7.3 Refuser un envoi
+POST {{baseUrl}}/10/matches/3/accept/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "accepted": false,
+    "reason": "Capacité insuffisante"
+}
+
+### ========================================
+### 8. ANALYTIQUES ET STATISTIQUES
+### ========================================
+
+### 8.1 Obtenir les statistiques des trajets
+GET {{baseUrl}}/analytics/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 8.2 Statistiques avec filtres temporels
+GET {{baseUrl}}/analytics/?period=month&year=2024&month=2
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 8.3 Statistiques de revenus
+GET {{baseUrl}}/analytics/?metrics=revenue,earnings&group_by=month
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 9. CALENDRIER DES TRAJETS
+### ========================================
+
+### 9.1 Voir le calendrier des trajets
+GET {{baseUrl}}/calendar/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 9.2 Calendrier avec filtres
+GET {{baseUrl}}/calendar/?month=2&year=2024&status=active
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 10. ENDPOINTS ADMINISTRATEUR
+### ========================================
+
+### 10.1 Liste des trajets (admin)
+GET {{baseUrl}}/admin/trips/
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+### 10.2 Détails d'un trajet (admin)
+GET {{baseUrl}}/admin/trips/9/
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+### 10.3 Modifier un trajet (admin)
+PUT {{baseUrl}}/admin/trips/9/
+Authorization: Bearer {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "verified",
+    "admin_notes": "Trajet vérifié et approuvé"
+}
+
+### ========================================
+### 11. TESTS DE VALIDATION ET ERREURS
+### ========================================
+
+### 11.1 Test avec données invalides
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "",
+    "destination_city": "",
+    "departure_date": "invalid-date",
+    "max_weight": -5
+}
+
+### 11.2 Test sans authentification
+GET {{baseUrl}}/
+
+### 11.3 Test avec token invalide
+GET {{baseUrl}}/
+Authorization: Bearer invalid_token
+
+### 11.4 Test d'accès à un trajet inexistant
+GET {{baseUrl}}/999999/
+Authorization: Bearer {{authToken}}
+
+### ========================================
+### 12. TESTS DE PERFORMANCE
+### ========================================
+
+### 12.1 Test avec pagination
+GET {{baseUrl}}/?page=1&page_size=20
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### 12.2 Test de recherche avec beaucoup de résultats
+GET {{baseUrl}}/search/?query=Alger
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 13. TESTS DE SÉCURITÉ
+### ========================================
+
+### 13.1 Test d'accès à un trajet d'un autre utilisateur
+GET {{baseUrl}}/2/
+Authorization: Bearer {{authToken}}
+
+### 13.2 Test de modification d'un trajet d'un autre utilisateur
+PUT {{baseUrl}}/2/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "max_weight": 50
+}
+
+### ========================================
+### 14. VARIABLES D'ENVIRONNEMENT
+### ========================================
+
+### Définir des variables pour les tests
+@tripId = 9
+@shipmentId = 9
+@documentId = 9
+@originCity = Alger
+@destinationCity = Oran
+@departureDate = 2025-09-15T08:00:00Z
+@maxWeight = 50.0
+@minPrice = 15.00
+
+### ========================================
+### 15. TESTS AVEC VARIABLES
+### ========================================
+
+### 15.1 Créer un trajet avec variables
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "{{originCity}}",
+    "origin_country": "Algeria",
+    "destination_city": "{{destinationCity}}",
+    "destination_country": "France",
+    "departure_date": "{{departureDate}}",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": {{maxWeight}},
+    "max_packages": 5,
+    "min_price_per_kg": {{minPrice}},
+    "accepted_package_types": ["document", "electronics"]
+}
+
+### 15.2 Obtenir un trajet spécifique avec variable
+GET {{baseUrl}}/{{tripId}}/
+Authorization: Bearer {{authToken}}
+
+### 15.3 Accepter un envoi avec variables
+POST {{baseUrl}}/{{tripId}}/matches/{{shipmentId}}/accept/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "accepted": true,
+    "notes": "Envoi accepté pour le trajet {{tripId}}"
+}
+
+### ========================================
+### 16. TESTS DE CAS D'USAGE RÉELS
+### ========================================
+
+### 16.1 Créer un trajet pour un voyage d'affaires
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Lyon",
+    "destination_country": "France",
+    "departure_date": "2025-10-01T06:00:00Z",
+    "arrival_date": "2025-10-01T18:00:00Z",
+    "max_weight": 30.0,
+    "max_packages": 3,
+    "min_price_per_kg": 20.00,
+    "accepted_package_types": ["document", "electronics"],
+    "flexible_dates": false,
+    "flexibility_days": 0,
+    "accepts_fragile": true,
+    "notes": "Voyage d'affaires Alger-Lyon, transport de documents et équipements électroniques"
+}
+
+### 16.2 Créer un trajet flexible pour vacances
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Oran",
+    "origin_country": "Algeria",
+    "destination_city": "Marseille",
+    "destination_country": "France",
+    "departure_date": "2025-07-15T10:00:00Z",
+    "arrival_date": "2025-07-15T22:00:00Z",
+    "max_weight": 40.0,
+    "max_packages": 4,
+    "min_price_per_kg": 12.00,
+    "accepted_package_types": ["clothing", "food", "other"],
+    "flexible_dates": true,
+    "flexibility_days": 5,
+    "accepts_fragile": false,
+    "notes": "Voyage vacances Oran-Marseille, dates flexibles"
+}
+
+### 16.3 Rechercher des trajets pour un envoi spécifique
+GET {{baseUrl}}/search/?origin=Alger&destination=Paris&date_from=2025-09-01&date_to=2025-09-30&max_weight=25&package_types=document&price_max=20
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 17. TESTS DE VALIDATION MÉTIER
+### ========================================
+
+### 17.1 Test validation origine Algérie
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Paris",
+    "origin_country": "France",
+    "destination_city": "Alger",
+    "destination_country": "Algeria",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 15.00
+}
+
+### 17.2 Test validation destination hors Algérie
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Oran",
+    "destination_country": "Algeria",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 15.00
+}
+
+### 17.3 Test validation dates flexibles
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 15.00,
+    "flexible_dates": true,
+    "flexibility_days": 0
+}
+
+### ========================================
+### 18. TESTS DE PERFORMANCE ET LIMITES
+### ========================================
+
+### 18.1 Test avec poids maximum
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 100.0,
+    "max_packages": 50,
+    "min_price_per_kg": 15.00
+}
+
+### 18.2 Test avec prix maximum
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 1000.00
+}
+
+### ========================================
+### 19. TESTS D'INTÉGRATION
+### ========================================
+
+### 19.1 Workflow complet : Créer → Activer → Rechercher → Accepter envoi
+# Étape 1: Créer un trajet
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Lyon",
+    "destination_country": "France",
+    "departure_date": "2025-11-01T08:00:00Z",
+    "arrival_date": "2025-11-01T20:00:00Z",
+    "max_weight": 25.0,
+    "max_packages": 3,
+    "min_price_per_kg": 18.00,
+    "accepted_package_types": ["document", "electronics"],
+    "accepts_fragile": true,
+    "notes": "Trajet test pour workflow complet"
+}
+
+# Étape 2: Activer le trajet
+PATCH {{baseUrl}}/{{tripId}}/status/update/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "status": "active"
+}
+
+# Étape 3: Rechercher le trajet
+GET {{baseUrl}}/search/?origin=Alger&destination=Lyon&date_from=2025-11-01
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+# Étape 4: Voir les correspondances
+GET {{baseUrl}}/{{tripId}}/matches/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### 20. TESTS DE RÉCUPÉRATION D'ERREURS
+### ========================================
+
+### 20.1 Test avec données manquantes
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger"
+}
+
+### 20.2 Test avec types de données incorrects
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2025-09-15T08:00:00Z",
+    "arrival_date": "2025-09-15T20:00:00Z",
+    "max_weight": "invalid_weight",
+    "max_packages": "invalid_packages",
+    "min_price_per_kg": "invalid_price"
+}
+
+### 20.3 Test avec dates invalides
+POST {{baseUrl}}/create/
+Authorization: Bearer {{authToken}}
+Content-Type: {{contentType}}
+
+{
+    "origin_city": "Alger",
+    "origin_country": "Algeria",
+    "destination_city": "Paris",
+    "destination_country": "France",
+    "departure_date": "2020-01-01T08:00:00Z",
+    "arrival_date": "2020-01-01T06:00:00Z",
+    "max_weight": 50.0,
+    "max_packages": 5,
+    "min_price_per_kg": 15.00
+}

@@ -1,220 +1,529 @@
-### ========================================
-### DELIVERY OTP SYSTEM TESTS
-### Système OTP de livraison selon le cahier des charges
-### ========================================
+### KleerLogistics Delivery OTP API - Envoi Automatique de Codes OTP
+### Tests pour le module d'envoi automatique de codes OTP au destinataire avant la remise du colis
 
-### Configuration
-@baseUrl = http://localhost:8000/api/v1
-@authToken = Bearer YOUR_JWT_TOKEN_HERE
+# Base URL: http://localhost:8000/api/v1/shipments/
+# Authentication: Bearer Token required for all endpoints
 
-### ========================================
-### 1. INITIER LE PROCESSUS DE LIVRAISON
-### ========================================
-
-### Initier le processus de livraison (voyageur prend le colis)
-POST {{baseUrl}}/shipments/KL177711228/delivery/initiate/
-Authorization: {{authToken}}
-Content-Type: application/json
-
-# Cette action :
-# - Met l'envoi en statut "in_transit"
-# - Génère automatiquement l'OTP de livraison
-# - Envoie le SMS au destinataire
+### Variables d'environnement
+@baseUrl = http://localhost:8000/api/v1/shipments
+@contentType = application/json
+@adminToken = Bearer YOUR_ADMIN_TOKEN_HERE
+@userToken = Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MjE1ODQwLCJpYXQiOjE3NTUyMTIyNDAsImp0aSI6ImY0N2M5OTdkNzEwOTRkMThiMjM0MGFlMmMyYWIwYWNkIiwidXNlcl9pZCI6IjYifQ.wqMCCOv4NRJ7H2OKpXAPg-P_jbF2SRdTknUAb9B58Zk
+@senderToken = Bearer YOUR_SENDER_TOKEN_HERE
+@travelerToken = Bearer YOUR_TRAVELER_TOKEN_HERE
 
 ### ========================================
-### 2. GÉNÉRER OTP DE LIVRAISON
+### AUTHENTICATION
 ### ========================================
 
-### Générer un OTP de livraison manuellement
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/generate/
-Authorization: {{authToken}}
-Content-Type: application/json
-
-# Réponse attendue :
-# {
-#   "success": true,
-#   "message": "OTP de livraison généré et envoyé au destinataire",
-#   "otp_info": {
-#     "recipient_name": "Ahmed Benali",
-#     "recipient_phone": "+213XXXXXXXXX",
-#     "expires_at": "2024-01-15T14:30:00Z",
-#     "time_remaining_minutes": 1440
-#   }
-# }
-
-### ========================================
-### 3. VÉRIFIER LE STATUT DE L'OTP
-### ========================================
-
-### Récupérer le statut de l'OTP de livraison
-GET {{baseUrl}}/shipments/KL177711228/delivery/otp/status/
-Authorization: {{authToken}}
-
-# Réponse attendue :
-# {
-#   "success": true,
-#   "otp_status": {
-#     "has_active_otp": true,
-#     "has_used_otp": false,
-#     "otp_generated_at": "2024-01-15T10:30:00Z",
-#     "otp_expires_at": "2024-01-16T10:30:00Z",
-#     "time_remaining_minutes": 1200,
-#     "recipient_name": "Ahmed Benali",
-#     "recipient_phone": "+213XXXXXXXXX"
-#   }
-# }
-
-### ========================================
-### 4. RENVOYER L'OTP AU DESTINATAIRE
-### ========================================
-
-### Renvoyer l'OTP de livraison (si le destinataire ne l'a pas reçu)
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/resend/
-Authorization: {{authToken}}
-Content-Type: application/json
-
-# Réponse attendue :
-# {
-#   "success": true,
-#   "message": "OTP de livraison renvoyé avec succès"
-# }
-
-### ========================================
-### 5. VÉRIFIER L'OTP ET CONFIRMER LA LIVRAISON
-### ========================================
-
-### Vérifier l'OTP fourni par le destinataire
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
-Authorization: {{authToken}}
-Content-Type: application/json
+### 0. Connexion utilisateur (pour obtenir un token valide)
+# @name login
+POST http://localhost:8000/api/v1/users/auth/login/
+Content-Type: {{contentType}}
 
 {
-    "otp_code": "123456"
+    "username": "testuser",
+    "password": "TestPass123!"
 }
 
-# Réponse attendue :
-# {
-#   "success": true,
-#   "message": "Livraison confirmée avec succès. Paiement de 3000 DA libéré au voyageur",
-#   "delivery_info": {
-#     "delivery_date": "2024-01-15T14:30:00Z",
-#     "recipient_name": "Ahmed Benali",
-#     "payment_released": true,
-#     "amount_released": 3000.00
-#   }
-# }
-
 ### ========================================
-### 6. CAS D'ERREUR - OTP INVALIDE
+### GÉNÉRATION D'OTP DE LIVRAISON
 ### ========================================
 
-### Tenter de vérifier un OTP incorrect
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
-Authorization: {{authToken}}
-Content-Type: application/json
+### 1. Générer un OTP de livraison (Voyageur)
+# Le voyageur génère un code OTP à 6 chiffres qui sera envoyé au destinataire
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
 
 {
-    "otp_code": "000000"
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali"
 }
 
-# Réponse attendue :
-# {
-#   "success": false,
-#   "message": "Code OTP invalide ou expiré"
-# }
-
-### ========================================
-### 7. CAS D'ERREUR - OTP EXPIRÉ
-### ========================================
-
-### Tenter de vérifier un OTP expiré
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
-Authorization: {{authToken}}
-Content-Type: application/json
+### 1.1 Générer un OTP avec informations complètes
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
 
 {
-    "otp_code": "999999"
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali",
+    "delivery_instructions": "Livrer au destinataire uniquement, signature requise",
+    "preferred_delivery_time": "09:00-17:00"
 }
 
-# Réponse attendue :
-# {
-#   "success": false,
-#   "message": "Code OTP invalide ou expiré"
-# }
-
-### ========================================
-### 8. CAS D'ERREUR - NON AUTORISÉ
-### ========================================
-
-### Tenter de générer un OTP sans être le voyageur associé
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/generate/
-Authorization: Bearer OTHER_USER_TOKEN
-Content-Type: application/json
-
-# Réponse attendue :
-# {
-#   "success": false,
-#   "message": "Vous n'êtes pas autorisé à générer l'OTP pour cet envoi"
-# }
-
-### ========================================
-### 9. CAS D'ERREUR - ENVOI NON EN TRANSIT
-### ========================================
-
-### Tenter de générer un OTP pour un envoi non en transit
-POST {{baseUrl}}/shipments/KL177711229/delivery/otp/generate/
-Authorization: {{authToken}}
-Content-Type: application/json
-
-# Réponse attendue :
-# {
-#   "success": false,
-#   "message": "L'envoi doit être en transit pour générer un OTP de livraison"
-# }
-
-### ========================================
-### 10. FLUX COMPLET DE LIVRAISON
-### ========================================
-
-### Étape 1: Voyageur prend le colis et initie la livraison
-POST {{baseUrl}}/shipments/KL177711228/delivery/initiate/
-Authorization: {{authToken}}
-Content-Type: application/json
-
-### Étape 2: Vérifier le statut de l'OTP
-GET {{baseUrl}}/shipments/KL177711228/delivery/otp/status/
-Authorization: {{authToken}}
-
-### Étape 3: Destinataire reçoit le SMS avec l'OTP
-# Le destinataire reçoit un SMS comme :
-# "Bonjour Ahmed Benali, votre colis KL177711228 arrive bientôt. 
-# Code de livraison: 123456. Remettez ce code au livreur pour confirmer la réception. 
-# Ce code expire dans 24h. - KleerLogistics"
-
-### Étape 4: Voyageur vérifie l'OTP fourni par le destinataire
-POST {{baseUrl}}/shipments/KL177711228/delivery/otp/verify/
-Authorization: {{authToken}}
-Content-Type: application/json
+### 1.2 Générer un OTP pour un envoi urgent
+POST {{baseUrl}}/KL87654321/delivery/otP/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
 
 {
-    "otp_code": "123456"
+    "recipient_phone": "+213 987 654 321",
+    "recipient_name": "Fatima Zahra",
+    "urgency_level": "high",
+    "delivery_instructions": "Livraison urgente - médicaments"
 }
 
-### Étape 5: Livraison confirmée et paiement libéré
-# Le système :
-# - Confirme la livraison
-# - Libère le paiement au voyageur
-# - Met à jour les statistiques
-
 ### ========================================
-### NOTES IMPORTANTES
+### VÉRIFICATION D'OTP DE LIVRAISON
 ### ========================================
 
-# 1. L'OTP est généré automatiquement quand le voyageur initie la livraison
-# 2. Le SMS est envoyé au destinataire avec le code à 6 chiffres
-# 3. Le destinataire remet le code au voyageur
-# 4. Le voyageur saisit le code dans l'application
-# 5. La livraison est confirmée et le paiement libéré
-# 6. L'OTP expire après 24h
-# 7. Maximum 3 renvois d'OTP autorisés
-# 8. Seul le voyageur associé peut vérifier l'OTP
+### 2. Vérifier l'OTP de livraison (Voyageur)
+# Le voyageur saisit le code OTP fourni par le destinataire pour confirmer la livraison
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Colis livré en mains propres au destinataire",
+    "delivery_location": "Bureau principal, 3ème étage"
+}
+
+### 2.1 Vérifier l'OTP avec photo de preuve
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="otp_code"
+
+123456
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="delivery_notes"
+
+Colis livré avec succès
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="delivery_location"
+
+Bureau principal, 3ème étage
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="proof_photo"; filename="delivery_proof.jpg"
+Content-Type: image/jpeg
+
+< ./test_files/delivery_proof.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### 2.2 Vérifier l'OTP avec signature électronique
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Colis livré avec signature du destinataire",
+    "delivery_location": "Bureau principal, 3ème étage",
+    "recipient_signature": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "delivery_confirmation": true
+}
+
+### ========================================
+### RÉENVOI D'OTP DE LIVRAISON
+### ========================================
+
+### 3. Réenvoyer l'OTP de livraison
+# En cas d'échec de réception du premier SMS, le voyageur peut réenvoyer l'OTP
+POST {{baseUrl}}/KL12345678/delivery/otp/resend/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "SMS non reçu par le destinataire",
+    "new_recipient_phone": "+213 123 456 789",
+    "delivery_method": "sms"
+}
+
+### 3.1 Réenvoyer l'OTP par email
+POST {{baseUrl}}/KL12345678/delivery/otp/resend/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "SMS non reçu, envoi par email",
+    "recipient_email": "ahmed.benali@example.com",
+    "delivery_method": "email"
+}
+
+### 3.2 Réenvoyer l'OTP par WhatsApp
+POST {{baseUrl}}/KL12345678/delivery/otp/resend/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "SMS non reçu, envoi par WhatsApp",
+    "recipient_whatsapp": "+213 123 456 789",
+    "delivery_method": "whatsapp"
+}
+
+### ========================================
+### STATUT ET SUIVI DES OTP
+### ========================================
+
+### 4. Vérifier le statut de l'OTP de livraison
+# Le voyageur peut vérifier le statut de l'OTP généré
+GET {{baseUrl}}/KL12345678/delivery/otp/status/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### 4.1 Statut avec détails complets
+GET {{baseUrl}}/KL12345678/delivery/otp/status/?include_details=true
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### 4.2 Statut avec historique
+GET {{baseUrl}}/KL12345678/delivery/otp/status/?include_history=true
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### GESTION DES OTP EXPIRÉS
+### ========================================
+
+### 5. Régénérer un OTP expiré
+# Si l'OTP a expiré, le voyageur peut en générer un nouveau
+POST {{baseUrl}}/KL12345678/delivery/otp/regenerate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "OTP expiré, nouvelle tentative de livraison",
+    "extended_expiry": true
+}
+
+### 5.1 Régénérer avec durée d'expiration personnalisée
+POST {{baseUrl}}/KL12345678/delivery/otp/regenerate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "Livraison programmée pour demain",
+    "custom_expiry_hours": 48,
+    "delivery_scheduled": true
+}
+
+### ========================================
+### NOTIFICATIONS ET ALERTES
+### ========================================
+
+### 6. Configurer les notifications OTP
+# Le voyageur peut configurer les notifications pour les OTP
+POST {{baseUrl}}/KL12345678/delivery/otp/notifications/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "sms_notifications": true,
+    "email_notifications": true,
+    "whatsapp_notifications": false,
+    "push_notifications": true,
+    "reminder_before_expiry": 60
+}
+
+### 6.1 Notifications personnalisées
+POST {{baseUrl}}/KL12345678/delivery/otp/notifications/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "sms_notifications": true,
+    "email_notifications": true,
+    "whatsapp_notifications": true,
+    "push_notifications": true,
+    "reminder_before_expiry": 120,
+    "custom_message": "Votre code de livraison KleerLogistics arrive bientôt !",
+    "language": "ar"
+}
+
+### ========================================
+### SÉCURITÉ ET VALIDATION
+### ========================================
+
+### 7. Valider l'OTP avec vérification de sécurité
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Colis livré avec vérification d'identité",
+    "delivery_location": "Bureau principal, 3ème étage",
+    "identity_verified": true,
+    "recipient_id_type": "passport",
+    "recipient_id_number": "A12345678"
+}
+
+### 7.1 Vérification avec géolocalisation
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Colis livré avec confirmation GPS",
+    "delivery_location": "Bureau principal, 3ème étage",
+    "gps_coordinates": {
+        "latitude": 36.7538,
+        "longitude": 3.0588
+    },
+    "location_accuracy": "high"
+}
+
+### ========================================
+### RAPPORTS ET ANALYTICS
+### ========================================
+
+### 8. Obtenir les statistiques des OTP
+# Le voyageur peut consulter ses statistiques de livraison
+GET {{baseUrl}}/delivery/otp/statistics/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### 8.1 Statistiques avec filtres
+GET {{baseUrl}}/delivery/otp/statistics/?period=month&status=delivered
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### 8.2 Statistiques détaillées
+GET {{baseUrl}}/delivery/otp/statistics/?include_details=true&group_by=status
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+### ========================================
+### GESTION DES ERREURS ET EXCEPTIONS
+### ========================================
+
+### 9. Gérer un OTP invalide
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "000000",
+    "delivery_notes": "Test avec code invalide"
+}
+
+### 9.1 Gérer un OTP expiré
+POST {{baseUrl}}/KL12345678/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Test avec OTP expiré"
+}
+
+### 9.2 Gérer un envoi sans OTP
+POST {{baseUrl}}/KL99999999/delivery/otp/verify/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "otp_code": "123456",
+    "delivery_notes": "Test avec envoi inexistant"
+}
+
+### ========================================
+### ENDPOINTS ADMINISTRATEUR
+### ========================================
+
+### 10. Liste de tous les OTP de livraison (Admin)
+GET {{baseUrl}}/admin/delivery/otps/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 10.1 OTP avec filtres admin
+GET {{baseUrl}}/admin/delivery/otps/?status=pending&shipment_type=urgent
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 11. Détails d'un OTP spécifique (Admin)
+GET {{baseUrl}}/admin/delivery/otps/1/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+### 12. Forcer la validation d'un OTP (Admin)
+POST {{baseUrl}}/admin/delivery/otps/1/force-verify/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "Validation administrative requise",
+    "admin_notes": "Destinataire confirmé par téléphone"
+}
+
+### 13. Annuler un OTP (Admin)
+POST {{baseUrl}}/admin/delivery/otps/1/cancel/
+Authorization: {{adminToken}}
+Content-Type: {{contentType}}
+
+{
+    "reason": "Livraison annulée par le client",
+    "admin_notes": "Remboursement en cours"
+}
+
+### ========================================
+### TESTS DE SCÉNARIOS COMPLEXES
+### ========================================
+
+### 14. Livraison avec OTP en plusieurs étapes
+# Scénario de livraison complexe avec vérifications multiples
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali",
+    "delivery_type": "multi_step",
+    "steps": [
+        "Arrivée sur place",
+        "Vérification d'identité",
+        "Remise du colis",
+        "Signature du reçu"
+    ]
+}
+
+### 15. Livraison groupée avec OTP unique
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali",
+    "delivery_type": "grouped",
+    "shipments_included": ["KL12345678", "KL87654321", "KL11111111"],
+    "single_otp": true
+}
+
+### 16. Livraison avec OTP et instructions spéciales
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali",
+    "special_instructions": [
+        "Colis fragile - manipulation délicate",
+        "Livraison en mains propres uniquement",
+        "Vérification du contenu avant signature",
+        "Photo de preuve requise"
+    ],
+    "delivery_requirements": "strict"
+}
+
+### ========================================
+### TESTS DE VALIDATION ET ERREURS
+### ========================================
+
+### 17. Test sans authentification
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali"
+}
+
+### 18. Test avec données invalides
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "invalid_phone",
+    "recipient_name": ""
+}
+
+### 19. Test avec envoi inexistant
+POST {{baseUrl}}/KL99999999/delivery/otp/generate/
+Authorization: {{travelerToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali"
+}
+
+### 20. Test avec permissions insuffisantes
+POST {{baseUrl}}/KL12345678/delivery/otp/generate/
+Authorization: {{senderToken}}
+Content-Type: {{contentType}}
+
+{
+    "recipient_phone": "+213 123 456 789",
+    "recipient_name": "Ahmed Benali"
+}
+
+### ========================================
+### DOCUMENTATION ET MÉTADONNÉES
+### ========================================
+
+### 21. Obtenir la documentation de l'API
+GET {{baseUrl}}/docs/
+Content-Type: {{contentType}}
+
+### 22. Obtenir le schéma OpenAPI
+GET {{baseUrl}}/schema/
+Content-Type: {{contentType}}
+
+### 23. Tester la santé de l'API
+GET {{baseUrl}}/health/
+Content-Type: {{contentType}}
+
+### ========================================
+### NOTES D'UTILISATION
+### ========================================
+
+# Ce fichier de tests couvre tous les endpoints du module d'envoi automatique de codes OTP
+# 
+# Points clés du système Delivery OTP :
+# 1. Génération automatique de codes OTP à 6 chiffres
+# 2. Envoi automatique par SMS au destinataire
+# 3. Vérification par le voyageur lors de la livraison
+# 4. Expiration automatique après 24h
+# 5. Réenvoi en cas d'échec
+# 6. Support multi-canal (SMS, Email, WhatsApp)
+# 7. Sécurité et validation complètes
+#
+# Workflow de livraison avec OTP :
+# 1. Le voyageur arrive à destination
+# 2. Il génère un OTP via l'application
+# 3. L'OTP est automatiquement envoyé au destinataire par SMS
+# 4. Le destinataire remet le code OTP au voyageur
+# 5. Le voyageur saisit le code dans l'application
+# 6. La livraison est confirmée et le statut mis à jour
+#
+# Fonctionnalités de sécurité :
+# - Codes OTP à 6 chiffres uniques
+# - Expiration automatique après 24h
+# - Vérification de l'identité du voyageur
+# - Logs complets de toutes les actions
+# - Protection contre les tentatives multiples
+# - Validation géolocalisée
+#
+# Types de livraison supportés :
+# - Livraison standard avec OTP
+# - Livraison urgente avec priorité
+# - Livraison groupée avec OTP unique
+# - Livraison multi-étapes
+# - Livraison avec instructions spéciales
+#
+# Canaux de communication :
+# - SMS (principal)
+# - Email (secondaire)
+# - WhatsApp (optionnel)
+# - Notifications push
+# - Notifications in-app
+#
+# Pour exécuter les tests :
+# 1. Remplacer les tokens par des tokens valides
+# 2. Ajuster les numéros de suivi selon votre base de données
+# 3. Vérifier que le serveur est en cours d'exécution
+# 4. Utiliser un client HTTP comme VS Code REST Client ou Postman
+# 5. Tester d'abord l'authentification pour obtenir un token valide
+# 6. Préparer des fichiers de test dans le dossier test_files/
+# 7. Remplacer les numéros de téléphone par des numéros valides
+# 8. Tester les différents scénarios de livraison

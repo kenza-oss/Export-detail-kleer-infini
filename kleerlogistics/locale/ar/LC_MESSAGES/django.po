@@ -1,0 +1,591 @@
+# Arabic translations for KleerLogistics Internationalization.
+# Copyright (C) 2024 KleerLogistics
+# This file is distributed under the same license as the KleerLogistics project.
+msgid ""
+msgstr ""
+"Project-Id-Version: KleerLogistics 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-15 10:00+0100\n"
+"PO-Revision-Date: 2024-01-15 10:00+0100\n"
+"Last-Translator: KleerLogistics Team\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 ? 4 : 5;\n"
+
+#: models.py:12
+msgid "Nom"
+msgstr "الاسم"
+
+#: models.py:13
+msgid "Code"
+msgstr "الرمز"
+
+#: models.py:14
+msgid "Description"
+msgstr "الوصف"
+
+#: models.py:15
+msgid "Actif"
+msgstr "نشط"
+
+#: models.py:16
+msgid "Créé le"
+msgstr "تاريخ الإنشاء"
+
+#: models.py:17
+msgid "Modifié le"
+msgstr "تاريخ التعديل"
+
+#: models.py:22
+msgid "Catégorie de traduction"
+msgstr "فئة الترجمة"
+
+#: models.py:23
+msgid "Catégories de traduction"
+msgstr "فئات الترجمة"
+
+#: models.py:32
+msgid "Clé"
+msgstr "المفتاح"
+
+#: models.py:35
+msgid "Catégorie"
+msgstr "الفئة"
+
+#: models.py:38
+msgid "Contexte d'utilisation de cette traduction"
+msgstr "سياق استخدام هذه الترجمة"
+
+#: models.py:47
+msgid "Clé de traduction"
+msgstr "مفتاح الترجمة"
+
+#: models.py:48
+msgid "Clés de traduction"
+msgstr "مفاتيح الترجمة"
+
+#: models.py:62
+msgid "Texte traduit"
+msgstr "النص المترجم"
+
+#: models.py:63
+msgid "Approuvé"
+msgstr "معتمد"
+
+#: models.py:66
+msgid "Approuvé par"
+msgstr "معتمد من قبل"
+
+#: models.py:67
+msgid "Approuvé le"
+msgstr "تاريخ الاعتماد"
+
+#: models.py:75
+msgid "Traduction"
+msgstr "الترجمة"
+
+#: models.py:76
+msgid "Traductions"
+msgstr "الترجمات"
+
+#: models.py:89
+msgid "Utilisateur"
+msgstr "المستخدم"
+
+#: models.py:91
+msgid "Langue préférée"
+msgstr "اللغة المفضلة"
+
+#: models.py:96
+msgid "Langue de secours"
+msgstr "اللغة الاحتياطية"
+
+#: models.py:103
+msgid "Préférence de langue"
+msgstr "تفضيل اللغة"
+
+#: models.py:104
+msgid "Préférences de langue"
+msgstr "تفضيلات اللغة"
+
+#: models.py:113
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+#: models.py:114
+msgid "SMS"
+msgstr "رسالة نصية"
+
+#: models.py:115
+msgid "Notification"
+msgstr "إشعار"
+
+#: models.py:116
+msgid "Document"
+msgstr "مستند"
+
+#: models.py:117
+msgid "Interface utilisateur"
+msgstr "واجهة المستخدم"
+
+#: models.py:119
+msgid "Nom"
+msgstr "الاسم"
+
+#: models.py:120
+msgid "Type"
+msgstr "النوع"
+
+#: models.py:121
+msgid "Variables"
+msgstr "المتغيرات"
+
+#: models.py:122
+msgid "Liste des variables disponibles"
+msgstr "قائمة المتغيرات المتاحة"
+
+#: models.py:130
+msgid "Modèle de traduction"
+msgstr "قالب الترجمة"
+
+#: models.py:131
+msgid "Modèles de traduction"
+msgstr "قوالب الترجمة"
+
+#: models.py:142
+msgid "Modèle"
+msgstr "القالب"
+
+#: models.py:144
+msgid "Sujet"
+msgstr "الموضوع"
+
+#: models.py:145
+msgid "Contenu"
+msgstr "المحتوى"
+
+#: models.py:152
+msgid "Contenu de modèle"
+msgstr "محتوى القالب"
+
+#: models.py:153
+msgid "Contenus de modèles"
+msgstr "محتويات القوالب"
+
+#: models.py:165
+msgid "Clé de cache"
+msgstr "مفتاح التخزين المؤقت"
+
+#: models.py:166
+msgid "Expire le"
+msgstr "تاريخ انتهاء الصلاحية"
+
+#: models.py:173
+msgid "Cache de traduction"
+msgstr "التخزين المؤقت للترجمة"
+
+#: models.py:174
+msgid "Caches de traduction"
+msgstr "التخزين المؤقت للترجمات"
+
+# User Interface Messages
+msgid "Bienvenue sur KleerLogistics"
+msgstr "مرحباً بك في KleerLogistics"
+
+msgid "Plateforme d'envoi collaboratif international"
+msgstr "منصة الشحن التعاوني الدولي"
+
+msgid "Connectez-vous"
+msgstr "تسجيل الدخول"
+
+msgid "Inscrivez-vous"
+msgstr "إنشاء حساب"
+
+msgid "Déconnexion"
+msgstr "تسجيل الخروج"
+
+msgid "Mon profil"
+msgstr "ملفي الشخصي"
+
+msgid "Mes envois"
+msgstr "شحناتي"
+
+msgid "Mes voyages"
+msgstr "رحلاتي"
+
+msgid "Messages"
+msgstr "الرسائل"
+
+msgid "Paiements"
+msgstr "المدفوعات"
+
+msgid "Paramètres"
+msgstr "الإعدادات"
+
+msgid "Aide"
+msgstr "المساعدة"
+
+msgid "Contact"
+msgstr "اتصل بنا"
+
+# Navigation Messages
+msgid "Accueil"
+msgstr "الرئيسية"
+
+msgid "Envois"
+msgstr "الشحنات"
+
+msgid "Voyages"
+msgstr "الرحلات"
+
+msgid "Matching"
+msgstr "المطابقة"
+
+msgid "Administration"
+msgstr "الإدارة"
+
+# Form Messages
+msgid "Enregistrer"
+msgstr "حفظ"
+
+msgid "Annuler"
+msgstr "إلغاء"
+
+msgid "Supprimer"
+msgstr "حذف"
+
+msgid "Modifier"
+msgstr "تعديل"
+
+msgid "Voir"
+msgstr "عرض"
+
+msgid "Ajouter"
+msgstr "إضافة"
+
+msgid "Rechercher"
+msgstr "بحث"
+
+msgid "Filtrer"
+msgstr "تصفية"
+
+msgid "Trier"
+msgstr "ترتيب"
+
+# Validation Messages
+msgid "Ce champ est requis"
+msgstr "هذا الحقل مطلوب"
+
+msgid "Format invalide"
+msgstr "تنسيق غير صحيح"
+
+msgid "Valeur trop courte"
+msgstr "القيمة قصيرة جداً"
+
+msgid "Valeur trop longue"
+msgstr "القيمة طويلة جداً"
+
+msgid "Email invalide"
+msgstr "بريد إلكتروني غير صحيح"
+
+msgid "Numéro de téléphone invalide"
+msgstr "رقم هاتف غير صحيح"
+
+# Success Messages
+msgid "Opération réussie"
+msgstr "تمت العملية بنجاح"
+
+msgid "Données enregistrées avec succès"
+msgstr "تم حفظ البيانات بنجاح"
+
+msgid "Suppression réussie"
+msgstr "تم الحذف بنجاح"
+
+msgid "Modification réussie"
+msgstr "تم التعديل بنجاح"
+
+# Error Messages
+msgid "Une erreur s'est produite"
+msgstr "حدث خطأ"
+
+msgid "Accès refusé"
+msgstr "تم رفض الوصول"
+
+msgid "Page non trouvée"
+msgstr "الصفحة غير موجودة"
+
+msgid "Erreur de serveur"
+msgstr "خطأ في الخادم"
+
+# KleerLogistics Specific Messages
+msgid "Créer un envoi"
+msgstr "إنشاء شحنة"
+
+msgid "Publier un voyage"
+msgstr "نشر رحلة"
+
+msgid "Trouver un voyageur"
+msgstr "البحث عن مسافر"
+
+msgid "Trouver un envoi"
+msgstr "البحث عن شحنة"
+
+msgid "Suivre mon envoi"
+msgstr "تتبع شحنتي"
+
+msgid "Code de suivi"
+msgstr "رمز التتبع"
+
+msgid "Statut de livraison"
+msgstr "حالة التسليم"
+
+msgid "Confirmation de livraison"
+msgstr "تأكيد التسليم"
+
+msgid "Code OTP"
+msgstr "رمز OTP"
+
+msgid "Vérifier le code"
+msgstr "التحقق من الرمز"
+
+msgid "Code invalide"
+msgstr "رمز غير صحيح"
+
+msgid "Code expiré"
+msgstr "رمز منتهي الصلاحية"
+
+msgid "Livraison confirmée"
+msgstr "تم تأكيد التسليم"
+
+msgid "Livraison en cours"
+msgstr "التسليم قيد التنفيذ"
+
+msgid "En attente de livraison"
+msgstr "في انتظار التسليم"
+
+msgid "Livraison terminée"
+msgstr "تم التسليم"
+
+msgid "Livraison échouée"
+msgstr "فشل التسليم"
+
+# Payment Messages
+msgid "Paiement"
+msgstr "الدفع"
+
+msgid "Montant"
+msgstr "المبلغ"
+
+msgid "Commission"
+msgstr "العمولة"
+
+msgid "Frais de service"
+msgstr "رسوم الخدمة"
+
+msgid "Total à payer"
+msgstr "المجموع المطلوب دفعه"
+
+msgid "Méthode de paiement"
+msgstr "طريقة الدفع"
+
+msgid "Carte bancaire"
+msgstr "بطاقة ائتمان"
+
+msgid "Espèces"
+msgstr "نقداً"
+
+msgid "Virement"
+msgstr "تحويل بنكي"
+
+msgid "Paiement en attente"
+msgstr "الدفع معلق"
+
+msgid "Paiement confirmé"
+msgstr "تم تأكيد الدفع"
+
+msgid "Paiement échoué"
+msgstr "فشل الدفع"
+
+msgid "Remboursement"
+msgstr "استرداد"
+
+# Chat Messages
+msgid "Nouveau message"
+msgstr "رسالة جديدة"
+
+msgid "Envoyer"
+msgstr "إرسال"
+
+msgid "Tapez votre message..."
+msgstr "اكتب رسالتك..."
+
+msgid "Appel vocal"
+msgstr "مكالمة صوتية"
+
+msgid "Appel en cours..."
+msgstr "المكالمة جارية..."
+
+msgid "Terminer l'appel"
+msgstr "إنهاء المكالمة"
+
+# Notification Messages
+msgid "Nouvelle notification"
+msgstr "إشعار جديد"
+
+msgid "Vous avez reçu un nouveau message"
+msgstr "لقد تلقيت رسالة جديدة"
+
+msgid "Votre envoi a été accepté"
+msgstr "تم قبول شحنتك"
+
+msgid "Votre envoi a été livré"
+msgstr "تم تسليم شحنتك"
+
+msgid "Nouveau voyage disponible"
+msgstr "رحلة جديدة متاحة"
+
+msgid "Paiement reçu"
+msgstr "تم استلام الدفع"
+
+# Specific Error Messages
+msgid "Envoi non trouvé"
+msgstr "الشحنة غير موجودة"
+
+msgid "Voyage non trouvé"
+msgstr "الرحلة غير موجودة"
+
+msgid "Utilisateur non trouvé"
+msgstr "المستخدم غير موجود"
+
+msgid "Code de suivi invalide"
+msgstr "رمز تتبع غير صحيح"
+
+msgid "Date de voyage invalide"
+msgstr "تاريخ رحلة غير صحيح"
+
+msgid "Poids dépassé"
+msgstr "الوزن متجاوز"
+
+msgid "Destination non desservie"
+msgstr "الوجهة غير مخدومة"
+
+# Security Messages
+msgid "Authentification requise"
+msgstr "المصادقة مطلوبة"
+
+msgid "Permissions insuffisantes"
+msgstr "صلاحيات غير كافية"
+
+msgid "Session expirée"
+msgstr "انتهت صلاحية الجلسة"
+
+msgid "Veuillez vous reconnecter"
+msgstr "يرجى إعادة تسجيل الدخول"
+
+# Support Messages
+msgid "Centre d'aide"
+msgstr "مركز المساعدة"
+
+msgid "FAQ"
+msgstr "الأسئلة الشائعة"
+
+msgid "Contactez le support"
+msgstr "اتصل بالدعم"
+
+msgid "Signaler un problème"
+msgstr "الإبلاغ عن مشكلة"
+
+msgid "Demande d'assistance"
+msgstr "طلب مساعدة"
+
+# Legal Messages
+msgid "Conditions d'utilisation"
+msgstr "شروط الاستخدام"
+
+msgid "Politique de confidentialité"
+msgstr "سياسة الخصوصية"
+
+msgid "Mentions légales"
+msgstr "الإشعارات القانونية"
+
+msgid "Cookies"
+msgstr "ملفات تعريف الارتباط"
+
+msgid "RGPD"
+msgstr "GDPR"
+
+# Language Messages
+msgid "Français"
+msgstr "الفرنسية"
+
+msgid "English"
+msgstr "الإنجليزية"
+
+msgid "العربية"
+msgstr "العربية"
+
+msgid "Changer de langue"
+msgstr "تغيير اللغة"
+
+msgid "Langue"
+msgstr "اللغة"
+
+# Translation Messages
+msgid "Traductions"
+msgstr "الترجمات"
+
+msgid "Gérer les traductions"
+msgstr "إدارة الترجمات"
+
+msgid "Ajouter une traduction"
+msgstr "إضافة ترجمة"
+
+msgid "Modifier la traduction"
+msgstr "تعديل الترجمة"
+
+msgid "Approuver la traduction"
+msgstr "اعتماد الترجمة"
+
+msgid "Traduction approuvée"
+msgstr "ترجمة معتمدة"
+
+msgid "Traduction en attente"
+msgstr "ترجمة معلقة"
+
+msgid "Exporter les traductions"
+msgstr "تصدير الترجمات"
+
+msgid "Importer les traductions"
+msgstr "استيراد الترجمات"
+
+msgid "Statistiques de traduction"
+msgstr "إحصائيات الترجمة"
+
+msgid "Complétude des traductions"
+msgstr "اكتمال الترجمات"
+
+msgid "Langues supportées"
+msgstr "اللغات المدعومة"
+
+msgid "Traductions manquantes"
+msgstr "الترجمات المفقودة"
+
+msgid "Traductions approuvées"
+msgstr "الترجمات المعتمدة"
+
+msgid "Traductions en attente"
+msgstr "الترجمات المعلقة"
+
+msgid "Cache des traductions"
+msgstr "التخزين المؤقت للترجمات"
+
+msgid "Nettoyer le cache"
+msgstr "مسح التخزين المؤقت"
+
+msgid "Cache nettoyé"
+msgstr "تم مسح التخزين المؤقت"
+
+msgid "Erreur lors du nettoyage du cache"
+msgstr "خطأ في مسح التخزين المؤقت"

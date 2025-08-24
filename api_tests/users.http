@@ -1,16 +1,15 @@
-### KleerLogistics Users API - Tests Complets avec Sécurité OTP Renforcée
+### KleerLogistics Users API - Tests Complets de Tous les URLs
 ### Base URL: http://localhost:8000/api/v1/users/
 
 ### ========================================
 ### 🔧 CONFIGURATION INITIALE
 ### ========================================
 
-### Variables d'environnement
 @baseUrl = http://localhost:8000/api/v1/users
 @contentType = application/json
 
 ### ========================================
-### 🔐 AUTHENTIFICATION
+### 🔐 AUTHENTIFICATION JWT
 ### ========================================
 
 ### 1. Inscription d'un nouvel utilisateur
@@ -18,13 +17,13 @@ POST {{baseUrl}}/auth/register/
 Content-Type: {{contentType}}
 
 {
-    "username": "kenza",
-    "email": "kenza@gmail.com",
+    "username": "romualdo",
+    "email": "romualdo@gmail.com",
     "password": "TestPass123!",
     "password_confirm": "TestPass123!",
-    "first_name": "Kenza",
-    "last_name": "User",
-    "phone_number": "+213655451883",
+    "first_name": "Romualdo",
+    "last_name": "Kleer",
+    "phone_number": "+213698765432",
     "role": "sender"
 }
 
@@ -34,108 +33,70 @@ POST {{baseUrl}}/auth/login/
 Content-Type: {{contentType}}
 
 {
-    "identifier": "kenza",
+    "identifier": "sebany",
     "password": "TestPass123!"
 }
-
-### Récupérer le token après connexion
-@authToken = {{login.response.body.tokens.access}}
 
 ### 3. Rafraîchissement du token
 POST {{baseUrl}}/auth/token/refresh/
 Content-Type: {{contentType}}
 
 {
-    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODU2LCJpYXQiOjE3NTUwMzMyNTYsImp0aSI6ImMzYzk1NjMyMWNhMDQxNWM5YmQzNWRiODEyMmIwYjQyIiwidXNlcl9pZCI6NCwidXNlcm5hbWUiOiJrZW56YSIsInJvbGUiOiJzZW5kZXIiLCJpc19hZG1pbiI6ZmFsc2V9.Jpi7SNZSFlIHJ8D66SaApXC7EEqcNcRXu53BtfkQN-w",
-    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NTExOTY1NiwiaWF0IjoxNzU1MDMzMjU2LCJqdGkiOiI1NWZmMjUyYTYxNmY0OTA1YjczOGFlN2FlZjUzNjMzMiIsInVzZXJfaWQiOiI0In0.ajwC-WnMNh4O3ovDKrv5FIlYeFbwOoHod8oIRa4AB9w"
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1OTc4OTc2LCJpYXQiOjE3NTU5NzUzNzYsImp0aSI6IjdiMWM3ZDg3YjNmZTRjODI5ZjljMjNmMmYzNjdmMjEwIiwidXNlcl9pZCI6NiwidXNlcm5hbWUiOiJzZWJhbnkiLCJyb2xlIjoidHJhdmVsZXIiLCJpc19hZG1pbiI6ZmFsc2V9.1vINEARhYdD73CCfPCJMn7SYPtRlZ8UgQ0x1LUyTFSk",
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1NjA2MTc3NiwiaWF0IjoxNzU1OTc1Mzc2LCJqdGkiOiI5Y2QyYmM1Yjg1Mzg0NGVkYTEzYWYxZjA2MTNlNTBlZCIsInVzZXJfaWQiOiI2In0.1Xzq0UA2k8h1oz2iELubsCGnrOOafsOL4YTsOfOrEso"
 }
 
 ### 4. Déconnexion utilisateur
 POST {{baseUrl}}/auth/logout/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "refresh": "{{login.response.body.tokens.refresh}}"
+    "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNjkxLCJpYXQiOjE3NTU4MTgwOTEsImp0aSI6ImZiNDRiYTNmZmRhOTQ2MGI5ZWY1ZjcyOGM3MmMzYzdjIiwidXNlcl9pZCI6MTAsInVzZXJuYW1lIjoicm9tdWFsZG8iLCJyb2xlIjoic2VuZGVyIiwiaXNfYWRtaW4iOmZhbHNlfQ.GufNyFdpzCsIUxtaFKgwnP1CbMwcbmtR8WFNsDEa3iA"
 }
 
 ### ========================================
-### 📱 VÉRIFICATION OTP - SÉCURITÉ RENFORCÉE
+### 📱 VÉRIFICATION OTP
 ### ========================================
 
-### 5. Envoyer un OTP (avec sécurité renforcée)
+### 5. Envoyer un OTP
 POST {{baseUrl}}/auth/otp/send/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "phone_number": "+213655451883"
+    "phone_number": "+213698765432"
 }
 
-### 6. Vérifier un OTP (remplacer par le code reçu)
+### 6. Vérifier un OTP
 POST {{baseUrl}}/auth/otp/verify/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "phone_number": "+213655451883",
-    "code": "771687"
+    "phone_number": "+213698765432",
+    "code": "198153"
 }
 
 ### 7. Vérifier le statut de vérification du téléphone
 GET {{baseUrl}}/auth/phone/status/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### ========================================
-### 🧪 TESTS DE SÉCURITÉ OTP AVANCÉS
-### ========================================
-
-### 8. Test de limitation de taux - Tentative multiple d'envoi OTP
-### (Devrait échouer après 3 tentatives)
-POST {{baseUrl}}/auth/otp/send/
-Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-{
-    "phone_number": "+213655451883"
-}
-
-### 9. Test de vérification OTP avec code incorrect
-### (Devrait échouer et incrémenter le compteur de tentatives)
-POST {{baseUrl}}/auth/otp/verify/
-Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-{
-    "phone_number": "+213655451883",
-    "code": "000000"
-}
-
-### 10. Test de vérification OTP avec numéro non vérifié
-POST {{baseUrl}}/auth/otp/verify/
-Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-{
-    "phone_number": "+213999999999",
-    "code": "123456"
-}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 ### ========================================
 ### 🔑 GESTION DES MOTS DE PASSE
 ### ========================================
 
-### 11. Changer le mot de passe
+### 8. Changer le mot de passe
 POST {{baseUrl}}/auth/password/change/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
     "old_password": "TestPass123!",
     "new_password": "NewPass123!"
 }
 
-### 12. Demander une réinitialisation
+### 9. Demander une réinitialisation
 POST {{baseUrl}}/auth/password/reset/
 Content-Type: {{contentType}}
 
@@ -143,7 +104,7 @@ Content-Type: {{contentType}}
     "email": "test@example.com"
 }
 
-### 13. Confirmer la réinitialisation (remplacer uid/token)
+### 10. Confirmer la réinitialisation
 POST {{baseUrl}}/auth/password/reset/confirm/
 Content-Type: {{contentType}}
 
@@ -159,25 +120,25 @@ Content-Type: {{contentType}}
 ### 👤 PROFIL UTILISATEUR
 ### ========================================
 
-### 14. Récupérer le profil
+### 11. Récupérer le profil
 GET {{baseUrl}}/profile/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
-### 15. Mettre à jour le profil (PUT)
+### 12. Mettre à jour le profil (PUT)
 PUT {{baseUrl}}/profile/update/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
     "first_name": "Updated",
     "last_name": "Name",
-    "phone_number": "+213655451883"
+    "phone_number": "+213698765432"
 }
 
-### 16. Mettre à jour le profil (PATCH)
+### 13. Mettre à jour le profil (PATCH)
 PATCH {{baseUrl}}/profile/update/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
     "first_name": "PartiallyUpdated"
@@ -187,192 +148,222 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiY
 ### 📄 GESTION DES DOCUMENTS
 ### ========================================
 
-### 17. Lister les documents
+### 14. Lister les documents
 GET {{baseUrl}}/documents/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
-### 18. Uploader un document
+### 15. Uploader un document
 POST {{baseUrl}}/documents/upload/
 Content-Type: multipart/form-data; boundary=boundary
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 --boundary
-Content-Disposition: form-data; name="document_type"; filename="id_card.pdf"
+Content-Disposition: form-data; name="document_type"; filename="id_card"
 Content-Type: application/pdf
 
-< ./id_card.pdf
+< ./id_card
 --boundary--
 
-### 19. Récupérer un document spécifique
+### 16. Récupérer un document spécifique
 GET {{baseUrl}}/documents/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### 20. Supprimer un document
-DELETE {{baseUrl}}/documents/1/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 ### ========================================
 ### ⚙️ PRÉFÉRENCES ET STATUT
 ### ========================================
 
-### 21. Mettre à jour la langue
+### 17. Mettre à jour la langue
 PUT {{baseUrl}}/preferences/language/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
     "preferred_language": "fr"
 }
 
-### 22. Vérifier le statut de vérification
-GET {{baseUrl}}/verification-status/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+### 18. Mettre à jour la commission
+PUT {{baseUrl}}/preferences/commission/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
-### 23. Demander la vérification
+{
+    "commission_rate": 5.0
+}
+
+### 19. Vérifier le statut de vérification
+GET {{baseUrl}}/verification-status/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 20. Demander la vérification
 POST {{baseUrl}}/request-verification/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
-### 24. Consulter le statut complet de l'utilisateur
+{
+    "document_id": 1
+}
+
+### 21. Consulter le statut complet de l'utilisateur
 GET {{baseUrl}}/status/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### ========================================
+### 🚀 ACTIVATION/DÉSACTIVATION DES RÔLES
+### ========================================
+
+### 22. Activer le rôle sender
+POST {{baseUrl}}/activate-sender/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 23. Activer le rôle traveler
+POST {{baseUrl}}/activate-traveler/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 24. Désactiver le rôle sender
+POST {{baseUrl}}/deactivate-sender/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 25. Désactiver le rôle traveler
+POST {{baseUrl}}/deactivate-traveler/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### ========================================
+### 📊 ANALYTICS ET PERFORMANCES
+### ========================================
+
+### 26. Consulter les analytics utilisateur
+GET {{baseUrl}}/analytics/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 27. Consulter les performances utilisateur
+GET {{baseUrl}}/performance/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 28. Consulter les statistiques utilisateur
+GET {{baseUrl}}/stats/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### ========================================
+### 🔍 RECHERCHE ET PERMISSIONS
+### ========================================
+
+### 29. Rechercher des utilisateurs
+GET {{baseUrl}}/search/?q=test
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### 30. Consulter les permissions utilisateur
+GET {{baseUrl}}/permissions/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 ### ========================================
 ### 👨‍💼 FONCTIONNALITÉS ADMIN
 ### ========================================
 
-### 25. Lister tous les utilisateurs (admin)
+### 31. Lister tous les utilisateurs (admin)
 GET {{baseUrl}}/admin/users/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Nzc2NzM2LCJpYXQiOjE3NTQ3NzMxMzcsImp0aSI6IjBlY2I2YzRkMmQ4NDQxMzBiMGQzYTE0MTNkMTk2ZTkzIiwidXNlcl9pZCI6IjgifQ.G2SN7c4zf5PwSxFq-t1Dk8-yV9NzS442v9TKVgBZwYw
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxODM0LCJpYXQiOjE3NTU4MTgyMzQsImp0aSI6Ijg3YzgwOGQwNDY5MDQ5NjBhZGVhNjU4NWJlZjZiYWEyIiwidXNlcl9pZCI6IjMifQ.bqwoV1dgUGB4tZ2LvqV3cHgzvBM1rVk2dBzSSlmrzyc
 
-### 26. Mettre à jour un rôle (admin)
-PATCH {{baseUrl}}/admin/users/6/role/
+### 32. Détails d'un utilisateur (admin)
+GET {{baseUrl}}/admin/users/3/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxODM0LCJpYXQiOjE3NTU4MTgyMzQsImp0aSI6Ijg3YzgwOGQwNDY5MDQ5NjBhZGVhNjU4NWJlZjZiYWEyIiwidXNlcl9pZCI6IjMifQ.bqwoV1dgUGB4tZ2LvqV3cHgzvBM1rVk2dBzSSlmrzyc
+
+### 33. Mettre à jour un rôle (admin)
+PATCH {{baseUrl}}/admin/users/3/role/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU0Nzc2NzM2LCJpYXQiOjE3NTQ3NzMxMzcsImp0aSI6IjBlY2I2YzRkMmQ4NDQxMzBiMGQzYTE0MTNkMTk2ZTkzIiwidXNlcl9pZCI6IjgifQ.G2SN7c4zf5PwSxFq-t1Dk8-yV9NzS442v9TKVgBZwYw
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxODM0LCJpYXQiOjE3NTU4MTgyMzQsImp0aSI6Ijg3YzgwOGQwNDY5MDQ5NjBhZGVhNjU4NWJlZjZiYWEyIiwidXNlcl9pZCI6IjMifQ.bqwoV1dgUGB4tZ2LvqV3cHgzvBM1rVk2dBzSSlmrzyc
 
 {
     "role": "traveler"
 }
 
 ### ========================================
-### 💰 GESTION DU PORTEFEUILLE (En cours)
+### 💰 GESTION DU PORTEFEUILLE
 ### ========================================
 
-### 27. Consulter le solde
+### 34. Consulter le solde
 GET {{baseUrl}}/wallet/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxODM0LCJpYXQiOjE3NTU4MTgyMzQsImp0aSI6Ijg3YzgwOGQwNDY5MDQ5NjBhZGVhNjU4NWJlZjZiYWEyIiwidXNlcl9pZCI6IjMifQ.bqwoV1dgUGB4tZ2LvqV3cHgzvBM1rVk2dBzSSlmrzyc
 
-### 28. Effectuer un dépôt
+### 35. Effectuer un dépôt
 POST {{baseUrl}}/wallet/deposit/
 Content-Type: {{contentType}}
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxODM0LCJpYXQiOjE3NTU4MTgyMzQsImp0aSI6Ijg3YzgwOGQwNDY5MDQ5NjBhZGVhNjU4NWJlZjZiYWEyIiwidXNlcl9pZCI6IjMifQ.bqwoV1dgUGB4tZ2LvqV3cHgzvBM1rVk2dBzSSlmrzyc
 
 {
     "amount": 1000.00,
     "payment_method": "card"
 }
 
-### ========================================
-### 🔍 RECHERCHE ET ANALYTICS
-### ========================================
-
-### 29. Rechercher des utilisateurs
-GET {{baseUrl}}/search/?q=romu
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### 30. Consulter les analytics utilisateur
-GET {{baseUrl}}/analytics/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### 31. Consulter les performances utilisateur
-GET {{baseUrl}}/performance/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### 32. Consulter les statistiques utilisateur
-GET {{baseUrl}}/stats/
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
-
-### ========================================
-### 🚀 NOUVELLES FONCTIONNALITÉS DE SÉCURITÉ
-### ========================================
-
-### 33. Test de fingerprinting d'appareil
-### (Envoyer plusieurs requêtes avec le même User-Agent pour tester la limitation par appareil)
-POST {{baseUrl}}/auth/otp/send/
+### 36. Effectuer un retrait
+POST {{baseUrl}}/wallet/withdraw/
 Content-Type: {{contentType}}
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "phone_number": "+213655451883"
+    "amount": 500.00,
+    "payment_method": "bank_transfer"
 }
 
-### 34. Test de limitation de taux par appareil
-### (Devrait échouer après 2 tentatives depuis le même appareil)
-POST {{baseUrl}}/auth/otp/send/
+### 37. Effectuer un transfert
+POST {{baseUrl}}/wallet/transfer/
 Content-Type: {{contentType}}
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "phone_number": "+213655451883"
+    "recipient_id": 2,
+    "amount": 100.00,
+    "description": "Transfert de test"
 }
 
-### 35. Test de vérification OTP avec limitation par appareil
+### 38. Consulter les transactions
+GET {{baseUrl}}/wallet/transactions/
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+### ========================================
+### 🧪 TESTS DE SÉCURITÉ OTP
+### ========================================
+
+### 39. Test de limitation de taux - Tentative multiple d'envoi OTP
+POST {{baseUrl}}/auth/otp/send/
+Content-Type: {{contentType}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
+
+{
+    "phone_number": "+213698765432"
+}
+
+### 40. Test de vérification OTP avec code incorrect
 POST {{baseUrl}}/auth/otp/verify/
 Content-Type: {{contentType}}
-User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1MDM2ODY5LCJpYXQiOjE3NTUwMzMyNzAsImp0aSI6ImMzNGRjMzAyNGRkNDRiZDM5NTc4MGZkOGI3NjlhMDlmIiwidXNlcl9pZCI6IjQifQ.sJGlnhlWFN5b6eBfOgAGAw3I14Z6SWY6-2jsyrRJ1-8
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU1ODIxNzc0LCJpYXQiOjE3NTU4MTgxNzQsImp0aSI6Ijk0N2VmNWUyYmMxYjRlMDE4Njg1YTI1YjA0N2FhNGIwIiwidXNlcl9pZCI6IjEwIn0.kXjJ9vwpgrhd5fMpBk6BM3MFrhTaWNgYdJ7uXKfM2Kw
 
 {
-    "phone_number": "+213655451883",
+    "phone_number": "+213698765432",
     "code": "000000"
 }
 
 ### ========================================
-### 📋 NOTES DE SÉCURITÉ
+### 📋 NOTES D'UTILISATION
 ### ========================================
 
-### 🔒 NOUVELLES FONCTIONNALITÉS DE SÉCURITÉ OTP :
-
-### 1. **Double Hachage** : Les codes OTP sont maintenant hachés deux fois avec HMAC-SHA256
-### 2. **Salt Unique** : Chaque OTP a un salt unique basé sur le timestamp
-### 3. **Fingerprinting d'Appareil** : Limitation de taux par appareil (User-Agent + Accept-Language + Accept-Encoding)
-### 4. **Limitation de Taux Renforcée** : 
-###    - 3 tentatives max par numéro de téléphone
-###    - 2 tentatives max par appareil
-###    - 5 tentatives max de vérification par numéro
-###    - 3 tentatives max de vérification par appareil
-### 5. **Nettoyage Automatique** : Suppression automatique des OTP expirés
-### 6. **Audit Complet** : Logs détaillés de toutes les activités OTP
-### 7. **Protection contre le Spam** : Limitation du nombre d'OTP actifs par téléphone (max 3)
-
-### 🧪 TESTS DE SÉCURITÉ RECOMMANDÉS :
-
-### 1. **Test de limitation de taux** : Envoyer 4 OTP au même numéro (le 4ème doit échouer)
-### 2. **Test de limitation par appareil** : Envoyer 3 OTP depuis le même User-Agent (le 3ème doit échouer)
-### 3. **Test de vérification multiple** : Essayer de vérifier un OTP 6 fois (le 6ème doit échouer)
-### 4. **Test de nettoyage** : Vérifier que les OTP expirés sont automatiquement supprimés
-### 5. **Test d'audit** : Vérifier que tous les événements sont loggés dans les logs
-
-### ========================================
-### 📋 NOTES GÉNÉRALES
-### ========================================
-
-### Pour utiliser ce fichier :
-### 1. Installer l'extension REST Client pour VSCode
-### 2. Configurer les variables :
-###    - adminToken : Token JWT d'un admin
-### 3. Exécuter les requêtes dans l'ordre recommandé
-### 4. Vérifier les codes de réponse :
-###    - 200 : Succès
-###    - 400: Erreur client
-###    - 500 : Erreur serveur
+### Variables à configurer :
+### - adminToken : Token JWT d'un utilisateur admin
+### - login.response.body.tokens.access : Token récupéré après connexion
 
 ### Workflow recommandé :
-### 1. Inscription
-### 2. Connexion (récupérer token)
-### 3. Tester les endpoints protégés
+### 1. Exécuter l'inscription (1)
+### 2. Exécuter la connexion (2) pour récupérer le token
+### 3. Tester les endpoints protégés avec le token
 ### 4. Pour les tests admin, utiliser un token admin valide
-### 5. Tester les nouvelles fonctionnalités de sécurité OTP
-### 6. Vérifier les logs de sécurité dans la console Django
+
+### Codes de réponse attendus :
+### - 200/201 : Succès
+### - 400 : Erreur client
+### - 401 : Non autorisé
+### - 403 : Interdit
+### - 404 : Non trouvé
+### - 500 : Erreur serveur

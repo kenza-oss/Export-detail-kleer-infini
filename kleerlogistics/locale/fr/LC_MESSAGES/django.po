@@ -1,0 +1,591 @@
+# French translations for KleerLogistics Internationalization.
+# Copyright (C) 2024 KleerLogistics
+# This file is distributed under the same license as the KleerLogistics project.
+msgid ""
+msgstr ""
+"Project-Id-Version: KleerLogistics 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-15 10:00+0100\n"
+"PO-Revision-Date: 2024-01-15 10:00+0100\n"
+"Last-Translator: KleerLogistics Team\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: models.py:12
+msgid "Nom"
+msgstr "Nom"
+
+#: models.py:13
+msgid "Code"
+msgstr "Code"
+
+#: models.py:14
+msgid "Description"
+msgstr "Description"
+
+#: models.py:15
+msgid "Actif"
+msgstr "Actif"
+
+#: models.py:16
+msgid "Créé le"
+msgstr "Créé le"
+
+#: models.py:17
+msgid "Modifié le"
+msgstr "Modifié le"
+
+#: models.py:22
+msgid "Catégorie de traduction"
+msgstr "Catégorie de traduction"
+
+#: models.py:23
+msgid "Catégories de traduction"
+msgstr "Catégories de traduction"
+
+#: models.py:32
+msgid "Clé"
+msgstr "Clé"
+
+#: models.py:35
+msgid "Catégorie"
+msgstr "Catégorie"
+
+#: models.py:38
+msgid "Contexte d'utilisation de cette traduction"
+msgstr "Contexte d'utilisation de cette traduction"
+
+#: models.py:47
+msgid "Clé de traduction"
+msgstr "Clé de traduction"
+
+#: models.py:48
+msgid "Clés de traduction"
+msgstr "Clés de traduction"
+
+#: models.py:62
+msgid "Texte traduit"
+msgstr "Texte traduit"
+
+#: models.py:63
+msgid "Approuvé"
+msgstr "Approuvé"
+
+#: models.py:66
+msgid "Approuvé par"
+msgstr "Approuvé par"
+
+#: models.py:67
+msgid "Approuvé le"
+msgstr "Approuvé le"
+
+#: models.py:75
+msgid "Traduction"
+msgstr "Traduction"
+
+#: models.py:76
+msgid "Traductions"
+msgstr "Traductions"
+
+#: models.py:89
+msgid "Utilisateur"
+msgstr "Utilisateur"
+
+#: models.py:91
+msgid "Langue préférée"
+msgstr "Langue préférée"
+
+#: models.py:96
+msgid "Langue de secours"
+msgstr "Langue de secours"
+
+#: models.py:103
+msgid "Préférence de langue"
+msgstr "Préférence de langue"
+
+#: models.py:104
+msgid "Préférences de langue"
+msgstr "Préférences de langue"
+
+#: models.py:113
+msgid "Email"
+msgstr "Email"
+
+#: models.py:114
+msgid "SMS"
+msgstr "SMS"
+
+#: models.py:115
+msgid "Notification"
+msgstr "Notification"
+
+#: models.py:116
+msgid "Document"
+msgstr "Document"
+
+#: models.py:117
+msgid "Interface utilisateur"
+msgstr "Interface utilisateur"
+
+#: models.py:119
+msgid "Nom"
+msgstr "Nom"
+
+#: models.py:120
+msgid "Type"
+msgstr "Type"
+
+#: models.py:121
+msgid "Variables"
+msgstr "Variables"
+
+#: models.py:122
+msgid "Liste des variables disponibles"
+msgstr "Liste des variables disponibles"
+
+#: models.py:130
+msgid "Modèle de traduction"
+msgstr "Modèle de traduction"
+
+#: models.py:131
+msgid "Modèles de traduction"
+msgstr "Modèles de traduction"
+
+#: models.py:142
+msgid "Modèle"
+msgstr "Modèle"
+
+#: models.py:144
+msgid "Sujet"
+msgstr "Sujet"
+
+#: models.py:145
+msgid "Contenu"
+msgstr "Contenu"
+
+#: models.py:152
+msgid "Contenu de modèle"
+msgstr "Contenu de modèle"
+
+#: models.py:153
+msgid "Contenus de modèles"
+msgstr "Contenus de modèles"
+
+#: models.py:165
+msgid "Clé de cache"
+msgstr "Clé de cache"
+
+#: models.py:166
+msgid "Expire le"
+msgstr "Expire le"
+
+#: models.py:173
+msgid "Cache de traduction"
+msgstr "Cache de traduction"
+
+#: models.py:174
+msgid "Caches de traduction"
+msgstr "Caches de traduction"
+
+# Messages d'interface utilisateur
+msgid "Bienvenue sur KleerLogistics"
+msgstr "Bienvenue sur KleerLogistics"
+
+msgid "Plateforme d'envoi collaboratif international"
+msgstr "Plateforme d'envoi collaboratif international"
+
+msgid "Connectez-vous"
+msgstr "Connectez-vous"
+
+msgid "Inscrivez-vous"
+msgstr "Inscrivez-vous"
+
+msgid "Déconnexion"
+msgstr "Déconnexion"
+
+msgid "Mon profil"
+msgstr "Mon profil"
+
+msgid "Mes envois"
+msgstr "Mes envois"
+
+msgid "Mes voyages"
+msgstr "Mes voyages"
+
+msgid "Messages"
+msgstr "Messages"
+
+msgid "Paiements"
+msgstr "Paiements"
+
+msgid "Paramètres"
+msgstr "Paramètres"
+
+msgid "Aide"
+msgstr "Aide"
+
+msgid "Contact"
+msgstr "Contact"
+
+# Messages de navigation
+msgid "Accueil"
+msgstr "Accueil"
+
+msgid "Envois"
+msgstr "Envois"
+
+msgid "Voyages"
+msgstr "Voyages"
+
+msgid "Matching"
+msgstr "Matching"
+
+msgid "Administration"
+msgstr "Administration"
+
+# Messages de formulaire
+msgid "Enregistrer"
+msgstr "Enregistrer"
+
+msgid "Annuler"
+msgstr "Annuler"
+
+msgid "Supprimer"
+msgstr "Supprimer"
+
+msgid "Modifier"
+msgstr "Modifier"
+
+msgid "Voir"
+msgstr "Voir"
+
+msgid "Ajouter"
+msgstr "Ajouter"
+
+msgid "Rechercher"
+msgstr "Rechercher"
+
+msgid "Filtrer"
+msgstr "Filtrer"
+
+msgid "Trier"
+msgstr "Trier"
+
+# Messages de validation
+msgid "Ce champ est requis"
+msgstr "Ce champ est requis"
+
+msgid "Format invalide"
+msgstr "Format invalide"
+
+msgid "Valeur trop courte"
+msgstr "Valeur trop courte"
+
+msgid "Valeur trop longue"
+msgstr "Valeur trop longue"
+
+msgid "Email invalide"
+msgstr "Email invalide"
+
+msgid "Numéro de téléphone invalide"
+msgstr "Numéro de téléphone invalide"
+
+# Messages de succès
+msgid "Opération réussie"
+msgstr "Opération réussie"
+
+msgid "Données enregistrées avec succès"
+msgstr "Données enregistrées avec succès"
+
+msgid "Suppression réussie"
+msgstr "Suppression réussie"
+
+msgid "Modification réussie"
+msgstr "Modification réussie"
+
+# Messages d'erreur
+msgid "Une erreur s'est produite"
+msgstr "Une erreur s'est produite"
+
+msgid "Accès refusé"
+msgstr "Accès refusé"
+
+msgid "Page non trouvée"
+msgstr "Page non trouvée"
+
+msgid "Erreur de serveur"
+msgstr "Erreur de serveur"
+
+# Messages spécifiques à KleerLogistics
+msgid "Créer un envoi"
+msgstr "Créer un envoi"
+
+msgid "Publier un voyage"
+msgstr "Publier un voyage"
+
+msgid "Trouver un voyageur"
+msgstr "Trouver un voyageur"
+
+msgid "Trouver un envoi"
+msgstr "Trouver un envoi"
+
+msgid "Suivre mon envoi"
+msgstr "Suivre mon envoi"
+
+msgid "Code de suivi"
+msgstr "Code de suivi"
+
+msgid "Statut de livraison"
+msgstr "Statut de livraison"
+
+msgid "Confirmation de livraison"
+msgstr "Confirmation de livraison"
+
+msgid "Code OTP"
+msgstr "Code OTP"
+
+msgid "Vérifier le code"
+msgstr "Vérifier le code"
+
+msgid "Code invalide"
+msgstr "Code invalide"
+
+msgid "Code expiré"
+msgstr "Code expiré"
+
+msgid "Livraison confirmée"
+msgstr "Livraison confirmée"
+
+msgid "Livraison en cours"
+msgstr "Livraison en cours"
+
+msgid "En attente de livraison"
+msgstr "En attente de livraison"
+
+msgid "Livraison terminée"
+msgstr "Livraison terminée"
+
+msgid "Livraison échouée"
+msgstr "Livraison échouée"
+
+# Messages de paiement
+msgid "Paiement"
+msgstr "Paiement"
+
+msgid "Montant"
+msgstr "Montant"
+
+msgid "Commission"
+msgstr "Commission"
+
+msgid "Frais de service"
+msgstr "Frais de service"
+
+msgid "Total à payer"
+msgstr "Total à payer"
+
+msgid "Méthode de paiement"
+msgstr "Méthode de paiement"
+
+msgid "Carte bancaire"
+msgstr "Carte bancaire"
+
+msgid "Espèces"
+msgstr "Espèces"
+
+msgid "Virement"
+msgstr "Virement"
+
+msgid "Paiement en attente"
+msgstr "Paiement en attente"
+
+msgid "Paiement confirmé"
+msgstr "Paiement confirmé"
+
+msgid "Paiement échoué"
+msgstr "Paiement échoué"
+
+msgid "Remboursement"
+msgstr "Remboursement"
+
+# Messages de chat
+msgid "Nouveau message"
+msgstr "Nouveau message"
+
+msgid "Envoyer"
+msgstr "Envoyer"
+
+msgid "Tapez votre message..."
+msgstr "Tapez votre message..."
+
+msgid "Appel vocal"
+msgstr "Appel vocal"
+
+msgid "Appel en cours..."
+msgstr "Appel en cours..."
+
+msgid "Terminer l'appel"
+msgstr "Terminer l'appel"
+
+# Messages de notification
+msgid "Nouvelle notification"
+msgstr "Nouvelle notification"
+
+msgid "Vous avez reçu un nouveau message"
+msgstr "Vous avez reçu un nouveau message"
+
+msgid "Votre envoi a été accepté"
+msgstr "Votre envoi a été accepté"
+
+msgid "Votre envoi a été livré"
+msgstr "Votre envoi a été livré"
+
+msgid "Nouveau voyage disponible"
+msgstr "Nouveau voyage disponible"
+
+msgid "Paiement reçu"
+msgstr "Paiement reçu"
+
+# Messages d'erreur spécifiques
+msgid "Envoi non trouvé"
+msgstr "Envoi non trouvé"
+
+msgid "Voyage non trouvé"
+msgstr "Voyage non trouvé"
+
+msgid "Utilisateur non trouvé"
+msgstr "Utilisateur non trouvé"
+
+msgid "Code de suivi invalide"
+msgstr "Code de suivi invalide"
+
+msgid "Date de voyage invalide"
+msgstr "Date de voyage invalide"
+
+msgid "Poids dépassé"
+msgstr "Poids dépassé"
+
+msgid "Destination non desservie"
+msgstr "Destination non desservie"
+
+# Messages de sécurité
+msgid "Authentification requise"
+msgstr "Authentification requise"
+
+msgid "Permissions insuffisantes"
+msgstr "Permissions insuffisantes"
+
+msgid "Session expirée"
+msgstr "Session expirée"
+
+msgid "Veuillez vous reconnecter"
+msgstr "Veuillez vous reconnecter"
+
+# Messages de support
+msgid "Centre d'aide"
+msgstr "Centre d'aide"
+
+msgid "FAQ"
+msgstr "FAQ"
+
+msgid "Contactez le support"
+msgstr "Contactez le support"
+
+msgid "Signaler un problème"
+msgstr "Signaler un problème"
+
+msgid "Demande d'assistance"
+msgstr "Demande d'assistance"
+
+# Messages de légales
+msgid "Conditions d'utilisation"
+msgstr "Conditions d'utilisation"
+
+msgid "Politique de confidentialité"
+msgstr "Politique de confidentialité"
+
+msgid "Mentions légales"
+msgstr "Mentions légales"
+
+msgid "Cookies"
+msgstr "Cookies"
+
+msgid "RGPD"
+msgstr "RGPD"
+
+# Messages de langue
+msgid "Français"
+msgstr "Français"
+
+msgid "English"
+msgstr "English"
+
+msgid "العربية"
+msgstr "العربية"
+
+msgid "Changer de langue"
+msgstr "Changer de langue"
+
+msgid "Langue"
+msgstr "Langue"
+
+# Messages de traduction
+msgid "Traductions"
+msgstr "Traductions"
+
+msgid "Gérer les traductions"
+msgstr "Gérer les traductions"
+
+msgid "Ajouter une traduction"
+msgstr "Ajouter une traduction"
+
+msgid "Modifier la traduction"
+msgstr "Modifier la traduction"
+
+msgid "Approuver la traduction"
+msgstr "Approuver la traduction"
+
+msgid "Traduction approuvée"
+msgstr "Traduction approuvée"
+
+msgid "Traduction en attente"
+msgstr "Traduction en attente"
+
+msgid "Exporter les traductions"
+msgstr "Exporter les traductions"
+
+msgid "Importer les traductions"
+msgstr "Importer les traductions"
+
+msgid "Statistiques de traduction"
+msgstr "Statistiques de traduction"
+
+msgid "Complétude des traductions"
+msgstr "Complétude des traductions"
+
+msgid "Langues supportées"
+msgstr "Langues supportées"
+
+msgid "Traductions manquantes"
+msgstr "Traductions manquantes"
+
+msgid "Traductions approuvées"
+msgstr "Traductions approuvées"
+
+msgid "Traductions en attente"
+msgstr "Traductions en attente"
+
+msgid "Cache des traductions"
+msgstr "Cache des traductions"
+
+msgid "Nettoyer le cache"
+msgstr "Nettoyer le cache"
+
+msgid "Cache nettoyé"
+msgstr "Cache nettoyé"
+
+msgid "Erreur lors du nettoyage du cache"
+msgstr "Erreur lors du nettoyage du cache"

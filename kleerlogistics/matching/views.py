@@ -12,10 +12,15 @@ import math
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from .models import Match, MatchingPreferences
+from .models import Match, MatchingPreferences, MatchingRule
 from .serializers import (
     MatchSerializer, MatchingPreferencesSerializer,
     MatchResultSerializer, MatchingAlgorithmSerializer
+)
+from .services import (
+    AutomaticMatchingService, 
+    MatchingNotificationService, 
+    OTPDeliveryService
 )
 from shipments.models import Shipment
 from trips.models import Trip
@@ -134,59 +139,155 @@ class MatchingEngineView(APIView):
     def find_shipment_matches(self, request, shipment_id):
         """Trouver des trajets pour un envoi."""
         try:
-            shipment = Shipment.objects.get(id=shipment_id, user=request.user)
+            # Vérifier que l'envoi existe
+            shipment = Shipment.objects.get(id=shipment_id)
+            
+            # Vérifier que l'utilisateur est le propriétaire de l'envoi
+            if shipment.sender != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à accéder à cet envoi'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Vérifier que l'envoi peut être matché
+            if shipment.status == 'matched':
+                return Response({
+                    'success': False,
+                    'message': 'Cet envoi a déjà été associé à un trajet',
+                    'shipment_status': shipment.status,
+                    'matched_trip_id': getattr(shipment.matched_trip, 'id', None) if hasattr(shipment, 'matched_trip') else None
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if shipment.status not in ['pending', 'active']:
+                return Response({
+                    'success': False,
+                    'message': f'Cet envoi ne peut pas être matché (statut: {shipment.status})',
+                    'shipment_status': shipment.status
+                }, status=status.HTTP_400_BAD_REQUEST)
             
             # Algorithme de matching
-            matches = self.calculate_shipment_matches(shipment)
+            matching_result = self.calculate_shipment_matches(shipment)
+            matches = matching_result['matches']
+            search_info = matching_result['search_info']
             
             return Response({
                 'success': True,
                 'matches': matches,
                 'count': len(matches),
-                'shipment_id': shipment_id
+                'shipment_id': shipment_id,
+                'shipment_info': {
+                    'tracking_number': shipment.tracking_number,
+                    'origin_city': shipment.origin_city,
+                    'destination_city': shipment.destination_city,
+                    'weight': float(shipment.weight),
+                    'package_type': shipment.package_type,
+                    'status': shipment.status,
+                    'preferred_pickup_date': shipment.preferred_pickup_date,
+                    'max_delivery_date': shipment.max_delivery_date
+                },
+                'search_info': search_info
             })
         except Shipment.DoesNotExist:
             return Response({
                 'success': False,
-                'message': 'Envoi non trouvé'
+                'message': f'Envoi avec l\'ID {shipment_id} non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
     
     def find_trip_matches(self, request, trip_id):
         """Trouver des envois pour un trajet."""
         try:
-            trip = Trip.objects.get(id=trip_id, traveler=request.user)
+            # Vérifier que le trajet existe
+            trip = Trip.objects.get(id=trip_id)
+            
+            # Vérifier que l'utilisateur est le propriétaire du trajet
+            if trip.traveler != request.user:
+                return Response({
+                    'success': False,
+                    'message': 'Vous n\'êtes pas autorisé à accéder à ce trajet'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Vérifier que le trajet peut accepter des envois
+            if trip.status not in ['active', 'draft']:
+                return Response({
+                    'success': False,
+                    'message': f'Ce trajet ne peut pas accepter d\'envois (statut: {trip.status})',
+                    'trip_status': trip.status
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if trip.remaining_weight <= 0 or trip.remaining_packages <= 0:
+                return Response({
+                    'success': False,
+                    'message': 'Ce trajet n\'a plus de capacité disponible',
+                    'remaining_weight': float(trip.remaining_weight),
+                    'remaining_packages': trip.remaining_packages
+                }, status=status.HTTP_400_BAD_REQUEST)
             
             # Algorithme de matching
-            matches = self.calculate_trip_matches(trip)
+            matching_result = self.calculate_trip_matches(trip)
+            matches = matching_result['matches']
+            search_info = matching_result['search_info']
             
             return Response({
                 'success': True,
                 'matches': matches,
                 'count': len(matches),
-                'trip_id': trip_id
+                'trip_id': trip_id,
+                'trip_info': {
+                    'origin_city': trip.origin_city,
+                    'destination_city': trip.destination_city,
+                    'remaining_weight': float(trip.remaining_weight),
+                    'remaining_packages': trip.remaining_packages,
+                    'status': trip.status
+                },
+                'search_info': search_info
             })
         except Trip.DoesNotExist:
             return Response({
                 'success': False,
-                'message': 'Trajet non trouvé'
+                'message': f'Trajet avec l\'ID {trip_id} non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
     
     def calculate_shipment_matches(self, shipment):
         """Calculer les matches pour un envoi."""
-        # Critères de matching
+        # Critères de matching de base
         compatible_trips = Trip.objects.filter(
             status='active',
-            origin__icontains=shipment.origin,
-            destination__icontains=shipment.destination,
-            available_capacity__gte=shipment.weight,
+            remaining_weight__gte=shipment.weight,
+            remaining_packages__gt=0,
             departure_date__gte=timezone.now().date()
-        ).exclude(traveler=shipment.user)
+        ).exclude(traveler=shipment.sender)
+        
+        # Filtres géographiques plus flexibles
+        origin_matches = Q(origin_city__icontains=shipment.origin_city)
+        destination_matches = Q(destination_city__icontains=shipment.destination_city)
+        
+        # Ajouter des correspondances partielles pour plus de flexibilité
+        if len(shipment.origin_city) > 3:
+            origin_matches |= Q(origin_city__icontains=shipment.origin_city[:3])
+        if len(shipment.destination_city) > 3:
+            destination_matches |= Q(destination_city__icontains=shipment.destination_city[:3])
+        
+        compatible_trips = compatible_trips.filter(origin_matches & destination_matches)
+        
+        # Vérifier la compatibilité des types de colis
+        if hasattr(shipment, 'package_type') and shipment.package_type:
+            compatible_trips = compatible_trips.filter(
+                accepted_package_types__contains=[shipment.package_type]
+            )
+        
+        # Vérifier la fragilité
+        if hasattr(shipment, 'is_fragile') and shipment.is_fragile:
+            compatible_trips = compatible_trips.filter(accepts_fragile=True)
         
         matches = []
-        for trip in compatible_trips[:10]:  # Limiter à 10 résultats
+        for trip in compatible_trips[:15]:  # Augmenter à 15 résultats
             score = self.calculate_compatibility_score(shipment, trip)
             
-            if score > 0.5:  # Seuil minimum de compatibilité
+            if score > 0.3:  # Réduire le seuil minimum pour plus de résultats
+                # Calculer le coût estimé
+                price_per_kg = getattr(trip, 'min_price_per_kg', 0)
+                estimated_cost = float(shipment.weight * price_per_kg) if price_per_kg else 0
+                
                 matches.append({
                     'id': len(matches) + 1,
                     'trip': {
@@ -194,94 +295,166 @@ class MatchingEngineView(APIView):
                         'traveler': {
                             'id': trip.traveler.id,
                             'name': f"{trip.traveler.first_name} {trip.traveler.last_name}",
-                            'rating': getattr(trip.traveler.userprofile, 'rating', 0),
-                            'total_trips': getattr(trip.traveler.userprofile, 'total_trips', 0)
+                            'rating': getattr(trip.traveler, 'rating', 0),
+                            'total_trips': getattr(trip.traveler, 'total_trips', 0)
                         },
-                        'origin': trip.origin,
-                        'destination': trip.destination,
+                        'origin_city': trip.origin_city,
+                        'destination_city': trip.destination_city,
                         'departure_date': trip.departure_date,
-                        'available_capacity': trip.available_capacity,
-                        'price_per_kg': trip.price_per_kg
+                        'arrival_date': trip.arrival_date,
+                        'remaining_weight': float(trip.remaining_weight),
+                        'remaining_packages': trip.remaining_packages,
+                        'min_price_per_kg': float(price_per_kg) if price_per_kg else 0,
+                        'accepts_fragile': getattr(trip, 'accepts_fragile', False),
+                        'accepted_package_types': getattr(trip, 'accepted_package_types', [])
                     },
-                    'compatibility_score': score,
-                    'estimated_cost': shipment.weight * trip.price_per_kg,
-                    'estimated_delivery': trip.arrival_date
+                    'compatibility_score': round(score * 100, 1),  # Convertir en pourcentage
+                    'estimated_cost': round(estimated_cost, 2),
+                    'estimated_delivery': trip.arrival_date,
+                    'pickup_deadline': shipment.preferred_pickup_date,
+                    'delivery_deadline': shipment.max_delivery_date
                 })
         
         # Trier par score de compatibilité
         matches.sort(key=lambda x: x['compatibility_score'], reverse=True)
-        return matches
+        
+        # Ajouter des informations sur la recherche
+        search_info = {
+            'total_trips_found': compatible_trips.count(),
+            'trips_meeting_criteria': len(matches),
+            'search_criteria': {
+                'origin_city': shipment.origin_city,
+                'destination_city': shipment.destination_city,
+                'min_weight': float(shipment.weight),
+                'package_type': getattr(shipment, 'package_type', 'N/A'),
+                'is_fragile': getattr(shipment, 'is_fragile', False)
+            }
+        }
+        
+        return {
+            'matches': matches,
+            'search_info': search_info
+        }
     
     def calculate_trip_matches(self, trip):
         """Calculer les matches pour un trajet."""
-        # Critères de matching
+        # Critères de matching de base
         compatible_shipments = Shipment.objects.filter(
             status='pending',
-            origin__icontains=trip.origin,
-            destination__icontains=trip.destination,
-            weight__lte=trip.available_capacity
-        ).exclude(user=trip.traveler)
+            weight__lte=trip.remaining_weight
+        ).exclude(sender=trip.traveler)
+        
+        # Filtres géographiques plus flexibles
+        origin_matches = Q(origin_city__icontains=trip.origin_city)
+        destination_matches = Q(destination_city__icontains=trip.destination_city)
+        
+        # Ajouter des correspondances partielles pour plus de flexibilité
+        if len(trip.origin_city) > 3:
+            origin_matches |= Q(origin_city__icontains=trip.origin_city[:3])
+        if len(trip.destination_city) > 3:
+            destination_matches |= Q(destination_city__icontains=trip.destination_city[:3])
+        
+        compatible_shipments = compatible_shipments.filter(origin_matches & destination_matches)
+        
+        # Vérifier la compatibilité des types de colis
+        if hasattr(trip, 'accepted_package_types') and trip.accepted_package_types:
+            compatible_shipments = compatible_shipments.filter(
+                package_type__in=trip.accepted_package_types
+            )
+        
+        # Vérifier la fragilité
+        if hasattr(trip, 'accepts_fragile') and not trip.accepts_fragile:
+            compatible_shipments = compatible_shipments.filter(is_fragile=False)
         
         matches = []
-        for shipment in compatible_shipments[:10]:  # Limiter à 10 résultats
+        for shipment in compatible_shipments[:15]:  # Augmenter à 15 résultats
             score = self.calculate_compatibility_score(shipment, trip)
             
-            if score > 0.5:  # Seuil minimum de compatibilité
+            if score > 0.3:  # Réduire le seuil minimum pour plus de résultats
+                # Calculer les gains estimés
+                min_price_per_kg = getattr(trip, 'min_price_per_kg', 0)
+                estimated_earnings = float(shipment.weight) * float(min_price_per_kg) if min_price_per_kg else 0
+                
                 matches.append({
                     'id': len(matches) + 1,
                     'shipment': {
                         'id': shipment.id,
                         'tracking_number': shipment.tracking_number,
                         'sender': {
-                            'id': shipment.user.id,
-                            'name': f"{shipment.user.first_name} {shipment.user.last_name}",
-                            'rating': getattr(shipment.user.userprofile, 'rating', 0)
+                            'id': shipment.sender.id,
+                            'name': f"{shipment.sender.first_name} {shipment.sender.last_name}",
+                            'rating': getattr(shipment.sender, 'rating', 0),
+                            'email': shipment.sender.email
                         },
-                        'origin': shipment.origin,
-                        'destination': shipment.destination,
-                        'weight': shipment.weight,
-                        'description': shipment.description
+                        'origin_city': shipment.origin_city,
+                        'destination_city': shipment.destination_city,
+                        'weight': float(shipment.weight),
+                        'package_type': shipment.package_type,
+                        'description': shipment.description,
+                        'is_fragile': getattr(shipment, 'is_fragile', False),
+                        'urgency': getattr(shipment, 'urgency', 'normal'),
+                        'preferred_pickup_date': shipment.preferred_pickup_date,
+                        'max_delivery_date': shipment.max_delivery_date
                     },
-                    'compatibility_score': score,
-                    'estimated_earnings': shipment.weight * trip.price_per_kg,
-                    'pickup_date': trip.departure_date
+                    'compatibility_score': round(score * 100, 1),  # Convertir en pourcentage
+                    'estimated_earnings': round(estimated_earnings, 2),
+                    'pickup_date': trip.departure_date,
+                    'delivery_date': trip.arrival_date,
+                    'weight_ratio': round(float(shipment.weight) / float(trip.remaining_weight), 2)
                 })
         
         # Trier par score de compatibilité
         matches.sort(key=lambda x: x['compatibility_score'], reverse=True)
-        return matches
+        
+        # Ajouter des informations sur la recherche
+        search_info = {
+            'total_shipments_found': compatible_shipments.count(),
+            'shipments_meeting_criteria': len(matches),
+            'search_criteria': {
+                'origin_city': trip.origin_city,
+                'destination_city': trip.destination_city,
+                'max_weight': float(trip.remaining_weight),
+                'accepted_package_types': getattr(trip, 'accepted_package_types', []),
+                'accepts_fragile': getattr(trip, 'accepts_fragile', False)
+            }
+        }
+        
+        return {
+            'matches': matches,
+            'search_info': search_info
+        }
     
     def calculate_compatibility_score(self, shipment, trip):
         """Calculer le score de compatibilité entre un envoi et un trajet."""
         score = 0.0
         
         # 1. Compatibilité géographique (40%)
-        if shipment.origin.lower() in trip.origin.lower() or trip.origin.lower() in shipment.origin.lower():
+        if shipment.origin_city.lower() in trip.origin_city.lower() or trip.origin_city.lower() in shipment.origin_city.lower():
             score += 0.4
-        elif shipment.origin.lower()[:3] == trip.origin.lower()[:3]:
+        elif shipment.origin_city.lower()[:3] == trip.origin_city.lower()[:3]:
             score += 0.3
         
-        if shipment.destination.lower() in trip.destination.lower() or trip.destination.lower() in shipment.destination.lower():
+        if shipment.destination_city.lower() in trip.destination_city.lower() or trip.destination_city.lower() in shipment.destination_city.lower():
             score += 0.4
-        elif shipment.destination.lower()[:3] == trip.destination.lower()[:3]:
+        elif shipment.destination_city.lower()[:3] == trip.destination_city.lower()[:3]:
             score += 0.3
         
         # 2. Compatibilité de capacité (30%)
-        capacity_ratio = shipment.weight / trip.available_capacity
+        capacity_ratio = float(shipment.weight / trip.remaining_weight)
         if capacity_ratio <= 1.0:
             score += 0.3 * (1 - capacity_ratio)
         
         # 3. Compatibilité temporelle (20%)
-        if trip.departure_date >= timezone.now().date():
-            days_diff = (trip.departure_date - timezone.now().date()).days
+        if trip.departure_date >= timezone.now():
+            days_diff = (trip.departure_date.date() - timezone.now().date()).days
             if days_diff <= 7:
                 score += 0.2
             elif days_diff <= 14:
                 score += 0.1
         
         # 4. Historique utilisateur (10%)
-        user_rating = getattr(trip.traveler.userprofile, 'rating', 0)
-        score += (user_rating / 5.0) * 0.1
+        user_rating = getattr(trip.traveler, 'rating', 0)
+        score += (float(user_rating) / 5.0) * 0.1
         
         return min(score, 1.0)  # Normaliser entre 0 et 1
 
@@ -319,7 +492,7 @@ class MatchListView(APIView):
     def get(self, request):
         """Récupérer les matches de l'utilisateur."""
         user_matches = Match.objects.filter(
-            Q(shipment__user=request.user) | Q(trip__traveler=request.user)
+            Q(shipment__sender=request.user) | Q(trip__traveler=request.user)
         ).order_by('-created_at')
         
         serializer = MatchSerializer(user_matches, many=True)
@@ -380,23 +553,22 @@ class AcceptMatchView(APIView):
             match = Match.objects.get(id=match_id)
             
             # Vérifier que l'utilisateur peut accepter ce match
-            if match.shipment and match.shipment.user != request.user:
-                return Response({
-                    'success': False,
-                    'message': 'Non autorisé'
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            if match.trip and match.trip.traveler != request.user:
+            # L'utilisateur doit être soit l'expéditeur soit le voyageur
+            is_authorized = False
+            if match.shipment and match.shipment.sender == request.user:
+                is_authorized = True
+            if match.trip and match.trip.traveler == request.user:
+                is_authorized = True
+                
+            if not is_authorized:
                 return Response({
                     'success': False,
                     'message': 'Non autorisé'
                 }, status=status.HTTP_403_FORBIDDEN)
             
             with transaction.atomic():
-                match.status = 'accepted'
-                match.accepted_at = timezone.now()
-                match.accepted_by = request.user
-                match.save()
+                # Use the model's accept method which handles all the logic including chat activation
+                match.accept()
                 
                 # Mettre à jour les statuts
                 if match.shipment:
@@ -406,7 +578,8 @@ class AcceptMatchView(APIView):
                 if match.trip:
                     # Réduire la capacité disponible
                     if match.shipment:
-                        match.trip.available_capacity -= match.shipment.weight
+                        match.trip.remaining_weight -= match.shipment.weight
+                        match.trip.remaining_packages -= 1
                         match.trip.save()
             
             return Response({
@@ -470,13 +643,14 @@ class RejectMatchView(APIView):
             match = Match.objects.get(id=match_id)
             
             # Vérifier les permissions
-            if match.shipment and match.shipment.user != request.user:
-                return Response({
-                    'success': False,
-                    'message': 'Non autorisé'
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            if match.trip and match.trip.traveler != request.user:
+            # L'utilisateur doit être soit l'expéditeur soit le voyageur
+            is_authorized = False
+            if match.shipment and match.shipment.sender == request.user:
+                is_authorized = True
+            if match.trip and match.trip.traveler == request.user:
+                is_authorized = True
+                
+            if not is_authorized:
                 return Response({
                     'success': False,
                     'message': 'Non autorisé'
@@ -499,46 +673,226 @@ class RejectMatchView(APIView):
             }, status=status.HTTP_404_NOT_FOUND)
 
 
-class MatchingPreferencesView(APIView):
-    """Vue pour les préférences de matching."""
+class MatchDetailView(APIView):
+    """Vue pour récupérer les détails d'un match."""
     
     permission_classes = [permissions.IsAuthenticated]
     
-    @swagger_auto_schema(
-        operation_description="Récupérer les préférences de matching",
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Préférences de matching",
-                examples={"application/json": {
-                    "success": True,
-                    "preferences": {
-                        "id": 1,
-                        "max_distance": 100,
-                        "min_rating": 4.0,
-                        "preferred_vehicle_types": ["car", "van"],
-                        "price_range": {
-                            "min": 50,
-                            "max": 200
-                        },
-                        "notification_settings": {
-                            "email": True,
-                            "push": True,
-                            "sms": False
-                        }
-                    }
-                }}
-            ),
-            status.HTTP_404_NOT_FOUND: openapi.Response(
-                description="Préférences non trouvées",
-                examples={"application/json": {
-                    "success": False,
-                    "message": "Préférences non trouvées"
-                }}
-            )
-        }
-    )
+    def get(self, request, match_id):
+        """Récupérer les détails d'un match."""
+        try:
+            match = Match.objects.get(id=match_id)
+            
+            # Vérifier que l'utilisateur a accès à ce match
+            if (request.user != match.shipment.sender and 
+                request.user != match.trip.traveler and 
+                not request.user.is_staff):
+                return Response({
+                    'success': False,
+                    'message': 'Accès non autorisé'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer = MatchSerializer(match)
+            return Response({
+                'success': True,
+                'match': serializer.data
+            })
+            
+        except Match.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Match non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class OTPDeliveryView(APIView):
+    """Vue pour la gestion des OTP de livraison."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, match_id):
+        """Générer un OTP de livraison."""
+        try:
+            match = Match.objects.get(id=match_id)
+            
+            # Vérifier que l'utilisateur est le voyageur
+            if request.user != match.trip.traveler:
+                return Response({
+                    'success': False,
+                    'message': 'Seul le voyageur peut générer l\'OTP'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Vérifier que le match est accepté
+            if match.status != 'accepted':
+                return Response({
+                    'success': False,
+                    'message': 'Le match doit être accepté pour générer l\'OTP'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Générer l'OTP
+            otp_code = OTPDeliveryService.generate_and_send_otp(match)
+            
+            return Response({
+                'success': True,
+                'otp_code': otp_code,
+                'expires_at': match.otp_expires_at.isoformat() if match.otp_expires_at else None,
+                'message': 'OTP généré et envoyé'
+            })
+            
+        except Match.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Match non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+    
+    def put(self, request, match_id):
+        """Vérifier un OTP de livraison."""
+        try:
+            match = Match.objects.get(id=match_id)
+            otp_code = request.data.get('otp_code')
+            
+            if not otp_code:
+                return Response({
+                    'success': False,
+                    'message': 'Code OTP requis'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Vérifier l'OTP
+            if OTPDeliveryService.verify_delivery_otp(match, otp_code):
+                return Response({
+                    'success': True,
+                    'payment_released': True,
+                    'message': 'Livraison confirmée et paiement libéré'
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Code OTP invalide ou expiré'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Match.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Match non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class ChatIntegrationView(APIView):
+    """Vue pour l'intégration du chat."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request, match_id):
+        """Activer le chat pour un match."""
+        try:
+            match = Match.objects.get(id=match_id)
+            
+            # Vérifier que l'utilisateur a accès à ce match
+            if (request.user != match.shipment.sender and 
+                request.user != match.trip.traveler):
+                return Response({
+                    'success': False,
+                    'message': 'Accès non autorisé'
+                }, status=status.HTTP_403_FORBIDDEN)
+            
+            # Vérifier que le match est accepté
+            if match.status != 'accepted':
+                return Response({
+                    'success': False,
+                    'message': 'Le match doit être accepté pour activer le chat'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Activer le chat
+            if match.activate_chat():
+                return Response({
+                    'success': True,
+                    'chat_room_id': str(match.chat_room_id),
+                    'message': 'Chat activé avec succès'
+                })
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Le chat est déjà activé'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+        except Match.DoesNotExist:
+            return Response({
+                'success': False,
+                'message': 'Match non trouvé'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class AutomaticMatchingView(APIView):
+    """Vue pour le matching automatique."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def post(self, request):
+        """Effectuer un matching automatique."""
+        try:
+            match_type = request.data.get('type')
+            item_id = request.data.get('item_id')
+            auto_accept = request.data.get('auto_accept', False)
+            limit = request.data.get('limit', 10)
+            
+            if not match_type or not item_id:
+                return Response({
+                    'success': False,
+                    'message': 'Type et ID requis'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            if match_type == 'shipment':
+                try:
+                    shipment = Shipment.objects.get(id=item_id, sender=request.user)
+                    matches = AutomaticMatchingService.find_matches_for_shipment(shipment, limit)
+                except Shipment.DoesNotExist:
+                    return Response({
+                        'success': False,
+                        'message': 'Envoi non trouvé'
+                    }, status=status.HTTP_404_NOT_FOUND)
+            elif match_type == 'trip':
+                try:
+                    trip = Trip.objects.get(id=item_id, traveler=request.user)
+                    matches = AutomaticMatchingService.find_matches_for_trip(trip, limit)
+                except Trip.DoesNotExist:
+                    return Response({
+                        'success': False,
+                        'message': 'Trajet non trouvé'
+                    }, status=status.HTTP_404_NOT_FOUND)
+            else:
+                return Response({
+                    'success': False,
+                    'message': 'Type invalide'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Auto-accept si demandé
+            if auto_accept and matches:
+                for match in matches[:1]:  # Auto-accept seulement le premier match
+                    if match.can_auto_accept:
+                        match.auto_accept()
+            
+            serializer = MatchSerializer(matches, many=True)
+            return Response({
+                'success': True,
+                'matches': serializer.data,
+                'count': len(matches),
+                'auto_accepted': auto_accept and bool(matches)
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors du matching automatique: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class MatchingPreferencesView(APIView):
+    """Vue pour la gestion des préférences de matching."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
     def get(self, request):
-        """Récupérer les préférences de matching."""
+        """Récupérer les préférences de matching de l'utilisateur."""
         try:
             preferences = MatchingPreferences.objects.get(user=request.user)
             serializer = MatchingPreferencesSerializer(preferences)
@@ -548,92 +902,36 @@ class MatchingPreferencesView(APIView):
             })
         except MatchingPreferences.DoesNotExist:
             return Response({
-                'success': False,
-                'message': 'Préférences non trouvées'
-            }, status=status.HTTP_404_NOT_FOUND)
+                'success': True,
+                'preferences': None,
+                'message': 'Aucune préférence configurée'
+            })
     
-    @swagger_auto_schema(
-        operation_description="Créer ou mettre à jour les préférences de matching",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'max_distance': openapi.Schema(type=openapi.TYPE_INTEGER),
-                'min_rating': openapi.Schema(type=openapi.TYPE_NUMBER),
-                'preferred_vehicle_types': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(type=openapi.TYPE_STRING)
-                ),
-                'price_range': openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'min': openapi.Schema(type=openapi.TYPE_NUMBER),
-                        'max': openapi.Schema(type=openapi.TYPE_NUMBER)
-                    }
-                ),
-                'notification_settings': openapi.Schema(
-                    type=openapi.TYPE_OBJECT,
-                    properties={
-                        'email': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                        'push': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                        'sms': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-                    }
-                )
-            }
-        ),
-        responses={
-            status.HTTP_200_OK: openapi.Response(
-                description="Préférences mises à jour",
-                examples={"application/json": {
-                    "success": True,
-                    "message": "Préférences mises à jour",
-                    "preferences": {
-                        "id": 1,
-                        "max_distance": 100,
-                        "min_rating": 4.0,
-                        "preferred_vehicle_types": ["car", "van"],
-                        "price_range": {
-                            "min": 50,
-                            "max": 200
-                        },
-                        "notification_settings": {
-                            "email": True,
-                            "push": True,
-                            "sms": False
-                        }
-                    }
-                }}
-            ),
-            status.HTTP_400_BAD_REQUEST: openapi.Response(
-                description="Erreur de validation",
-                examples={"application/json": {
-                    "success": False,
-                    "errors": {
-                        "max_distance": ["Ce champ est requis."]
-                    }
-                }}
-            )
-        }
-    )
     def post(self, request):
         """Créer ou mettre à jour les préférences de matching."""
         try:
-            preferences = MatchingPreferences.objects.get(user=request.user)
-            serializer = MatchingPreferencesSerializer(preferences, data=request.data)
-        except MatchingPreferences.DoesNotExist:
-            serializer = MatchingPreferencesSerializer(data=request.data)
-        
-        if serializer.is_valid():
-            serializer.save(user=request.user)
+            preferences, created = MatchingPreferences.objects.get_or_create(
+                user=request.user,
+                defaults=request.data
+            )
+            
+            if not created:
+                for key, value in request.data.items():
+                    setattr(preferences, key, value)
+                preferences.save()
+            
+            serializer = MatchingPreferencesSerializer(preferences)
             return Response({
                 'success': True,
-                'message': 'Préférences mises à jour',
-                'preferences': serializer.data
+                'preferences': serializer.data,
+                'message': 'Préférences créées' if created else 'Préférences mises à jour'
             })
-        
-        return Response({
-            'success': False,
-            'errors': serializer.errors
-        }, status=status.HTTP_400_BAD_REQUEST)
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la sauvegarde des préférences: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MatchingAnalyticsView(APIView):
@@ -643,26 +941,30 @@ class MatchingAnalyticsView(APIView):
     
     def get(self, request):
         """Récupérer les statistiques de matching."""
-        user_matches = Match.objects.filter(
-            Q(shipment__user=request.user) | Q(trip__traveler=request.user)
-        )
-        
-        analytics = {
-            'total_matches': user_matches.count(),
-            'accepted_matches': user_matches.filter(status='accepted').count(),
-            'rejected_matches': user_matches.filter(status='rejected').count(),
-            'pending_matches': user_matches.filter(status='pending').count(),
-            'average_compatibility_score': user_matches.aggregate(
-                avg_score=models.Avg('compatibility_score')
-            )['avg_score'] or 0,
-            'success_rate': (user_matches.filter(status='accepted').count() / 
-                           max(user_matches.count(), 1)) * 100
-        }
-        
-        return Response({
-            'success': True,
-            'analytics': analytics
-        })
+        try:
+            from .services import MatchingAnalyticsService
+            
+            # Récupérer les paramètres de filtrage
+            date_from = request.GET.get('date_from')
+            date_to = request.GET.get('date_to')
+            
+            # Obtenir les statistiques
+            analytics = MatchingAnalyticsService.get_matching_statistics(
+                user=request.user,
+                date_from=date_from,
+                date_to=date_to
+            )
+            
+            return Response({
+                'success': True,
+                'analytics': analytics
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors du calcul des analytics: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class MatchingNotificationsView(APIView):
@@ -672,22 +974,12 @@ class MatchingNotificationsView(APIView):
     
     def get(self, request):
         """Récupérer les notifications de matching."""
-        # En production, intégrer avec le système de notifications
-        notifications = [
-            {
-                'id': 1,
-                'type': 'new_match',
-                'title': 'Nouveau match disponible',
-                'message': 'Un nouveau trajet correspond à votre envoi',
-                'created_at': timezone.now(),
-                'read': False
-            }
-        ]
-        
+        # Placeholder - à implémenter avec le module notifications
         return Response({
             'success': True,
-            'notifications': notifications,
-            'count': len(notifications)
+            'notifications': [],
+            'count': 0,
+            'message': 'Module notifications à implémenter'
         })
 
 
@@ -728,3 +1020,71 @@ class AdminMatchDetailView(APIView):
                 'success': False,
                 'message': 'Match non trouvé'
             }, status=status.HTTP_404_NOT_FOUND)
+
+
+class MatchingRulesView(APIView):
+    """Vue pour la gestion des règles de matching configurables."""
+    
+    permission_classes = [permissions.IsAdminUser]
+    
+    def get(self, request):
+        """Récupérer les règles de matching actives."""
+        rules = MatchingRule.objects.filter(is_active=True)
+        
+        rules_data = []
+        for rule in rules:
+            rules_data.append({
+                'id': rule.id,
+                'name': rule.name,
+                'description': rule.description,
+                'min_compatibility_score': float(rule.min_compatibility_score),
+                'max_distance_km': rule.max_distance_km,
+                'max_date_flexibility_days': rule.max_date_flexibility_days,
+                'geographic_weight': float(rule.geographic_weight),
+                'weight_weight': float(rule.weight_weight),
+                'package_type_weight': float(rule.package_type_weight),
+                'fragility_weight': float(rule.fragility_weight),
+                'date_weight': float(rule.date_weight),
+                'reputation_weight': float(rule.reputation_weight),
+                'enable_auto_acceptance': rule.enable_auto_acceptance,
+                'auto_accept_threshold': float(rule.auto_accept_threshold),
+                'is_active': rule.is_active
+            })
+        
+        return Response({
+            'success': True,
+            'rules': rules_data,
+            'count': len(rules_data)
+        })
+    
+    def post(self, request):
+        """Créer une nouvelle règle de matching."""
+        try:
+            rule = MatchingRule.objects.create(
+                name=request.data.get('name'),
+                description=request.data.get('description'),
+                min_compatibility_score=request.data.get('min_compatibility_score', 30.00),
+                max_distance_km=request.data.get('max_distance_km', 100),
+                max_date_flexibility_days=request.data.get('max_date_flexibility_days', 7),
+                geographic_weight=request.data.get('geographic_weight', 35.00),
+                weight_weight=request.data.get('weight_weight', 20.00),
+                package_type_weight=request.data.get('package_type_weight', 15.00),
+                fragility_weight=request.data.get('fragility_weight', 10.00),
+                date_weight=request.data.get('date_weight', 15.00),
+                reputation_weight=request.data.get('reputation_weight', 5.00),
+                enable_auto_acceptance=request.data.get('enable_auto_acceptance', False),
+                auto_accept_threshold=request.data.get('auto_accept_threshold', 90.00),
+                is_active=request.data.get('is_active', True)
+            )
+            
+            return Response({
+                'success': True,
+                'message': 'Règle de matching créée',
+                'rule_id': rule.id
+            })
+            
+        except Exception as e:
+            return Response({
+                'success': False,
+                'message': f'Erreur lors de la création de la règle: {str(e)}'
+            }, status=status.HTTP_400_BAD_REQUEST)

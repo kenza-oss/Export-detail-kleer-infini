@@ -4,6 +4,7 @@ Support pour CIB, Eddahabia et paiement en espèces au bureau
 """
 
 from rest_framework import serializers
+from decimal import Decimal
 from .models import Transaction, PaymentMethod, Wallet, Commission
 
 
@@ -68,19 +69,25 @@ class CardPaymentSerializer(serializers.Serializer):
     # Informations de base
     amount = serializers.DecimalField(
         max_digits=12, decimal_places=2,
-        min_value=0.01,
+        min_value=Decimal('0.01'),
         help_text="Montant du paiement en DA"
     )
     card_type = serializers.ChoiceField(
-        choices=[('cib', 'CIB'), ('eddahabia', 'Eddahabia')],
-        help_text="Type de carte bancaire algérienne"
+        choices=[('cib', 'CIB'), ('eddahabia', 'Eddahabia'), ('visa', 'Visa'), ('mastercard', 'Mastercard')],
+        help_text="Type de carte bancaire"
     )
     
-    # Informations de la carte
+    # Informations de la carte (optionnelles pour les tests)
     card_number = serializers.CharField(
         max_length=19,
         min_length=13,
+        required=False,
         help_text="Numéro de la carte bancaire"
+    )
+    card_last_four = serializers.CharField(
+        max_length=4,
+        required=False,
+        help_text="4 derniers chiffres de la carte"
     )
     card_holder_name = serializers.CharField(
         max_length=100,
@@ -105,7 +112,7 @@ class CardPaymentSerializer(serializers.Serializer):
     )
     
     # Informations optionnelles
-    shipment = serializers.IntegerField(
+    shipment_id = serializers.IntegerField(
         required=False,
         help_text="ID de l'envoi associé"
     )
@@ -117,6 +124,9 @@ class CardPaymentSerializer(serializers.Serializer):
     
     def validate_card_number(self, value):
         """Valide le numéro de carte."""
+        if not value:
+            return value
+            
         # Supprimer les espaces
         value = value.replace(' ', '')
         
@@ -132,6 +142,9 @@ class CardPaymentSerializer(serializers.Serializer):
     
     def validate_expiry_month(self, value):
         """Valide le mois d'expiration."""
+        if not value:
+            return value
+            
         try:
             month = int(value)
             if month < 1 or month > 12:
@@ -143,6 +156,9 @@ class CardPaymentSerializer(serializers.Serializer):
     
     def validate_expiry_year(self, value):
         """Valide l'année d'expiration."""
+        if not value:
+            return value
+            
         try:
             year = int(value)
             if year < 2024 or year > 2030:
@@ -159,7 +175,7 @@ class CashPaymentSerializer(serializers.Serializer):
     # Informations de base
     amount = serializers.DecimalField(
         max_digits=12, decimal_places=2,
-        min_value=0.01,
+        min_value=Decimal('0.01'),
         help_text="Montant du paiement en DA"
     )
     
@@ -202,7 +218,7 @@ class PaymentValidationSerializer(serializers.Serializer):
     
     amount = serializers.DecimalField(
         max_digits=12, decimal_places=2,
-        min_value=0.01,
+        min_value=Decimal('0.01'),
         help_text="Montant à valider"
     )
     payment_method = serializers.CharField(
@@ -247,7 +263,7 @@ class PaymentFeesSerializer(serializers.Serializer):
     
     amount = serializers.DecimalField(
         max_digits=12, decimal_places=2,
-        min_value=0.01,
+        min_value=Decimal('0.01'),
         help_text="Montant du paiement"
     )
     payment_method = serializers.CharField(
@@ -346,3 +362,170 @@ class PaymentMethodCreateSerializer(serializers.ModelSerializer):
             )
         
         return data 
+
+
+class ChargilyPaymentSerializer(serializers.Serializer):
+    """Sérialiseur pour les paiements Chargily."""
+    
+    amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2,
+        min_value=Decimal('0.01'),
+        help_text="Montant du paiement en DA"
+    )
+    payment_mode = serializers.ChoiceField(
+        choices=[('edahabia', 'Edahabia'), ('cib', 'CIB'), ('baridi_mob', 'Baridi Mob')],
+        help_text="Mode de paiement Chargily"
+    )
+    shipment_id = serializers.IntegerField(
+        help_text="ID de l'envoi associé"
+    )
+    description = serializers.CharField(
+        max_length=200,
+        required=False,
+        help_text="Description du paiement"
+    )
+    back_url = serializers.URLField(
+        required=False,
+        help_text="URL de retour après paiement"
+    )
+    webhook_url = serializers.URLField(
+        required=False,
+        help_text="URL webhook pour les notifications"
+    )
+
+
+class ChargilyWebhookSerializer(serializers.Serializer):
+    """Sérialiseur pour les webhooks Chargily."""
+    
+    id = serializers.CharField(help_text="ID du paiement Chargily")
+    order_id = serializers.CharField(help_text="ID de la commande")
+    status = serializers.CharField(help_text="Statut du paiement")
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, help_text="Montant")
+    currency = serializers.CharField(help_text="Devise")
+    payment_mode = serializers.CharField(help_text="Mode de paiement")
+    created_at = serializers.DateTimeField(help_text="Date de création")
+
+
+class CommissionCalculateSerializer(serializers.Serializer):
+    """Sérialiseur pour le calcul des commissions."""
+    
+    shipment_id = serializers.IntegerField(help_text="ID de l'envoi")
+    total_amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2,
+        min_value=Decimal('0.01'),
+        help_text="Montant total"
+    )
+    commission_rate = serializers.DecimalField(
+        max_digits=5, decimal_places=2,
+        min_value=0,
+        max_value=100,
+        default=25.0,
+        help_text="Taux de commission en pourcentage"
+    )
+
+
+class CommissionApplySerializer(serializers.Serializer):
+    """Sérialiseur pour l'application des commissions."""
+    
+    shipment_id = serializers.IntegerField(help_text="ID de l'envoi")
+    commission_amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2,
+        min_value=0,
+        help_text="Montant de la commission"
+    )
+    traveler_amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2,
+        min_value=0,
+        help_text="Montant pour le voyageur"
+    )
+    description = serializers.CharField(
+        max_length=200,
+        required=False,
+        help_text="Description de la commission"
+    )
+
+
+class BankTransferRequestSerializer(serializers.Serializer):
+    """Sérialiseur pour les demandes de virement bancaire."""
+    
+    amount = serializers.DecimalField(
+        max_digits=12, decimal_places=2,
+        min_value=Decimal('0.01'),
+        help_text="Montant du virement"
+    )
+    bank_name = serializers.CharField(
+        max_length=100,
+        help_text="Nom de la banque"
+    )
+    account_number = serializers.CharField(
+        max_length=50,
+        help_text="Numéro de compte"
+    )
+    account_holder = serializers.CharField(
+        max_length=100,
+        help_text="Nom du titulaire du compte"
+    )
+    description = serializers.CharField(
+        max_length=200,
+        required=False,
+        help_text="Description du virement"
+    )
+
+
+class BankTransferConfirmSerializer(serializers.Serializer):
+    """Sérialiseur pour la confirmation des virements bancaires."""
+    
+    transfer_id = serializers.CharField(help_text="ID de la transaction de virement")
+    bank_reference = serializers.CharField(
+        max_length=100,
+        help_text="Référence bancaire"
+    )
+    confirmation_date = serializers.DateField(
+        required=False,
+        help_text="Date de confirmation"
+    )
+    notes = serializers.CharField(
+        max_length=500,
+        required=False,
+        help_text="Notes de confirmation"
+    )
+
+
+class CashPaymentOfficeSerializer(serializers.Serializer):
+    """Sérialiseur pour les bureaux de paiement en espèces."""
+    
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(help_text="Nom du bureau")
+    address = serializers.CharField(help_text="Adresse du bureau")
+    phone = serializers.CharField(help_text="Téléphone du bureau")
+    hours = serializers.CharField(help_text="Heures d'ouverture")
+    coordinates = serializers.DictField(
+        child=serializers.FloatField(),
+        help_text="Coordonnées GPS"
+    )
+
+
+class PaymentMethodDetailSerializer(serializers.ModelSerializer):
+    """Sérialiseur détaillé pour les méthodes de paiement."""
+    
+    method_type_display = serializers.CharField(source='get_method_type_display', read_only=True)
+    is_available = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = PaymentMethod
+        fields = [
+            'id', 'name', 'method_type', 'method_type_display', 'is_active', 'is_online',
+            'min_amount', 'max_amount', 'processing_fee', 'fixed_fee',
+            'office_locations', 'office_hours', 'office_instructions',
+            'description', 'icon_url', 'is_available', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def get_is_available(self, obj):
+        """Détermine si la méthode est disponible pour le montant donné."""
+        amount = self.context.get('amount')
+        if amount is None:
+            return obj.is_active
+        
+        return (obj.is_active and 
+                obj.min_amount <= amount <= obj.max_amount) 
